@@ -1,4 +1,4 @@
-import { makeRequest } from "../app.js";
+import { makeRequest, navigateTo } from "../app.js";
 
 // Configuration for data source
 const CONFIG = {
@@ -109,6 +109,9 @@ function initializeDashboard() {
   
   // Setup like functionality
   setupLikeButtons();
+  
+  // Setup event details navigation
+  setupEventDetailsNavigation();
 }
 
 // Data Service Layer
@@ -166,6 +169,20 @@ class PartyDataService {
     } catch (error) {
       console.error("Error toggling like:", error);
       return { success: true, liked };
+    }
+  }
+
+  static async getEventDetails(eventId) {
+    if (CONFIG.USE_MOCK_DATA) {
+      return this.getMockEventDetails(eventId);
+    }
+    
+    try {
+      const response = await makeRequest(`${CONFIG.API_ENDPOINTS.LIKE}/${eventId}`, "GET");
+      return response;
+    } catch (error) {
+      console.error("Error fetching event details:", error);
+      return this.getMockEventDetails(eventId);
     }
   }
 
@@ -239,6 +256,82 @@ class PartyDataService {
       party.administrator.toLowerCase().includes(query.toLowerCase()) ||
       party.location.toLowerCase().includes(query.toLowerCase())
     );
+  }
+
+  static getMockEventDetails(eventId) {
+    // Mock data for event details
+    const mockEvents = {
+      1: {
+        id: 1,
+        title: "Chicago Night",
+        attendees: "23/96",
+        location: "Calle 23#32-26",
+        date: "5/9/21 • 23:00-06:00",
+        administrator: "Loco Foroko",
+        price: "$65.000",
+        image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=300&fit=crop",
+        tags: ["Elegant", "Cocktailing"],
+        liked: true,
+        category: "hot-topic",
+        description: "Experience the best of Chicago nightlife with our exclusive party featuring top DJs and premium cocktails.",
+        inclusions: ["Drink of courtesy", "After midnight kiss dinamic", "Premium sound system"],
+        dressCode: ["Elegant attire", "Cocktail dresses", "Dress shoes"],
+        openingHour: "21:30"
+      },
+      2: {
+        id: 2,
+        title: "Summer Vibes",
+        attendees: "45/100",
+        location: "Calle 15#45-12",
+        date: "12/9/21 • 20:00-04:00",
+        administrator: "DJ Summer",
+        price: "$45.000",
+        image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=300&fit=crop",
+        tags: ["Summer", "Outdoor"],
+        liked: false,
+        category: "hot-topic",
+        description: "Celebrate summer with our outdoor party featuring tropical vibes and refreshing drinks.",
+        inclusions: ["Welcome drink", "Tropical decorations", "Outdoor seating"],
+        dressCode: ["Summer casual", "Bright colors", "Comfortable shoes"],
+        openingHour: "20:00"
+      },
+      3: {
+        id: 3,
+        title: "Pre-New Year Pa...",
+        attendees: "67/150",
+        location: "Cra 51#39-26",
+        date: "22/11/21 • 21:30-05:00",
+        administrator: "DJ KC",
+        price: "$80.000",
+        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop",
+        tags: ["Disco Music", "Elegant"],
+        liked: false,
+        category: "upcoming",
+        description: "We do not need to be in the 31st of December to party as God intended.",
+        inclusions: ["Drink of courtesy", "After midnight kiss dinamic", "New Year decorations"],
+        dressCode: ["Neon Colors", "No formal attire required", "Comfortable dancing shoes"],
+        openingHour: "21:30"
+      },
+      4: {
+        id: 4,
+        title: "Neon Dreams",
+        attendees: "89/120",
+        location: "Calle 80#12-45",
+        date: "15/9/21 • 22:00-05:00",
+        administrator: "Neon DJ",
+        price: "$55.000",
+        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop",
+        tags: ["Electronic", "Neon"],
+        liked: true,
+        category: "upcoming",
+        description: "Immerse yourself in a neon-lit electronic music experience like no other.",
+        inclusions: ["Neon accessories", "Electronic music", "Light show"],
+        dressCode: ["Neon colors", "Glow-in-the-dark items", "Comfortable shoes"],
+        openingHour: "22:00"
+      }
+    };
+
+    return mockEvents[eventId] || mockEvents[3]; // Default to Pre-New Year party
   }
 }
 
@@ -319,10 +412,10 @@ function createHotTopicCard(event) {
           </div>
           <div class="price">${event.price}</div>
         </div>
-        <div class="card-tags">
-          ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
-          <button class="see-more-btn">See More</button>
-        </div>
+         <div class="card-tags">
+           ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
+           <button class="see-more-btn" data-event-id="${event.id}">See More</button>
+         </div>
       </div>
     </div>
   `;
@@ -361,10 +454,10 @@ function createUpcomingCard(event) {
             <span>${event.administrator}</span>
           </div>
         </div>
-        <div class="card-tags">
-          ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
-          <button class="see-more-btn">See More</button>
-        </div>
+         <div class="card-tags">
+           ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
+           <button class="see-more-btn" data-event-id="${event.id}">See More</button>
+         </div>
       </div>
     </div>
   `;
@@ -480,6 +573,29 @@ function setupLikeButtons() {
         console.error('Error toggling like:', error);
         // Still toggle the visual state for better UX
         likeBtn.classList.toggle('liked', !isLiked);
+      }
+    }
+  });
+}
+
+function setupEventDetailsNavigation() {
+  // Use event delegation for dynamically added see more buttons
+  document.addEventListener('click', async (e) => {
+    if (e.target.closest('.see-more-btn')) {
+      const seeMoreBtn = e.target.closest('.see-more-btn');
+      const eventId = seeMoreBtn.dataset.eventId;
+      
+      if (eventId) {
+        try {
+          // Get event details and navigate
+          const eventDetails = await PartyDataService.getEventDetails(eventId);
+          navigateTo("/event-details", eventDetails);
+        } catch (error) {
+          console.error('Error getting event details:', error);
+          // Fallback to mock data
+          const mockEvent = PartyDataService.getMockEventDetails(eventId);
+          navigateTo("/event-details", mockEvent);
+        }
       }
     }
   });

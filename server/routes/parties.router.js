@@ -5,6 +5,7 @@ const {
   getAllParties,
   searchParties,
   toggleLike,
+  getEventDetails,
 } = require("../controllers/parties.controller");
 
 const router = express.Router();
@@ -23,5 +24,8 @@ router.get("/parties/search", searchParties);
 
 // Toggle like status
 router.patch("/parties/:id/like", toggleLike);
+
+// Get event details
+router.get("/parties/:id", getEventDetails);
 
 module.exports = router;

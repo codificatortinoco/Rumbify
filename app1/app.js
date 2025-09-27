@@ -1,4 +1,5 @@
 import renderScreen1 from "./screens/screen1.js";
+import renderDashboard from "./screens/dashboard.js";
 
 const socket = io("/", { path: "/real-time" });
 
@@ -8,18 +9,28 @@ function clearScripts() {
 
 let route = { path: "/", data: {} };
 
-switch (route.path) {
-  case "/":
-    clearScripts();
-    renderScreen1(route.data);
-    break;
-  default:
-    const app = document.getElementById("app");
-    app.innerHTML = `<h1>404 - Not Found</h1><p>The page you are looking for does not exist.</p>`;
+function renderRoute(currentRoute) {
+  switch (currentRoute?.path) {
+    case "/":
+      clearScripts();
+      renderScreen1(currentRoute?.data);
+      break;
+    case "/dashboard":
+      clearScripts();
+      renderDashboard(currentRoute?.data);
+      break;
+    default:
+      const app = document.getElementById("app");
+      app.innerHTML = `<h1>404 - Not Found</h1><p>The page you are looking for does not exist.</p>`;
+  }
 }
+
+// Initial render
+renderRoute(route);
 
 function navigateTo(path, data) {
   route = { path, data };
+  renderRoute(route);
 }
 
 async function makeRequest(url, method, body) {

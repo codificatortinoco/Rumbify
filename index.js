@@ -18,6 +18,16 @@ app.use(express.json());
 app.use("/app1", express.static(path.join(__dirname, "app1")));
 app.use("/app2", express.static(path.join(__dirname, "app2")));
 
+// Ruta principal - redirige a la aplicación principal
+app.get("/", (req, res) => {
+  res.redirect("/app1");
+});
+
+// Ruta de inicio para la aplicación principal
+app.get("/start", (req, res) => {
+  res.redirect("/app1");
+});
+
 // Routes
 app.use("/", usersRouter);
 app.use("/", screen1EventsRouter);

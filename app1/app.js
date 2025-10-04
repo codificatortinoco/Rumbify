@@ -1,3 +1,4 @@
+import renderWelcome from "./screens/welcome.js";
 import renderScreen1 from "./screens/screen1.js";
 import renderDashboard from "./screens/dashboard.js";
 import renderEventDetails from "./screens/eventDetails.js";
@@ -8,10 +9,14 @@ function clearScripts() {
   document.getElementById("app").innerHTML = "";
 }
 
-let route = { path: "/", data: {} };
+let route = { path: "/welcome", data: {} };
 
 function renderRoute(currentRoute) {
   switch (currentRoute?.path) {
+    case "/welcome":
+      clearScripts();
+      renderWelcome(currentRoute?.data);
+      break;
     case "/":
       clearScripts();
       renderScreen1(currentRoute?.data);

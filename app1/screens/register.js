@@ -62,6 +62,13 @@ export default function renderRegister() {
             <a href="#" class="login-link">Log In</a>
           </p>
         </div>
+
+        <!-- Back Button -->
+        <div class="back-section">
+          <button class="back-btn">
+            ← Back to Welcome
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -69,9 +76,11 @@ export default function renderRegister() {
   // Event Listeners
   const registerForm = document.querySelector('.form-container');
   const loginLink = document.querySelector('.login-link');
+  const backBtn = document.querySelector('.back-btn');
 
   registerForm.addEventListener('submit', handleRegister);
   loginLink.addEventListener('click', handleBackToLogin);
+  backBtn.addEventListener('click', handleBackToWelcome);
 
   function handleRegister(e) {
     e.preventDefault();
@@ -95,5 +104,10 @@ export default function renderRegister() {
   function handleBackToLogin(e) {
     e.preventDefault();
     navigateTo("/login");
+  }
+
+  function handleBackToWelcome(e) {
+    e.preventDefault();
+    navigateTo("/welcome");
   }
 }

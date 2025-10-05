@@ -1133,6 +1133,36 @@ body {
   }
 }
 
+/* Back Button Styles */
+.back-section {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  color: white;
+  padding: 0.8rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  letter-spacing: 0.5px;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
+}
+
 /* Mobile Optimizations for Login */
 @media (hover: none) and (pointer: coarse) {
   .login-btn:hover {
@@ -1140,6 +1170,10 @@ body {
   }
   
   .login-logo:hover {
+    transform: none;
+  }
+  
+  .back-btn:hover {
     transform: none;
   }
 }
@@ -1346,6 +1380,10 @@ body {
   }
   
   .register-logo:hover {
+    transform: none;
+  }
+  
+  .back-btn:hover {
     transform: none;
   }
 }

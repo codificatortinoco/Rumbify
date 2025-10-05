@@ -1,5 +1,6 @@
 import renderWelcome from "./screens/welcome.js";
 import renderScreen1 from "./screens/screen1.js";
+import renderLogin from "./screens/login.js";
 import renderDashboard from "./screens/dashboard.js";
 import renderEventDetails from "./screens/eventDetails.js";
 
@@ -20,6 +21,10 @@ function renderRoute(currentRoute) {
     case "/":
       clearScripts();
       renderScreen1(currentRoute?.data);
+      break;
+    case "/login":
+      clearScripts();
+      renderLogin(currentRoute?.data);
       break;
     case "/dashboard":
       clearScripts();

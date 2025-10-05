@@ -22,7 +22,7 @@ export default function renderWelcome() {
   `;
 
   document.getElementById("member-btn").addEventListener("click", () => {
-    navigateTo("/", { userType: "member" });
+    navigateTo("/login", { userType: "member" });
   });
 
   document.getElementById("admin-btn").addEventListener("click", () => {

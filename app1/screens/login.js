@@ -89,7 +89,6 @@ export default function renderLogin() {
 
   function handleSignUp(e) {
     e.preventDefault();
-    // TODO: Implement sign up logic
-    console.log('Sign up clicked');
+    navigateTo("/register");
   }
 }

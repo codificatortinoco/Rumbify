@@ -54,10 +54,8 @@ body {
   transform: scale(1.05);
 }
 
-#screen1 #get-btn { animation-delay: 0.5s; }
-#screen1 #change-screen-btn { animation-delay: 0.7s; }
-#screen1 #dashboard-btn { animation-delay: 0.9s; }
-#screen1 #back-to-welcome { animation-delay: 1.1s; }
+#screen1 #dashboard-btn { animation-delay: 0.7s; }
+#screen1 #back-to-welcome { animation-delay: 0.9s; }
 
 .user-type-display {
   margin-bottom: 1rem;

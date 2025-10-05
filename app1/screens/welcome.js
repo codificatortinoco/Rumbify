@@ -26,6 +26,7 @@ export default function renderWelcome() {
   });
 
   document.getElementById("admin-btn").addEventListener("click", () => {
-    navigateTo("/", { userType: "admin" });
+    // Redirect to app2 for administrator login
+    window.location.href = '../app2/index.html';
   });
 }

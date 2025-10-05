@@ -1,6 +1,6 @@
 import { navigateTo } from "../app.js";
 
-export default function renderLogin() {
+export default function renderLogin(data = {}) {
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="login-screen">
@@ -86,7 +86,7 @@ export default function renderLogin() {
     // TODO: Implement login logic
     console.log('Login attempt:', { email, password });
     
-    // For now, redirect to dashboard
+    // For members, redirect to regular dashboard
     navigateTo("/dashboard", { userType: "member", email });
   }
 

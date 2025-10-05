@@ -27,6 +27,6 @@ export default function renderWelcome() {
 
   document.getElementById("admin-btn").addEventListener("click", () => {
     // Redirect to app2 for administrator login
-    window.location.href = '../app2/index.html';
+    window.location.href = '/app2/admin-login';
   });
 }

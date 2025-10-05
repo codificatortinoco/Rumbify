@@ -6,6 +6,7 @@ const { createServer } = require("http");
 const usersRouter = require("./server/routes/users.router");
 const screen1EventsRouter = require("./server/routes/screen1Events.router");
 const partiesRouter = require("./server/routes/parties.router");
+const adminRouter = require("./server/routes/admin.router");
 const { initSocketInstance } = require("./server/services/socket.service");
 
 const PORT = 5050;
@@ -15,6 +16,8 @@ const httpServer = createServer(app);
 
 // Middlewares
 app.use(express.json());
+
+// Serve static files for both apps
 app.use("/app1", express.static(path.join(__dirname, "app1")));
 app.use("/app2", express.static(path.join(__dirname, "app2")));
 
@@ -28,10 +31,21 @@ app.get("/start", (req, res) => {
   res.redirect("/app1");
 });
 
+// Handle SPA routing for app1 - serve index.html for any non-API routes
+app.get("/app1/*", (req, res) => {
+  res.sendFile(path.join(__dirname, "app1", "index.html"));
+});
+
+// Handle SPA routing for app2 - serve index.html for any non-API routes
+app.get("/app2/*", (req, res) => {
+  res.sendFile(path.join(__dirname, "app2", "index.html"));
+});
+
 // Routes
 app.use("/", usersRouter);
 app.use("/", screen1EventsRouter);
 app.use("/", partiesRouter);
+app.use("/", adminRouter);
 
 // Services
 initSocketInstance(httpServer);

@@ -327,6 +327,11 @@ body {
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.9rem;
   margin: 0;
+  margin-bottom: 0.2rem;
+}
+
+.admin-user-info p:last-child {
+  margin-bottom: 0;
 }
 
 .admin-logout-btn {
@@ -416,13 +421,125 @@ body {
   transform: translateY(0);
 }
 
+/* Admin Register Styles */
+#admin-register-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.admin-register-content {
+  width: 100%;
+  max-width: 414px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.admin-register-logo {
+  max-width: 120px;
+  width: 100%;
+  height: auto;
+  filter: brightness(0) invert(1);
+  transition: all 0.3s ease;
+}
+
+.admin-register-logo:hover {
+  transform: scale(1.05);
+}
+
+.admin-register-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.admin-register-title {
+  color: #ff6b6b;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+  margin: 0;
+}
+
+.admin-register-subtitle {
+  color: rgba(255, 107, 107, 0.9);
+  font-size: 1rem;
+  text-align: center;
+  font-weight: 500;
+  margin: 0;
+}
+
+.admin-phone-hint {
+  display: block;
+  color: rgba(255, 107, 107, 0.7);
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+  text-align: center;
+}
+
+.admin-register-btn {
+  width: 100%;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  border: 2px solid #ff6b6b;
+  border-radius: 12px;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.admin-register-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
+  background: linear-gradient(135deg, #ff5252 0%, #d63031 100%);
+}
+
+.admin-register-btn:active {
+  transform: translateY(0);
+}
+
+.register-section {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.register-text {
+  color: white;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.register-link {
+  color: #ff6b6b;
+  text-decoration: underline;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.register-link:hover {
+  color: #ff5252;
+}
+
 /* Responsive */
 @media (max-width: 414px) {
-  .admin-login-content {
+  .admin-login-content,
+  .admin-register-content {
     padding: 1.5rem;
   }
   
-  .admin-login-title {
+  .admin-login-title,
+  .admin-register-title {
     font-size: 2rem;
   }
   

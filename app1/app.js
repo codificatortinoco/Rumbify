@@ -11,7 +11,15 @@ function clearScripts() {
   document.getElementById("app").innerHTML = "";
 }
 
-let route = { path: "/welcome", data: {} };
+// Initialize route based on current URL path
+function getInitialRoute() {
+  const path = window.location.pathname;
+  // Remove /app1 prefix if present
+  const cleanPath = path.replace('/app1', '') || '/welcome';
+  return { path: cleanPath, data: {} };
+}
+
+let route = getInitialRoute();
 
 function renderRoute(currentRoute) {
   switch (currentRoute?.path) {
@@ -48,9 +56,24 @@ function renderRoute(currentRoute) {
 // Initial render
 renderRoute(route);
 
+// Handle browser back/forward navigation
+window.addEventListener('popstate', (event) => {
+  if (event.state) {
+    route = event.state;
+    renderRoute(route);
+  } else {
+    route = getInitialRoute();
+    renderRoute(route);
+  }
+});
+
 function navigateTo(path, data) {
   route = { path, data };
   renderRoute(route);
+  
+  // Update browser URL without page reload
+  const newUrl = `/app1${path}`;
+  window.history.pushState({ path, data }, '', newUrl);
 }
 
 async function makeRequest(url, method, body) {

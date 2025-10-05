@@ -1,0 +1,45 @@
+### Test Admin Login
+POST http://localhost:5050/admin/login
+Content-Type: application/json
+
+{
+  "email": "admin@rumbify.com",
+  "password": "admin123"
+}
+
+### Test Admin Login with wrong credentials
+POST http://localhost:5050/admin/login
+Content-Type: application/json
+
+{
+  "email": "wrong@email.com",
+  "password": "wrongpassword"
+}
+
+### Test Admin Register
+POST http://localhost:5050/admin/register
+Content-Type: application/json
+
+{
+  "name": "New Admin",
+  "email": "newadmin@rumbify.com",
+  "password": "newpassword123",
+  "phone": "9876543210"
+}
+
+### Test Admin Register with existing email
+POST http://localhost:5050/admin/register
+Content-Type: application/json
+
+{
+  "name": "Another Admin",
+  "email": "admin@rumbify.com",
+  "password": "password123",
+  "phone": "1234567890"
+}
+
+### Test Get Admin Profile
+GET http://localhost:5050/admin/profile/1
+
+### Test Get Non-existent Admin Profile
+GET http://localhost:5050/admin/profile/999

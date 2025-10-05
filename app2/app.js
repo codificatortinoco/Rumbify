@@ -1,6 +1,7 @@
 import renderScreen1 from "./screens/screen1.js";
 import renderScreen2 from "./screens/screen2.js";
 import renderAdminLogin from "./screens/adminLogin.js";
+import renderAdminRegister from "./screens/adminRegister.js";
 import renderAdminDashboard from "./screens/adminDashboard.js";
 
 const socket = io("/", { path: "/real-time" });
@@ -9,10 +10,30 @@ function clearScripts() {
   document.getElementById("app").innerHTML = "";
 }
 
-let route = { path: "/admin-login", data: {} };
+// Initialize route based on current URL path
+function getInitialRoute() {
+  const path = window.location.pathname;
+  // Remove /app2 prefix if present
+  const cleanPath = path.replace('/app2', '') || '/admin-login';
+  return { path: cleanPath, data: {} };
+}
+
+let route = getInitialRoute();
 renderRoute(route);
 
+// Handle browser back/forward navigation
+window.addEventListener('popstate', (event) => {
+  if (event.state) {
+    route = event.state;
+    renderRoute(route);
+  } else {
+    route = getInitialRoute();
+    renderRoute(route);
+  }
+});
+
 function renderRoute(currentRoute) {
+  console.log('renderRoute called with:', currentRoute);
   switch (currentRoute?.path) {
     case "/":
       clearScripts();
@@ -21,6 +42,10 @@ function renderRoute(currentRoute) {
     case "/admin-login":
       clearScripts();
       renderAdminLogin(currentRoute?.data);
+      break;
+    case "/admin-register":
+      clearScripts();
+      renderAdminRegister(currentRoute?.data);
       break;
     case "/admin-dashboard":
       clearScripts();
@@ -37,8 +62,14 @@ function renderRoute(currentRoute) {
 }
 
 function navigateTo(path, data) {
+  console.log('navigateTo called with:', { path, data });
   route = { path, data };
   renderRoute(route);
+  
+  // Update browser URL without page reload
+  const newUrl = `/app2${path}`;
+  console.log('Updating URL to:', newUrl);
+  window.history.pushState({ path, data }, '', newUrl);
 }
 
 async function makeRequest(url, method, body) {

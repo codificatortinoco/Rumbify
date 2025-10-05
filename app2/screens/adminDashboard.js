@@ -1,7 +1,16 @@
 import { navigateTo } from "../app.js";
 
 export default function renderAdminDashboard(data = {}) {
-  const email = data.email || 'admin@rumbify.com';
+  // Get admin user data from localStorage or passed data
+  let adminUser = data.user;
+  if (!adminUser) {
+    const storedUser = localStorage.getItem('adminUser');
+    adminUser = storedUser ? JSON.parse(storedUser) : null;
+  }
+  
+  const email = adminUser?.email || 'admin@rumbify.com';
+  const name = adminUser?.name || 'Administrator';
+  const phone = adminUser?.phone || 'N/A';
   
   const app = document.getElementById("app");
   app.innerHTML = `
@@ -13,8 +22,9 @@ export default function renderAdminDashboard(data = {}) {
             <img src="assets/Llogowhite.png" alt="Rumbify Admin" class="admin-logo-img" />
           </div>
           <div class="admin-user-info">
-            <h2 class="admin-welcome">Welcome, Administrator</h2>
+            <h2 class="admin-welcome">Welcome, ${name}</h2>
             <p class="admin-email">${email}</p>
+            <p class="admin-phone">${phone}</p>
           </div>
           <button class="admin-logout-btn" onclick="handleLogout()">Logout</button>
         </div>
@@ -70,6 +80,8 @@ export default function renderAdminDashboard(data = {}) {
 
   function handleLogout() {
     console.log('Admin logout');
+    // Clear admin data from localStorage
+    localStorage.removeItem('adminUser');
     navigateTo("/admin-login");
   }
 

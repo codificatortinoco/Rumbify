@@ -19,7 +19,7 @@ body {
 
 /* Screen1 Styles */
 #screen1 {
-  animation: slideInFromLeft 0.6s ease-out;
+  animation: slideInFromLeft 0.5s ease-out;
   background: linear-gradient(to right, #fdfbfb, #ebedee);
   padding: 2rem;
   border-radius: 16px;
@@ -31,7 +31,7 @@ body {
 #screen1 h2 {
   font-size: 2rem;
   margin-bottom: 1.5rem;
-  animation: fadeIn 0.8s ease-out 0.2s;
+  animation: fadeIn 0.6s ease-out;
   animation-fill-mode: both;
 }
 
@@ -45,17 +45,23 @@ body {
   color: #fff;
   cursor: pointer;
   transition: all 0.3s ease;
-  animation: fadeIn 0.8s ease-out;
+  animation: fadeIn 0.6s ease-out;
   animation-fill-mode: both;
 }
 
 #screen1 button:hover {
   background-color: #5848e5;
-  transform: scale(1.05);
+  transform: translateY(-1px);
 }
 
-#screen1 #dashboard-btn { animation-delay: 0.7s; }
-#screen1 #back-to-welcome { animation-delay: 0.9s; }
+/* Optimize for mobile - reduce hover effects */
+@media (hover: none) and (pointer: coarse) {
+  #screen1 button:hover {
+    transform: none;
+  }
+}
+
+/* Removed animation delays - buttons appear simultaneously */
 
 .user-type-display {
   margin-bottom: 1rem;
@@ -70,7 +76,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  animation: fadeIn 0.8s ease-out 0.3s both;
+  animation: fadeIn 0.6s ease-out both;
 }
 
 .user-badge.member {
@@ -793,14 +799,14 @@ body {
     radial-gradient(circle at 20% 30%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 60% 40%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
-  animation: clubLights 8s ease-in-out infinite alternate;
+  /* Removed animation for better mobile performance */
 }
 
 .welcome-content {
   text-align: center;
   z-index: 2;
   position: relative;
-  animation: welcomeFadeIn 1.5s ease-out;
+  animation: welcomeFadeIn 0.8s ease-out;
 }
 
 .logo-container {
@@ -811,11 +817,7 @@ body {
   max-width: 200px;
   width: 100%;
   height: auto;
-  filter: 
-    drop-shadow(0 0 40px rgba(255, 255, 255, 0.5))
-    drop-shadow(0 0 40px rgba(255, 255, 255, 0.3))
-    drop-shadow(0 0 60px rgba(255, 255, 255, 0.2));
-  animation: logoGlow 3s ease-in-out infinite alternate;
+  /* Removed all glow effects for cleaner look */
   transition: transform 0.3s ease;
 }
 
@@ -848,43 +850,26 @@ body {
   overflow: hidden;
 }
 
-.role-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-.role-button:hover::before {
-  left: 100%;
-}
+/* Removed shimmer effect for cleaner design */
 
 .member-button {
   background-color: #4A1CAE;
-  animation: buttonSlideIn 1s ease-out 0.5s both;
+  animation: buttonSlideIn 0.6s ease-out both;
 }
 
 .member-button:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 
-    0 12px 35px rgba(139, 92, 246, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
 }
 
 .admin-button {
   background-color: #08A920;
-  animation: buttonSlideIn 1s ease-out 0.7s both;
+  animation: buttonSlideIn 0.6s ease-out both;
 }
 
 .admin-button:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 
-    0 12px 35px rgba(16, 185, 129, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
 }
 
 .role-button:active {
@@ -939,6 +924,24 @@ body {
   }
 }
 
+/* Mobile Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Disable hover effects on mobile */
+  .role-button:hover {
+    transform: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Responsive */
 @media (max-width: 414px) {
   #app { max-width: 100%; }
@@ -951,5 +954,14 @@ body {
     width: 250px;
     height: 55px;
     font-size: 1.1rem;
+  }
+  
+  /* Slightly faster animations on small screens */
+  #screen1 {
+    animation: fadeIn 0.4s ease-out;
+  }
+  
+  .welcome-content {
+    animation: fadeIn 0.6s ease-out;
   }
 }

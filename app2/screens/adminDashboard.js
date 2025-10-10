@@ -87,7 +87,7 @@ export default function renderAdminDashboard(data = {}) {
 
   function handleManageEvents() {
     console.log('Manage Events clicked');
-    // TODO: Navigate to events management
+    navigateTo("/create-party");
   }
 
   function handleManageUsers() {

@@ -67,7 +67,7 @@ export default function renderDashboard() {
           <span>Parties</span>
         </div>
         <div class="nav-item">
-          <span>Home</span>
+          <span>New Party</span>
         </div>
         <div class="nav-item">
           <span>Profile</span>
@@ -95,6 +95,9 @@ function initializeDashboard() {
   
   // Setup event details navigation
   setupEventDetailsNavigation();
+  
+  // Setup bottom navigation
+  setupBottomNavigation();
 }
 
 // Data Service Layer
@@ -615,5 +618,35 @@ function setupEventDetailsNavigation() {
         }
       }
     }
+  });
+}
+
+function setupBottomNavigation() {
+  const navItems = document.querySelectorAll(".bottom-nav .nav-item");
+  
+  navItems.forEach(item => {
+    item.addEventListener("click", () => {
+      // Remove active class from all items
+      navItems.forEach(nav => nav.classList.remove("active"));
+      
+      // Add active class to clicked item
+      item.classList.add("active");
+      
+      // Handle navigation
+      const text = item.querySelector("span").textContent;
+      switch (text) {
+        case "Parties":
+          navigateTo("/dashboard");
+          break;
+        case "New Party":
+          // Cross-app navigation to admin Create Party screen
+          window.location.assign("/app2/create-party");
+          break;
+        case "Profile":
+          // TODO: Implement profile navigation when available
+          console.log("Profile clicked");
+          break;
+      }
+    });
   });
 }

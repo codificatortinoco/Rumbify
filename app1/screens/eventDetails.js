@@ -142,7 +142,7 @@ export default function renderEventDetails(eventData) {
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9,22 9,12 15,12 15,22"></polyline>
           </svg>
-          <span>Home</span>
+          <span>New Party</span>
         </div>
         <div class="nav-item">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -218,11 +218,10 @@ function setupBottomNavigation() {
         case "Parties":
           navigateTo("/dashboard");
           break;
-        case "Home":
-          navigateTo("/");
+        case "New Party":
+          window.location.assign("/app2/create-party");
           break;
         case "Profile":
-          // Add profile navigation when implemented
           console.log("Profile clicked");
           break;
       }

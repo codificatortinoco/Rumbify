@@ -253,81 +253,72 @@ const getEventDetails = async (req, res) => {
   }
 };
 
-// Helper function for mock event details
 function getMockEventDetails(eventId) {
-  const mockEvents = {
-    1: {
-      id: 1,
-      title: "Chicago Night",
-      attendees: "23/96",
-      location: "Calle 23#32-26",
-      date: "5/9/21 • 23:00-06:00",
-      administrator: "Loco Foroko",
-      price: "$65.000",
-      image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=300&fit=crop",
-      tags: ["Elegant", "Cocktailing"],
-      liked: true,
-      category: "hot-topic",
-      description: "Experience the best of Chicago nightlife with our exclusive party featuring top DJs and premium cocktails.",
-      inclusions: ["Drink of courtesy", "After midnight kiss dinamic", "Premium sound system"],
-      dressCode: ["Elegant attire", "Cocktail dresses", "Dress shoes"],
-      openingHour: "21:30"
-    },
-    2: {
-      id: 2,
-      title: "Summer Vibes",
-      attendees: "45/100",
-      location: "Calle 15#45-12",
-      date: "12/9/21 • 20:00-04:00",
-      administrator: "DJ Summer",
-      price: "$45.000",
-      image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=300&fit=crop",
-      tags: ["Summer", "Outdoor"],
-      liked: false,
-      category: "hot-topic",
-      description: "Celebrate summer with our outdoor party featuring tropical vibes and refreshing drinks.",
-      inclusions: ["Welcome drink", "Tropical decorations", "Outdoor seating"],
-      dressCode: ["Summer casual", "Bright colors", "Comfortable shoes"],
-      openingHour: "20:00"
-    },
-    3: {
-      id: 3,
-      title: "Pre-New Year Pa...",
-      attendees: "67/150",
-      location: "Cra 51#39-26",
-      date: "22/11/21 • 21:30-05:00",
-      administrator: "DJ KC",
-      price: "$80.000",
-      image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop",
-      tags: ["Disco Music", "Elegant"],
-      liked: false,
-      category: "upcoming",
-      description: "We do not need to be in the 31st of December to party as God intended.",
-      inclusions: ["Drink of courtesy", "After midnight kiss dinamic", "New Year decorations"],
-      dressCode: ["Neon Colors", "No formal attire required", "Comfortable dancing shoes"],
-      openingHour: "21:30"
-    },
-    4: {
-      id: 4,
-      title: "Neon Dreams",
-      attendees: "89/120",
-      location: "Calle 80#12-45",
-      date: "15/9/21 • 22:00-05:00",
-      administrator: "Neon DJ",
-      price: "$55.000",
-      image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop",
-      tags: ["Electronic", "Neon"],
-      liked: true,
-      category: "upcoming",
-      description: "Immerse yourself in a neon-lit electronic music experience like no other.",
-      inclusions: ["Neon accessories", "Electronic music", "Light show"],
-      dressCode: ["Neon colors", "Glow-in-the-dark items", "Comfortable shoes"],
-      openingHour: "22:00"
+  const party = mockParties.find(p => String(p.id) === String(eventId));
+  if (!party) return null;
+  return {
+    ...party,
+    description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.",
+    contact: {
+      name: party.administrator,
+      phone: "+57 300 123 4567"
     }
   };
-
-  return mockEvents[eventId] || mockEvents[3]; // Default to Pre-New Year party
 }
+
+const createParty = async (req, res) => {
+  try {
+    const {
+      title,
+      attendees,
+      location,
+      date,
+      administrator,
+      price,
+      image,
+      tags,
+      category,
+    } = req.body || {};
+
+    if (!title || !location || !date || !administrator || !price || !category) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    // Validate category
+    const allowedCategories = ["hot-topic", "upcoming"];
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({ success: false, message: "Invalid category" });
+    }
+
+    // Normalize fields
+    const payload = {
+      title,
+      attendees: attendees || "0/0",
+      location,
+      date,
+      administrator,
+      price,
+      image: image || "",
+      tags: Array.isArray(tags) ? tags : [],
+      category,
+    };
+
+    const { data, error } = await supabaseCli
+      .from("parties")
+      .insert([payload])
+      .select();
+
+    if (error) {
+      console.error("Database insert error:", error);
+      return res.status(500).json({ success: false, message: "Failed to create party", error });
+    }
+
+    return res.status(201).json({ success: true, party: data?.[0] || null });
+  } catch (error) {
+    console.error("Error creating party:", error);
+    return res.status(500).json({ success: false, message: "Unexpected error" });
+  }
+};
 
 module.exports = {
   getHotTopicParties,
@@ -336,4 +327,5 @@ module.exports = {
   searchParties,
   toggleLike,
   getEventDetails,
+  createParty,
 };

@@ -6,6 +6,7 @@ const {
   searchParties,
   toggleLike,
   getEventDetails,
+  createParty,
 } = require("../controllers/parties.controller");
 
 const router = express.Router();
@@ -27,5 +28,8 @@ router.patch("/parties/:id/like", toggleLike);
 
 // Get event details
 router.get("/parties/:id", getEventDetails);
+
+// Create new party
+router.post("/newParty", createParty);
 
 module.exports = router;

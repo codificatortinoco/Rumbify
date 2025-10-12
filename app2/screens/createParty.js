@@ -19,16 +19,25 @@ export default function renderCreateParty(data = {}) {
     <div id="create-party-screen">
       <div class="create-party-content">
         <h1>Create Party</h1>
-        <form id="create-party-form">
+        <form id="create-party-form" novalidate>
           <div class="form-group">
             <label>Title</label>
             <input type="text" id="party-title" required />
           </div>
 
           <div class="form-group">
-            <label>Location</label>
-            <input type="text" id="party-location" required />
+            <label>Dirección</label>
+            <input type="text" id="party-address" placeholder="Calle 23 #32-26" required />
           </div>
+           <div class="form-group">
+             <label>Ciudad</label>
+             <input type="text" id="party-city" placeholder="Cali" required />
+           </div>
+           <div class="form-group">
+             <label>País</label>
+             <input type="text" id="party-country" placeholder="Colombia" value="Colombia" required />
+           </div>
+           <small class="hint">Se enviará como: Dirección, Ciudad, País</small>
 
           <div class="form-row">
             <div class="form-group">
@@ -182,20 +191,22 @@ export default function renderCreateParty(data = {}) {
 
     try {
       const title = document.getElementById("party-title").value.trim();
-      const location = document.getElementById("party-location").value.trim();
-      const dateVal = document.getElementById("party-date").value; // yyyy-mm-dd
-      const hourVal = document.getElementById("party-hour").value; // HH:mm
-      const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
-      const administrator = document.getElementById("party-administrator").value.trim();
-      const image = document.getElementById("party-image").value.trim();
-      const category = document.getElementById("party-category").value; // removed
-
-      if (!title || !location || !dateVal || !hourVal || !administrator) {
-        alert("Por favor, completa todos los campos obligatorios.");
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        return;
-      }
+      const address = document.getElementById("party-address").value.trim();
+      const city = document.getElementById("party-city").value.trim();
+      const country = document.getElementById("party-country").value.trim();
+      const location = [address, city, country].filter(Boolean).join(", ");
+       const dateVal = document.getElementById("party-date").value; // yyyy-mm-dd
+       const hourVal = document.getElementById("party-hour").value; // HH:mm
+       const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
+       const administrator = document.getElementById("party-administrator").value.trim();
+       const image = document.getElementById("party-image").value.trim();
+       // category selector fue eliminado; no leerlo del DOM
+      if (!title || !address || !city || !country || !dateVal || !hourVal || !administrator) {
+         alert("Por favor, completa todos los campos obligatorios.");
+         submitBtn.textContent = originalText;
+         submitBtn.disabled = false;
+         return;
+       }
       if (!maxAtt || maxAtt < 1) {
         alert("Maximum attendees must be at least 1.");
         submitBtn.textContent = originalText;
@@ -204,8 +215,6 @@ export default function renderCreateParty(data = {}) {
       }
 
       const attendees = `0/${maxAtt}`;
-      const formattedDate = formatDate(dateVal);
-      const date = `${formattedDate} • ${hourVal}`;
       const tags = Array.from(document.querySelectorAll('input[name="party-tag"]:checked')).map(el => el.value);
 
       // Validación: al menos un precio ingresado
@@ -215,6 +224,8 @@ export default function renderCreateParty(data = {}) {
         alert("Por favor ingresa al menos un precio.");
         const firstInput = pricesList.querySelector(".price-value-input");
         if (firstInput) firstInput.focus();
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
         return;
       }
 
@@ -225,18 +236,20 @@ export default function renderCreateParty(data = {}) {
       }));
 
       const payload = {
-        admin_name: administrator,
         title,
-        description,
         location,
         date: dateVal,
         hour: hourVal,
-        attendees: `0/${maxAttendees}`,
+        attendees,
+        administrator,
+        image,
         tags,
         prices: collectedPrices,
       };
 
-      const resp = await makeRequest("/newParty", "POST", body);
+      console.log("[createParty] submitting payload:", payload);
+
+      const resp = await makeRequest("/newParty", "POST", payload);
       if (resp && resp.success) {
         alert("Party created successfully!");
         navigateTo("/admin-dashboard");

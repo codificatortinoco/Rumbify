@@ -1,4 +1,5 @@
 const supabaseCli = require("../services/supabase.service");
+const { geocodeAddress } = require("../services/mapsAPI.js");
 
 // Mock data for demonstration
 const mockParties = [
@@ -365,6 +366,7 @@ function computeCategoryAuto(attendees, isoDate) {
 }
 const createParty = async (req, res) => {
   try {
+    console.log("[createParty] Incoming body:", req.body);
     const {
       title,
       attendees,
@@ -382,74 +384,84 @@ const createParty = async (req, res) => {
     }
 
     const safeAttendees = attendees || "0/0";
-    const category = computeCategoryAuto(safeAttendees, date);
-    const displayDate = formatDisplayDate(date, hour);
+    // Geocode: resolve user-entered location to formatted address
+    let resolvedLocation = location;
+    try {
+      console.log("[createParty] Geocoding address via Nominatim:", location);
+      const geo = await geocodeAddress(location);
+      if (geo.ok && geo.formatted) {
+          resolvedLocation = geo.formatted;
+        }
+      } catch { }
+      const category = computeCategoryAuto(safeAttendees, date);
+      const displayDate = formatDisplayDate(date, hour);
 
-    // Normalizar campos
-    const payload = {
-      title,
-      attendees: safeAttendees,
-      location,
-      date: displayDate,
-      administrator,
-      image: image || "",
-      tags: Array.isArray(tags) ? tags : [],
-      category,
-    };
+      // Normalizar campos
+      const payload = {
+        title,
+        attendees: safeAttendees,
+        location: resolvedLocation,
+        date: displayDate,
+        administrator,
+        image: image || "",
+        tags: Array.isArray(tags) ? tags : [],
+        category,
+      };
+      console.log("[createParty] Insert payload:", payload);
 
-    // Create party first
-    const { data: created, error: insertErr } = await supabaseCli
-      .from("parties")
-      .insert([payload])
-      .select();
+      // Create party first
+      const { data: created, error: insertErr } = await supabaseCli
+        .from("parties")
+        .insert([payload])
+        .select();
 
-    if (insertErr) {
-      console.error("Database insert error:", insertErr);
-      return res.status(500).json({ success: false, message: "Failed to create party", error: insertErr });
-    }
+      if (insertErr) {
+        console.error("Database insert error:", insertErr);
+        return res.status(500).json({ success: false, message: "Failed to create party", error: insertErr });
+      }
 
-    const party = created?.[0];
+      const party = created?.[0];
 
-    // Insert prices if provided
-    let insertedPrices = [];
-    let pricesInsertError = null;
-    if (Array.isArray(prices) && prices.length && party?.id) {
-      const normalizedPrices = prices
-        .filter(p => (p?.price_name || p?.name) && p?.price)
-        .map(p => ({
-          price_name: String(p.price_name || p.name).trim(),
-          price: String(p.price).trim(),
-          party_id: Number(party.id),
-        }));
+      // Insert prices if provided
+      let insertedPrices = [];
+      let pricesInsertError = null;
+      if (Array.isArray(prices) && prices.length && party?.id) {
+        const normalizedPrices = prices
+          .filter(p => (p?.price_name || p?.name) && p?.price)
+          .map(p => ({
+            price_name: String(p.price_name || p.name).trim(),
+            price: String(p.price).trim(),
+            party_id: Number(party.id),
+          }));
 
-      if (normalizedPrices.length) {
-        const { data: prData, error: prErr } = await supabaseCli
-          .from("prices")
-          .insert(normalizedPrices)
-          .select();
-        if (prErr) {
-          console.error("Prices insert error:", prErr);
-          pricesInsertError = prErr;
-        } else {
-          insertedPrices = prData || [];
+        if (normalizedPrices.length) {
+          const { data: prData, error: prErr } = await supabaseCli
+            .from("prices")
+            .insert(normalizedPrices)
+            .select();
+          if (prErr) {
+            console.error("Prices insert error:", prErr);
+            pricesInsertError = prErr;
+          } else {
+            insertedPrices = prData || [];
+          }
         }
       }
-    }
 
-    const displayPrice = insertedPrices.length ? insertedPrices[0]?.price : party?.price;
-    if (pricesInsertError) {
-      return res.status(201).json({
-        success: true,
-        party: { ...party, prices: insertedPrices, price: displayPrice },
-        prices_error: pricesInsertError?.message || pricesInsertError,
-      });
+      const displayPrice = insertedPrices.length ? insertedPrices[0]?.price : party?.price;
+      if (pricesInsertError) {
+        return res.status(201).json({
+          success: true,
+          party: { ...party, prices: insertedPrices, price: displayPrice },
+          prices_error: pricesInsertError?.message || pricesInsertError,
+        });
+      }
+      return res.status(201).json({ success: true, party: { ...party, prices: insertedPrices, price: displayPrice } });
+    } catch (error) {
+      console.error("Error creating party:", error);
+      return res.status(500).json({ success: false, message: "Unexpected error" });
     }
-    return res.status(201).json({ success: true, party: { ...party, prices: insertedPrices, price: displayPrice } });
-  } catch (error) {
-    console.error("Error creating party:", error);
-    return res.status(500).json({ success: false, message: "Unexpected error" });
-  }
-};
+  };
 
 module.exports = {
   getHotTopicParties,

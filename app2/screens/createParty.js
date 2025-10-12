@@ -49,11 +49,6 @@ export default function renderCreateParty(data = {}) {
           </div>
 
           <div class="form-group">
-            <label>Price</label>
-            <input type="text" id="party-price" placeholder="$65.000" required />
-          </div>
-
-          <div class="form-group">
             <label>Image URL</label>
             <input type="url" id="party-image" placeholder="https://..." />
           </div>
@@ -71,6 +66,19 @@ export default function renderCreateParty(data = {}) {
             </select>
           </div>
 
+          <div class="form-group">
+            <label>Tickets management</label>
+            <div id="prices-list">
+              <div class="price-item" data-idx="0">
+                <input type="text" class="price-value-input" placeholder="$10.000" required />
+                <button type="button" data-idx="0" class="remove-price">🗑️</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <button type="button" id="add-price-btn">+ Add</button>
+            </div>
+          </div>
+
           <div class="form-actions">
             <button type="submit" id="create-btn">Create</button>
             <button type="button" id="cancel-btn">Cancel</button>
@@ -82,6 +90,50 @@ export default function renderCreateParty(data = {}) {
 
   const form = document.getElementById("create-party-form");
   const cancelBtn = document.getElementById("cancel-btn");
+  const addPriceBtn = document.getElementById("add-price-btn");
+  const pricesList = document.getElementById("prices-list");
+
+  const pricesState = [];
+
+  // Add a new editable price row (single input)
+  addPriceBtn.addEventListener("click", () => {
+    pricesState.push({ price: "" });
+    renderPriceItems();
+  });
+
+  // Render dynamic editable rows for prices (single input per row)
+  function renderPriceItems() {
+    pricesList.innerHTML = pricesState
+      .map((p, idx) => `
+      <div class="price-item" data-idx="${idx}">
+        <input type="text" class="price-value-input" placeholder="$10.000" value="${p.price || ""}" ${idx === 0 ? "required" : ""} />
+        <button type="button" data-idx="${idx}" class="remove-price">🗑️</button>
+      </div>
+    `)
+      .join("");
+
+    // Bind input events to update state
+    Array.from(pricesList.querySelectorAll(".price-item")).forEach((row) => {
+      const idx = parseInt(row.getAttribute("data-idx"), 10);
+      const valueInput = row.querySelector(".price-value-input");
+      valueInput.addEventListener("input", (e) => {
+        pricesState[idx].price = e.target.value;
+      });
+    });
+
+    // Bind remove buttons
+    Array.from(pricesList.querySelectorAll(".remove-price")).forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute("data-idx"), 10);
+        pricesState.splice(idx, 1);
+        renderPriceItems();
+      });
+    });
+  }
+
+  // Initialize with one empty price row (required)
+  pricesState.push({ price: "" });
+  renderPriceItems();
 
   cancelBtn.addEventListener("click", () => navigateTo("/admin-dashboard"));
 
@@ -100,12 +152,11 @@ export default function renderCreateParty(data = {}) {
       const currentAtt = parseInt(document.getElementById("party-attendees-current").value || "0", 10);
       const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
       const administrator = document.getElementById("party-administrator").value.trim();
-      const price = document.getElementById("party-price").value.trim();
       const image = document.getElementById("party-image").value.trim();
       const tagsInput = document.getElementById("party-tags").value.trim();
       const category = document.getElementById("party-category").value;
 
-      if (!title || !location || !dateVal || !hourVal || !administrator || !price || !category) {
+      if (!title || !location || !dateVal || !hourVal || !administrator || !category) {
         alert("Please fill in all required fields.");
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -131,16 +182,32 @@ export default function renderCreateParty(data = {}) {
         ? tagsInput.split(",").map(t => t.trim()).filter(Boolean)
         : [];
 
+      // Validación: al menos un precio ingresado
+      const priceInputs = Array.from(pricesList.querySelectorAll(".price-value-input"));
+      const priceValues = priceInputs.map(inp => inp.value.trim()).filter(Boolean);
+      if (priceValues.length === 0) {
+        alert("Por favor ingresa al menos un precio.");
+        const firstInput = pricesList.querySelector(".price-value-input");
+        if (firstInput) firstInput.focus();
+        return;
+      }
+
+      // Colectar precios y autogenerar nombres secuenciales
+      const collectedPrices = priceValues.map((val, i) => ({
+        price_name: `Ticket ${i + 1}`,
+        price: val,
+      }));
+
       const body = {
         title,
         attendees,
         location,
         date,
         administrator,
-        price,
         image,
         tags,
         category,
+        prices: collectedPrices,
       };
 
       const resp = await makeRequest("/newParty", "POST", body);

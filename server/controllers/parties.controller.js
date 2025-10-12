@@ -56,6 +56,41 @@ const mockParties = [
   }
 ];
 
+// Helper: attach prices array to parties and compute a display price
+async function attachPricesToParties(parties) {
+  try {
+    const ids = parties.map(p => p.id).filter(Boolean);
+    if (!ids.length) return parties;
+
+    const { data: pricesData, error: pricesError } = await supabaseCli
+      .from("prices")
+      .select("*")
+      .in("party_id", ids);
+
+    if (pricesError) {
+      console.error("Prices fetch error:", pricesError);
+      return parties;
+    }
+
+    const byParty = new Map();
+    pricesData.forEach(pr => {
+      const arr = byParty.get(pr.party_id) || [];
+      arr.push(pr);
+      byParty.set(pr.party_id, arr);
+    });
+
+    return parties.map(party => {
+      const prices = byParty.get(party.id) || [];
+      // Compute a simple display price (first price or keep existing)
+      const displayPrice = prices.length ? prices[0]?.price : party.price;
+      return { ...party, prices, price: displayPrice };
+    });
+  } catch (e) {
+    console.error("attachPricesToParties error:", e);
+    return parties;
+  }
+}
+
 const getHotTopicParties = async (req, res) => {
   try {
     // Try to get from database first
@@ -73,7 +108,8 @@ const getHotTopicParties = async (req, res) => {
     }
 
     if (data && data.length > 0) {
-      return res.json(data);
+      const enriched = await attachPricesToParties(data);
+      return res.json(enriched);
     }
 
     // If no data in database, return mock data
@@ -104,7 +140,8 @@ const getUpcomingParties = async (req, res) => {
     }
 
     if (data && data.length > 0) {
-      return res.json(data);
+      const enriched = await attachPricesToParties(data);
+      return res.json(enriched);
     }
 
     // If no data in database, return mock data
@@ -133,7 +170,8 @@ const getAllParties = async (req, res) => {
     }
 
     if (data && data.length > 0) {
-      return res.json(data);
+      const enriched = await attachPricesToParties(data);
+      return res.json(enriched);
     }
 
     // If no data in database, return mock data
@@ -239,7 +277,16 @@ const getEventDetails = async (req, res) => {
     }
 
     if (data) {
-      return res.json(data);
+      // Fetch prices for this party
+      const { data: prices, error: pricesErr } = await supabaseCli
+        .from("prices")
+        .select("*")
+        .eq("party_id", data.id);
+      if (pricesErr) {
+        console.error("Error fetching event prices:", pricesErr);
+      }
+      const displayPrice = (prices && prices.length) ? prices[0]?.price : data.price;
+      return res.json({ ...data, prices: prices || [], price: displayPrice });
     }
 
     // If no data in database, return mock data
@@ -274,13 +321,13 @@ const createParty = async (req, res) => {
       location,
       date,
       administrator,
-      price,
       image,
       tags,
       category,
+      prices // Array of { price_name, price }
     } = req.body || {};
 
-    if (!title || !location || !date || !administrator || !price || !category) {
+    if (!title || !location || !date || !administrator || !category) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
@@ -297,23 +344,59 @@ const createParty = async (req, res) => {
       location,
       date,
       administrator,
-      price,
       image: image || "",
       tags: Array.isArray(tags) ? tags : [],
       category,
     };
 
-    const { data, error } = await supabaseCli
+    // Create party first
+    const { data: created, error: insertErr } = await supabaseCli
       .from("parties")
       .insert([payload])
       .select();
 
-    if (error) {
-      console.error("Database insert error:", error);
-      return res.status(500).json({ success: false, message: "Failed to create party", error });
+    if (insertErr) {
+      console.error("Database insert error:", insertErr);
+      return res.status(500).json({ success: false, message: "Failed to create party", error: insertErr });
     }
 
-    return res.status(201).json({ success: true, party: data?.[0] || null });
+    const party = created?.[0];
+
+    // Insert prices if provided
+    let insertedPrices = [];
+    let pricesInsertError = null;
+    if (Array.isArray(prices) && prices.length && party?.id) {
+      const normalizedPrices = prices
+        .filter(p => (p?.price_name || p?.name) && p?.price)
+        .map(p => ({
+          price_name: String(p.price_name || p.name).trim(),
+          price: String(p.price).trim(),
+          party_id: Number(party.id),
+        }));
+
+      if (normalizedPrices.length) {
+        const { data: prData, error: prErr } = await supabaseCli
+          .from("prices")
+          .insert(normalizedPrices)
+          .select();
+        if (prErr) {
+          console.error("Prices insert error:", prErr);
+          pricesInsertError = prErr;
+        } else {
+          insertedPrices = prData || [];
+        }
+      }
+    }
+
+    const displayPrice = insertedPrices.length ? insertedPrices[0]?.price : party?.price;
+    if (pricesInsertError) {
+      return res.status(201).json({
+        success: true,
+        party: { ...party, prices: insertedPrices, price: displayPrice },
+        prices_error: pricesInsertError?.message || pricesInsertError,
+      });
+    }
+    return res.status(201).json({ success: true, party: { ...party, prices: insertedPrices, price: displayPrice } });
   } catch (error) {
     console.error("Error creating party:", error);
     return res.status(500).json({ success: false, message: "Unexpected error" });

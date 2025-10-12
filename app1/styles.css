@@ -1480,3 +1480,33 @@ body {
 .member-login .login-btn.member-btn:active {
   transform: translateY(0);
 }
+
+/* Prices list for Event Details */
+.prices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.price-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+}
+
+.price-item .price-name {
+  color: #e5e7eb;
+  font-weight: 600;
+}
+
+.price-item .price-amount {
+  color: #a7f3d0; /* teal-ish to stand out */
+  font-weight: 700;
+}

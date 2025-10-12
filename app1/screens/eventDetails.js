@@ -10,6 +10,20 @@ const CONFIG = {
 
 export default function renderEventDetails(eventData) {
   const app = document.getElementById("app");
+
+  function renderPriceListHTML(evt) {
+    const pricesList = Array.isArray(evt?.prices) && evt.prices.length
+      ? evt.prices
+      : (evt?.price ? [{ price_name: "Ticket", price: evt.price }] : []);
+    if (!pricesList.length) return `<div class="price-item"><span class="price-name">No tickets</span></div>`;
+    return pricesList.map(p => `
+      <div class="price-item">
+        <span class="price-name">${p.price_name}</span>
+        <span class="price-amount">${p.price}</span>
+      </div>
+    `).join("");
+  }
+
   app.innerHTML = `
     <div id="event-details">
       <!-- Event Header -->
@@ -54,9 +68,11 @@ export default function renderEventDetails(eventData) {
         </div>
       </div>
 
-      <!-- Price and Location -->
+      <!-- Tickets and Location -->
       <div class="price-location">
-        <div class="price">${eventData.price}</div>
+        <div class="prices-list">
+          ${renderPriceListHTML(eventData)}
+        </div>
         <div class="location-info">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -255,7 +271,10 @@ class EventDetailsService {
         location: "Calle 23#32-26",
         date: "5/9/21 • 23:00-06:00",
         administrator: "Loco Foroko",
-        price: "$65.000",
+        prices: [
+          { price_name: "Normal Ticket", price: "$65.000" },
+          { price_name: "VIP", price: "$90.000" }
+        ],
         image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=300&fit=crop",
         tags: ["Elegant", "Cocktailing"],
         liked: true,
@@ -272,7 +291,10 @@ class EventDetailsService {
         location: "Calle 15#45-12",
         date: "12/9/21 • 20:00-04:00",
         administrator: "DJ Summer",
-        price: "$45.000",
+        prices: [
+          { price_name: "General", price: "$45.000" },
+          { price_name: "Premium", price: "$65.000" }
+        ],
         image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=300&fit=crop",
         tags: ["Summer", "Outdoor"],
         liked: false,
@@ -289,7 +311,10 @@ class EventDetailsService {
         location: "Cra 51#39-26",
         date: "22/11/21 • 21:30-05:00",
         administrator: "DJ KC",
-        price: "$80.000",
+        prices: [
+          { price_name: "Normal", price: "$80.000" },
+          { price_name: "VIP", price: "$120.000" }
+        ],
         image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=300&fit=crop",
         tags: ["Disco Music", "Elegant"],
         liked: false,
@@ -306,7 +331,10 @@ class EventDetailsService {
         location: "Calle 80#12-45",
         date: "15/9/21 • 22:00-05:00",
         administrator: "Neon DJ",
-        price: "$55.000",
+        prices: [
+          { price_name: "General", price: "$55.000" },
+          { price_name: "Front Row", price: "$70.000" }
+        ],
         image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop",
         tags: ["Electronic", "Neon"],
         liked: true,

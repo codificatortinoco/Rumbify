@@ -421,6 +421,7 @@ function renderUpcomingEvents(events) {
 }
 
 function createHotTopicCard(event) {
+  const displayPrice = event.price || (Array.isArray(event.prices) && event.prices.length ? event.prices[0].price : "");
   return `
     <div class="hot-topic-card">
       <div class="card-image">
@@ -444,7 +445,7 @@ function createHotTopicCard(event) {
           <div class="detail-item">
             <span>${event.administrator}</span>
           </div>
-          <div class="price">${event.price}</div>
+          <div class="price">${displayPrice}</div>
         </div>
          <div class="card-tags">
            ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
@@ -456,6 +457,7 @@ function createHotTopicCard(event) {
 }
 
 function createUpcomingCard(event) {
+  const displayPrice = event.price || (Array.isArray(event.prices) && event.prices.length ? event.prices[0].price : "");
   return `
     <div class="upcoming-card">
       <div class="card-image">

@@ -3,7 +3,7 @@ import renderScreen2 from "./screens/screen2.js";
 import renderAdminLogin from "./screens/adminLogin.js";
 import renderAdminRegister from "./screens/adminRegister.js";
 import renderAdminDashboard from "./screens/adminDashboard.js";
-import renderCreateParty from "./screens/createParty.js";
+import renderCreateParty from "./screens/Create Party/createParty.js";
 
 const socket = io("/", { path: "/real-time" });
 

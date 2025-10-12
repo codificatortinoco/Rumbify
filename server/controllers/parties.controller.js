@@ -376,7 +376,8 @@ const createParty = async (req, res) => {
       administrator,
       image,
       tags,
-      prices // Array de { price_name, price }
+      prices, // Array de { price_name, price }
+      description, // Texto opcional para tabla descriptions
     } = req.body || {};
 
     if (!title || !location || !date || !administrator) {
@@ -422,6 +423,22 @@ const createParty = async (req, res) => {
 
       const party = created?.[0];
 
+      // If description provided, insert into descriptions table
+      let descriptionRecord = null;
+      let descriptionInsertError = null;
+      if (party?.id && description && String(description).trim().length) {
+        const { data: descData, error: descErr } = await supabaseCli
+          .from("descriptions")
+          .insert([{ party_id: Number(party.id), description: String(description).trim() }])
+          .select();
+        if (descErr) {
+          console.error("Description insert error:", descErr);
+          descriptionInsertError = descErr;
+        } else {
+          descriptionRecord = descData?.[0] || null;
+        }
+      }
+
       // Insert prices if provided
       let insertedPrices = [];
       let pricesInsertError = null;
@@ -449,14 +466,16 @@ const createParty = async (req, res) => {
       }
 
       const displayPrice = insertedPrices.length ? insertedPrices[0]?.price : party?.price;
-      if (pricesInsertError) {
+      if (pricesInsertError || descriptionInsertError) {
         return res.status(201).json({
           success: true,
           party: { ...party, prices: insertedPrices, price: displayPrice },
           prices_error: pricesInsertError?.message || pricesInsertError,
+          description_error: descriptionInsertError?.message || descriptionInsertError,
+          description_record: descriptionRecord,
         });
       }
-      return res.status(201).json({ success: true, party: { ...party, prices: insertedPrices, price: displayPrice } });
+      return res.status(201).json({ success: true, party: { ...party, prices: insertedPrices, price: displayPrice }, description_record: descriptionRecord });
     } catch (error) {
       console.error("Error creating party:", error);
       return res.status(500).json({ success: false, message: "Unexpected error" });

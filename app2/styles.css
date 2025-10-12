@@ -594,3 +594,18 @@ body {
   border: 1px solid #c7d2fe;
   font-size: 0.85rem;
 }
+
+/* Global styles for App2 */
+html, body {
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Global font: Inter */
+html, body, input, textarea, button, select {
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+
+/* Remove dark container background for create-party */
+#create-party-screen .create-party-content {
+  background: transparent;
+}

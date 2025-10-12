@@ -4,6 +4,8 @@ import renderAdminLogin from "./screens/adminLogin.js";
 import renderAdminRegister from "./screens/adminRegister.js";
 import renderAdminDashboard from "./screens/adminDashboard.js";
 import renderCreateParty from "./screens/Create Party/createParty.js";
+import renderManageParty from "./screens/manageParty.js";
+import renderGuestsSummary from "./screens/guestsSummary.js";
 
 const socket = io("/", { path: "/real-time" });
 
@@ -59,6 +61,14 @@ function renderRoute(currentRoute) {
     case "/screen2":
       clearScripts();
       renderScreen2(currentRoute?.data);
+      break;
+    case "/manage-party":
+      clearScripts();
+      renderManageParty(currentRoute?.data);
+      break;
+    case "/guests-summary":
+      clearScripts();
+      renderGuestsSummary(currentRoute?.data);
       break;
     default:
       const app = document.getElementById("app");

@@ -101,7 +101,8 @@ export default function renderAdminDashboard(data = {}) {
 
   function handleManageEvents() {
     console.log('Manage Events clicked');
-    navigateTo("/create-party");
+    const selectedPartyId = localStorage.getItem('selectedPartyId');
+    navigateTo("/manage-party", { partyId: selectedPartyId || null });
   }
 
   function handleManageUsers() {

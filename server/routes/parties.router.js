@@ -29,6 +29,12 @@ router.patch("/parties/:id/like", toggleLike);
 // Get event details
 router.get("/parties/:id", getEventDetails);
 
+// Get guest list for a party
+router.get("/parties/:id/guests", require("../controllers/guests.controller").getPartyGuests);
+
+// New: Guests summary endpoint
+router.get("/parties/:id/guests/summary", require("../controllers/guests.controller").getGuestsSummary);
+
 // Create new party
 router.post("/newParty", createParty);
 

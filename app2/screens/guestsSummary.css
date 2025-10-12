@@ -1,0 +1,26 @@
+/* Styles specific to Guests Summary screen */
+.top-section { padding: 8px 16px; }
+.top-label { color: #bbb; font-size: 12px; margin-bottom: 6px; }
+.page-header { display: flex; align-items: center; gap: 12px; background: linear-gradient(90deg, #5b2cac, #6a35d3); color: #fff; padding: 10px 12px; border-radius: 8px; }
+.page-title { margin: 0; font-size: 16px; font-weight: 600; }
+.back-btn { background: transparent; border: none; padding: 0; display: flex; align-items: center; }
+.back-btn img { width: 20px; height: 20px; }
+
+/* Cards & content */
+.manage-party .status-card { margin: 12px 16px; padding: 12px; background: rgba(255,255,255,0.06); border-radius: 10px; }
+.status-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:10px; }
+.status-item { text-align:center; }
+.status-number { font-size:18px; font-weight:700; }
+.status-label { font-size:12px; color:#bbb; }
+
+.guest-list { margin: 12px 16px; }
+.guest-items { list-style:none; padding:0; }
+.guest-item { display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.guest-avatar { width:32px; height:32px; border-radius:50%; }
+.guest-name { font-weight:600; }
+.guest-status { margin-left:auto; font-weight:700; }
+.guest-status.valid { color:#2ecc71; }
+.guest-status.invalid { color:#e74c3c; }
+.guest-status.pending { color:#f1c40f; }
+
+/* Nota: NO redefinimos .bottom-nav aquí para evitar conflictos con el estilo global compartido en app2/styles.css */

@@ -5,6 +5,15 @@ export default function renderCreateParty(data = {}) {
   const adminUser = storedUser ? JSON.parse(storedUser) : null;
   const administratorName = adminUser?.name || "";
 
+  // Opciones predefinidas de tags
+  const TAG_OPTIONS = [
+    "Elegant", "Cocktailing", "Summer", "Outdoor", "Disco Music", "Electronic", "Neon", "House", "Techno", "Deep House", "Funk", "Lounge", "Chill", "Retro", "Synthwave", "Jazz", "Tropical", "Minimalist", "Luxury", "Futuristic", "Vintage", "Bohemian", "Industrial", "Art Deco", "Neon Lights", "Cyberpunk", "Urban", "Beach", "Nightlife", "Rooftop", "Pool Party", "Brunch", "Afterwork", "Festival", "Concert", "Bar", "Club", "Energetic", "Romantic", "Relaxed", "Vibrant", "Playful", "Bold", "Mysterious", "Dreamy", "Confident", "Trendy"
+  ];
+  const tagsOptionsHtml = TAG_OPTIONS.map(tag => `
+    <label class="tag-option">
+      <input type="checkbox" name="party-tag" value="${tag}"> ${tag}
+    </label>
+  `).join("");
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="create-party-screen">
@@ -32,15 +41,9 @@ export default function renderCreateParty(data = {}) {
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Current Attendees</label>
-              <input type="number" id="party-attendees-current" min="0" value="0" required />
-            </div>
-            <div class="form-group">
-              <label>Maximum Attendees</label>
-              <input type="number" id="party-attendees-max" min="1" required />
-            </div>
+          <div class="form-group">
+            <label>Maximum Attendees</label>
+            <input type="number" id="party-attendees-max" min="1" required />
           </div>
 
           <div class="form-group">
@@ -54,8 +57,14 @@ export default function renderCreateParty(data = {}) {
           </div>
 
           <div class="form-group">
-            <label>Tags (comma separated)</label>
-            <input type="text" id="party-tags" placeholder="Electronic, Neon" />
+            <label>Tags (elige uno o más)</label>
+            <div id="party-tags-multiselect" class="multi-select">
+              <button type="button" id="party-tags-toggle" class="multi-select-toggle">Selecciona tags</button>
+              <div id="party-tags-menu" class="multi-select-menu">
+                ${tagsOptionsHtml}
+              </div>
+              <div id="party-tags-chips" class="multi-select-chips"></div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -71,7 +80,6 @@ export default function renderCreateParty(data = {}) {
             <div id="prices-list">
               <div class="price-item" data-idx="0">
                 <input type="text" class="price-value-input" placeholder="$10.000" required />
-                <button type="button" data-idx="0" class="remove-price">🗑️</button>
               </div>
             </div>
             <div class="form-row">
@@ -95,6 +103,32 @@ export default function renderCreateParty(data = {}) {
 
   const pricesState = [];
 
+  // Setup tags multiselect behavior
+  const tagsMulti = document.getElementById("party-tags-multiselect");
+  const tagsToggle = document.getElementById("party-tags-toggle");
+  const tagsMenu = document.getElementById("party-tags-menu");
+  const tagsChips = document.getElementById("party-tags-chips");
+  const tagCheckboxes = Array.from(document.querySelectorAll('input[name="party-tag"]'));
+
+  const updateTagSummary = () => {
+    const selected = tagCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+    tagsToggle.textContent = selected.length ? `Tags (${selected.length})` : 'Selecciona tags';
+    tagsChips.innerHTML = selected.map(tag => `<span class="chip">${tag}</span>`).join('');
+  };
+
+  tagsToggle.addEventListener('click', () => {
+    tagsMenu.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (ev) => {
+    if (!tagsMulti.contains(ev.target)) {
+      tagsMenu.classList.remove('open');
+    }
+  });
+
+  tagCheckboxes.forEach(cb => cb.addEventListener('change', updateTagSummary));
+  updateTagSummary();
+
   // Add a new editable price row (single input)
   addPriceBtn.addEventListener("click", () => {
     pricesState.push({ price: "" });
@@ -107,7 +141,7 @@ export default function renderCreateParty(data = {}) {
       .map((p, idx) => `
       <div class="price-item" data-idx="${idx}">
         <input type="text" class="price-value-input" placeholder="$10.000" value="${p.price || ""}" ${idx === 0 ? "required" : ""} />
-        <button type="button" data-idx="${idx}" class="remove-price">🗑️</button>
+        ${idx > 0 ? `<button type="button" data-idx="${idx}" class="remove-price">🗑️</button>` : ""}
       </div>
     `)
       .join("");
@@ -149,11 +183,9 @@ export default function renderCreateParty(data = {}) {
       const location = document.getElementById("party-location").value.trim();
       const dateVal = document.getElementById("party-date").value; // yyyy-mm-dd
       const hourVal = document.getElementById("party-hour").value; // HH:mm
-      const currentAtt = parseInt(document.getElementById("party-attendees-current").value || "0", 10);
       const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
       const administrator = document.getElementById("party-administrator").value.trim();
       const image = document.getElementById("party-image").value.trim();
-      const tagsInput = document.getElementById("party-tags").value.trim();
       const category = document.getElementById("party-category").value;
 
       if (!title || !location || !dateVal || !hourVal || !administrator || !category) {
@@ -168,19 +200,11 @@ export default function renderCreateParty(data = {}) {
         submitBtn.disabled = false;
         return;
       }
-      if (currentAtt < 0 || currentAtt > maxAtt) {
-        alert("Current attendees must be between 0 and the maximum.");
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        return;
-      }
 
-      const attendees = `${currentAtt}/${maxAtt}`;
+      const attendees = `0/${maxAtt}`;
       const formattedDate = formatDate(dateVal);
       const date = `${formattedDate} • ${hourVal}`;
-      const tags = tagsInput
-        ? tagsInput.split(",").map(t => t.trim()).filter(Boolean)
-        : [];
+      const tags = Array.from(document.querySelectorAll('input[name="party-tag"]:checked')).map(el => el.value);
 
       // Validación: al menos un precio ingresado
       const priceInputs = Array.from(pricesList.querySelectorAll(".price-value-input"));

@@ -555,3 +555,42 @@ body {
     padding: 1rem;
   }
 }
+/* Tags Multiselect */
+.multi-select { position: relative; }
+.multi-select-toggle {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  text-align: left;
+  cursor: pointer;
+}
+.multi-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 8px;
+  display: none;
+  z-index: 10;
+}
+.multi-select-menu.open { display: block; }
+.tag-option { display: inline-block; margin: 6px 8px; font-size: 0.95rem; }
+.multi-select-chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #333;
+  border: 1px solid #c7d2fe;
+  font-size: 0.85rem;
+}

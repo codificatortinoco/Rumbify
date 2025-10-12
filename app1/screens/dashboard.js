@@ -63,13 +63,16 @@ export default function renderDashboard() {
 
       <!-- Bottom Navigation -->
       <nav class="bottom-nav">
-        <div class="nav-item active">
-          <span>Parties</span>
+        <div class="nav-item active" data-nav="My Parties">
+          <span class="nav-icon icon-party"></span>
+          <span>My Parties</span>
         </div>
-        <div class="nav-item">
-          <span>New Party</span>
+        <div class="nav-item" data-nav="Home">
+          <span class="nav-icon icon-home"></span>
+          <span>Home</span>
         </div>
-        <div class="nav-item">
+        <div class="nav-item" data-nav="Profile">
+          <span class="nav-icon icon-user"></span>
           <span>Profile</span>
         </div>
       </nav>
@@ -627,25 +630,26 @@ function setupBottomNavigation() {
   const navItems = document.querySelectorAll(".bottom-nav .nav-item");
   
   navItems.forEach(item => {
+    // Mejor respuesta táctil en móviles
+    item.style.touchAction = "manipulation";
     item.addEventListener("click", () => {
       // Remove active class from all items
       navItems.forEach(nav => nav.classList.remove("active"));
       
-      // Add active class to clicked item
+      // Add active class to clicked item (icon + text inherit color)
       item.classList.add("active");
       
-      // Handle navigation
-      const text = item.querySelector("span").textContent;
-      switch (text) {
+      // Handle navigation por data attribute (más robusto y rápido)
+      const target = item.dataset.nav;
+      switch (target) {
+        case "My Parties":
         case "Parties":
           navigateTo("/dashboard");
           break;
-        case "New Party":
-          // Cross-app navigation to admin Create Party screen
-          window.location.assign("/app2/create-party");
+        case "Home":
+          navigateTo("/");
           break;
         case "Profile":
-          // TODO: Implement profile navigation when available
           console.log("Profile clicked");
           break;
       }

@@ -111,6 +111,20 @@ export default function renderCreateParty(data = {}) {
           </div>
         </form>
       </div>
+      <nav class="bottom-nav">
+        <div class="nav-item" id="nav-parties" data-nav="parties">
+          <span class="nav-icon icon-party" aria-hidden="true"></span>
+          <span class="nav-label">My Parties</span>
+        </div>
+        <div class="nav-item active" id="nav-new" data-nav="new">
+          <span class="nav-icon icon-plus" aria-hidden="true"></span>
+          <span class="nav-label">New Party</span>
+        </div>
+        <div class="nav-item" id="nav-profile" data-nav="profile">
+          <span class="nav-icon icon-user" aria-hidden="true"></span>
+          <span class="nav-label">Profile</span>
+        </div>
+      </nav>
     </div>
   `;
 
@@ -376,9 +390,37 @@ export default function renderCreateParty(data = {}) {
       submitBtn.disabled = false;
     }
   });
+
+  // Bottom navigation interactions for Create Party screen
+  const bottomNav = document.querySelector('.bottom-nav');
+  if (bottomNav) {
+    const navItems = Array.from(bottomNav.querySelectorAll('.nav-item'));
+    navItems.forEach((item) => {
+      item.style.touchAction = 'manipulation';
+      item.addEventListener('click', () => {
+        navItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        const target = item.dataset.nav;
+        if (target === 'parties') {
+          navigateTo('/admin-dashboard');
+        } else if (target === 'new') {
+          navigateTo('/create-party');
+        } else if (target === 'profile') {
+          navigateTo('/admin-dashboard');
+        }
+      });
+    });
+  } else {
+    console.warn('bottom-nav not found on create-party');
+  }
 }
 
 function formatDate(yyyyMmDd) {
   const [y, m, d] = yyyyMmDd.split("-");
   return `${d}/${m}/${y}`;
 }
+
+// [REMOVED] Global bottom-nav setup blocks to avoid duplicate/conflicting listeners
+// Setup bottom navigation for Create Party screen (moved inside renderCreateParty)
+// Setup bottom navigation interactions (moved inside renderCreateParty)
+/* bottom-nav binding moved inside renderCreateParty */

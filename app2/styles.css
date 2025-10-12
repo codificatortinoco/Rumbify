@@ -609,3 +609,57 @@ html, body, input, textarea, button, select {
 #create-party-screen .create-party-content {
   background: transparent;
 }
+
+/* Bottom navigation (shared for app2) */
+.bottom-nav {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 500px;
+  background: #4b27b8;
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  border-radius: 36px;
+  backdrop-filter: saturate(140%) blur(6px);
+}
+
+.bottom-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: color 0.18s ease, transform 0.12s ease;
+  padding: 8px 10px;
+  border-radius: 16px;
+  user-select: none;
+}
+
+.bottom-nav .nav-item:active { transform: scale(0.98); }
+.bottom-nav .nav-item:hover { color: #4ade80; }
+.bottom-nav .nav-item.active { color: #4ade80; }
+
+.nav-icon {
+  width: 26px;
+  height: 26px;
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+/* Icon masks */
+.icon-party { -webkit-mask-image: url("./assets/partyIcon.svg"); mask-image: url("./assets/partyIcon.svg"); }
+.icon-plus  { -webkit-mask-image: url("./assets/plusIcon.svg");  mask-image: url("./assets/plusIcon.svg"); }
+.icon-user  { -webkit-mask-image: url("./assets/userIcon.svg");  mask-image: url("./assets/userIcon.svg"); }
+
+.nav-label { font-size: 12px; font-weight: 500; }

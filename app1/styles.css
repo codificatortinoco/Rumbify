@@ -411,35 +411,61 @@ body {
 
 .see-more-btn:hover { background: #22c55e; }
 
-/* Bottom Navigation */
+/* Bottom Navigation - estilo ovalado y compacto */
 .bottom-nav {
   position: fixed;
-  bottom: 0;
+  bottom: 24px; /* subir un poco para que se vea más flotante */
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
-  max-width: 414px;
-  background: #667eea;
+  width: calc(100% - 32px);
+  max-width: 500px; /* un poco más ancho para respirar */
+  background: #4b27b8;
   display: flex;
   justify-content: space-around;
-  padding: 15px 0;
-  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+  padding: 16px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  border-radius: 36px; /* más ovalado */
+  backdrop-filter: saturate(140%) blur(6px);
 }
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  color: rgba(255, 255, 255, 0.6);
+  gap: 8px; /* más separación icono/título */
+  color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
-  transition: color 0.3s ease;
-  padding: 8px;
-  border-radius: 8px;
+  transition: color 0.18s ease, transform 0.12s ease;
+  padding: 8px 10px; /* más área de clic */
+  border-radius: 16px;
+  user-select: none;
 }
 
+.nav-item:active { transform: scale(0.98); }
+
+.nav-icon {
+  width: 26px;
+  height: 26px;
+  display: inline-block;
+  background-color: currentColor; /* el ícono toma el color del texto */
+}
+
+/* Mapear SVGs como máscaras para que el color cambie con active/hover */
+.icon-party { -webkit-mask: url('/app2/assets/partyIcon.svg') center/contain no-repeat; mask: url('/app2/assets/partyIcon.svg') center/contain no-repeat; }
+.icon-home  { -webkit-mask: url('/app1/assets/homeIcon.svg')  center/contain no-repeat; mask: url('/app1/assets/homeIcon.svg')  center/contain no-repeat; }
+.icon-user  { -webkit-mask: url('/app2/assets/userIcon.svg')  center/contain no-repeat; mask: url('/app2/assets/userIcon.svg')  center/contain no-repeat; }
+.nav-item span { font-size: 14px; font-weight: 600; }
+
+/* Estados */
 .nav-item.active { color: #4ade80; }
-.nav-item:hover { color: white; }
+.nav-item:hover { color: #ffffff; }
+
+/* Tiene look de burbuja morada como en tu referencia */
+.bottom-nav {
+  background: #4b27b8; /* morado más vivo */
+  padding: 16px 22px;
+  border-radius: 28px;
+}
 
 .nav-item span {
   font-size: 12px;

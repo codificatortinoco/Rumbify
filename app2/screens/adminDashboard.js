@@ -67,6 +67,20 @@ export default function renderAdminDashboard(data = {}) {
             </button>
           </div>
         </div>
+        <nav class="bottom-nav">
+          <div class="nav-item active" id="nav-parties" data-nav="parties">
+            <span class="nav-icon icon-party" aria-hidden="true"></span>
+            <span class="nav-label">My Parties</span>
+          </div>
+          <div class="nav-item" id="nav-new" data-nav="new">
+            <span class="nav-icon icon-plus" aria-hidden="true"></span>
+            <span class="nav-label">New Party</span>
+          </div>
+          <div class="nav-item" id="nav-profile" data-nav="profile">
+            <span class="nav-icon icon-user" aria-hidden="true"></span>
+            <span class="nav-label">Profile</span>
+          </div>
+        </nav>
       </div>
     </div>
   `;
@@ -104,4 +118,25 @@ export default function renderAdminDashboard(data = {}) {
     console.log('Settings clicked');
     // TODO: Navigate to settings
   }
+  // Bottom nav event bindings
+  const bottomNav = document.querySelector('.bottom-nav');
+  const navItems = bottomNav ? Array.from(bottomNav.querySelectorAll('.nav-item')) : [];
+  navItems.forEach((item) => {
+    item.style.touchAction = 'manipulation';
+    item.addEventListener('click', () => {
+      navItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const target = item.dataset.nav;
+      if (target === 'parties') {
+        // Stay in Admin Dashboard (app2)
+        navigateTo('/admin-dashboard');
+      } else if (target === 'new') {
+        // Create Party in app2
+        navigateTo('/create-party');
+      } else if (target === 'profile') {
+        // Admin Dashboard profile
+        navigateTo('/admin-dashboard');
+      }
+    });
+  });
 }

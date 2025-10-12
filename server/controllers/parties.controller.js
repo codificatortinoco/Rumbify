@@ -313,36 +313,84 @@ function getMockEventDetails(eventId) {
   };
 }
 
+// Helpers for automatic category assignment
+function parseAttendees(attStr = "0/0") {
+  try {
+    const [curStr, maxStr] = String(attStr).split("/");
+    const current = parseInt(curStr, 10) || 0;
+    const max = parseInt(maxStr, 10) || 0;
+    return { current, max };
+  } catch {
+    return { current: 0, max: 0 };
+  }
+}
+
+function daysUntil(isoDate) {
+  try {
+    const target = new Date(isoDate);
+    if (isNaN(target.getTime())) return null;
+    const now = new Date();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    return Math.ceil((target.setHours(0,0,0,0) - now.setHours(0,0,0,0)) / msPerDay);
+  } catch {
+    return null;
+  }
+}
+
+function formatDisplayDate(isoDate, hour) {
+  try {
+    const dt = new Date(isoDate);
+    if (isNaN(dt.getTime())) return `${isoDate}${hour ? ` • ${hour}` : ""}`;
+    const d = dt.getDate();
+    const m = dt.getMonth() + 1;
+    const y = String(dt.getFullYear()).slice(2);
+    return `${d}/${m}/${y}${hour ? ` • ${hour}` : ""}`;
+  } catch {
+    return `${isoDate}${hour ? ` • ${hour}` : ""}`;
+  }
+}
+
+function computeCategoryAuto(attendees, isoDate) {
+  const { current, max } = parseAttendees(attendees);
+  const percent = max > 0 ? current / max : 0;
+  const days = daysUntil(isoDate);
+  const HOT_PERCENT = 0.6; // 60% ocupación
+  const UPCOMING_DAYS = 7; // Próximos 7 días
+  if (percent >= HOT_PERCENT) return "hot-topic";
+  if (days !== null && days >= 0 && days <= UPCOMING_DAYS) return "upcoming";
+  // Por defecto, si es un evento futuro, lo tratamos como upcoming
+  if (days !== null && days >= 0) return "upcoming";
+  // Si la fecha ya pasó y no es hot, marcamos como hot-topic para no dejar sin categoría
+  return "hot-topic";
+}
 const createParty = async (req, res) => {
   try {
     const {
       title,
       attendees,
       location,
-      date,
+      date,      // esperado como yyyy-mm-dd
+      hour,      // HH:mm
       administrator,
       image,
       tags,
-      category,
-      prices // Array of { price_name, price }
+      prices // Array de { price_name, price }
     } = req.body || {};
 
-    if (!title || !location || !date || !administrator || !category) {
+    if (!title || !location || !date || !administrator) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    // Validate category
-    const allowedCategories = ["hot-topic", "upcoming"];
-    if (!allowedCategories.includes(category)) {
-      return res.status(400).json({ success: false, message: "Invalid category" });
-    }
+    const safeAttendees = attendees || "0/0";
+    const category = computeCategoryAuto(safeAttendees, date);
+    const displayDate = formatDisplayDate(date, hour);
 
-    // Normalize fields
+    // Normalizar campos
     const payload = {
       title,
-      attendees: attendees || "0/0",
+      attendees: safeAttendees,
       location,
-      date,
+      date: displayDate,
       administrator,
       image: image || "",
       tags: Array.isArray(tags) ? tags : [],

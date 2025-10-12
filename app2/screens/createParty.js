@@ -68,11 +68,13 @@ export default function renderCreateParty(data = {}) {
           </div>
 
           <div class="form-group">
-            <label>Category</label>
+            <!-- Category removed: it will be auto-assigned -->
+            <!--
             <select id="party-category" required>
               <option value="hot-topic">hot-topic</option>
               <option value="upcoming">upcoming</option>
             </select>
+            -->
           </div>
 
           <div class="form-group">
@@ -186,10 +188,10 @@ export default function renderCreateParty(data = {}) {
       const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
       const administrator = document.getElementById("party-administrator").value.trim();
       const image = document.getElementById("party-image").value.trim();
-      const category = document.getElementById("party-category").value;
+      const category = document.getElementById("party-category").value; // removed
 
-      if (!title || !location || !dateVal || !hourVal || !administrator || !category) {
-        alert("Please fill in all required fields.");
+      if (!title || !location || !dateVal || !hourVal || !administrator) {
+        alert("Por favor, completa todos los campos obligatorios.");
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
         return;
@@ -222,15 +224,15 @@ export default function renderCreateParty(data = {}) {
         price: val,
       }));
 
-      const body = {
+      const payload = {
+        admin_name: administrator,
         title,
-        attendees,
+        description,
         location,
-        date,
-        administrator,
-        image,
+        date: dateVal,
+        hour: hourVal,
+        attendees: `0/${maxAttendees}`,
         tags,
-        category,
         prices: collectedPrices,
       };
 

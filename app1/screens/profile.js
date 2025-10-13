@@ -38,18 +38,7 @@ export default function renderProfile() {
           <button class="edit-btn" id="editInterestsBtn">Edit</button>
         </div>
         <div class="interests-tags" id="interestsTags">
-          <div class="interest-tag disco">
-            <img src="assets/partyIcon.svg" alt="Disco" class="tag-icon" />
-            <span>Disco Music</span>
-          </div>
-          <div class="interest-tag elegant">
-            <img src="assets/edit.svg" alt="Elegant" class="tag-icon" />
-            <span>Elegant</span>
-          </div>
-          <div class="interest-tag cocktail">
-            <img src="assets/partyIcon.svg" alt="Cocktail" class="tag-icon" />
-            <span>Cocktailing</span>
-          </div>
+          <!-- Interests will be loaded dynamically -->
         </div>
       </div>
 
@@ -70,22 +59,16 @@ export default function renderProfile() {
           <div class="settings-item" id="notificationsBtn">
             <img src="assets/notifications.svg" alt="Notifications" class="settings-icon" />
             <span class="settings-text">Notifications</span>
-            <img src="assets/edit.svg" alt="Arrow" class="arrow-icon" />
+            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
           </div>
           <div class="settings-item" id="editProfileBtn">
             <img src="assets/edit.svg" alt="Edit Profile" class="settings-icon" />
             <span class="settings-text">Edit profile</span>
-            <img src="assets/edit.svg" alt="Arrow" class="arrow-icon" />
-          </div>
-          <div class="settings-item" id="changeUserBtn">
-            <img src="assets/person.svg" alt="Change User" class="settings-icon" />
-            <span class="settings-text">Change User</span>
-            <img src="assets/edit.svg" alt="Arrow" class="arrow-icon" />
+            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
           </div>
           <div class="settings-item" id="logoutBtn">
             <img src="assets/logOut.svg" alt="Logout" class="settings-icon" />
             <span class="settings-text">Logout</span>
-            <img src="assets/edit.svg" alt="Arrow" class="arrow-icon" />
           </div>
         </div>
       </div>
@@ -155,6 +138,9 @@ async function loadUserProfile() {
         profilePicture.src = currentUser.profile_image;
       }
       
+      // Load user interests
+      loadUserInterests(currentUser.interests || []);
+      
       console.log("Profile loaded from logged-in user:", currentUser);
       return;
     }
@@ -188,6 +174,9 @@ async function loadUserProfile() {
         profilePicture.src = response.profile_image;
       }
 
+      // Load user interests
+      loadUserInterests(response.interests || []);
+
       // Store user data for later use
       localStorage.setItem("currentUser", JSON.stringify(response));
       
@@ -218,6 +207,9 @@ async function loadUserProfile() {
       if (profilePicture) {
         profilePicture.src = mockUser.profile_image;
       }
+
+      // Load user interests
+      loadUserInterests(mockUser.interests || []);
 
       // Store user data for later use
       localStorage.setItem("currentUser", JSON.stringify(mockUser));
@@ -302,11 +294,59 @@ async function loadUserHistory() {
   }
 }
 
+function loadUserInterests(interests) {
+  const interestsContainer = document.getElementById("interestsTags");
+  
+  if (!interests || interests.length === 0) {
+    interestsContainer.innerHTML = `
+      <div class="no-interests">
+        <p>No interests selected yet</p>
+        <button class="add-interests-btn" onclick="navigateTo('/edit-profile')">Add Interests</button>
+      </div>
+    `;
+    return;
+  }
+
+  // Map interest names to their corresponding CSS classes and icons
+  const interestConfig = {
+    "Disco Music": { class: "disco", icon: "assets/partyIcon.svg" },
+    "Elegant": { class: "elegant", icon: "assets/edit.svg" },
+    "Cocktailing": { class: "cocktail", icon: "assets/partyIcon.svg" },
+    "House Music": { class: "house", icon: "assets/partyIcon.svg" },
+    "Techno": { class: "techno", icon: "assets/partyIcon.svg" },
+    "Jazz": { class: "jazz", icon: "assets/partyIcon.svg" },
+    "Rock": { class: "rock", icon: "assets/partyIcon.svg" },
+    "Pop": { class: "pop", icon: "assets/partyIcon.svg" },
+    "Electronic": { class: "electronic", icon: "assets/partyIcon.svg" },
+    "Classical": { class: "classical", icon: "assets/partyIcon.svg" },
+    "Hip Hop": { class: "hiphop", icon: "assets/partyIcon.svg" },
+    "R&B": { class: "rnb", icon: "assets/partyIcon.svg" },
+    "Reggae": { class: "reggae", icon: "assets/partyIcon.svg" },
+    "Country": { class: "country", icon: "assets/partyIcon.svg" },
+    "Blues": { class: "blues", icon: "assets/partyIcon.svg" },
+    "Folk": { class: "folk", icon: "assets/partyIcon.svg" },
+    "Indie": { class: "indie", icon: "assets/partyIcon.svg" },
+    "Alternative": { class: "alternative", icon: "assets/partyIcon.svg" }
+  };
+
+  interestsContainer.innerHTML = interests.map(interest => {
+    const config = interestConfig[interest] || { class: "default", icon: "assets/partyIcon.svg" };
+    return `
+      <div class="interest-tag ${config.class}">
+        <img src="${config.icon}" alt="${interest}" class="tag-icon" />
+        <span>${interest}</span>
+      </div>
+    `;
+  }).join("");
+
+  console.log("Interests loaded:", interests);
+}
+
 function setupProfileEventListeners() {
   // Edit interests button
   document.getElementById("editInterestsBtn").addEventListener("click", () => {
     console.log("Edit interests clicked");
-    // TODO: Implement interests editing
+    navigateTo("/edit-profile");
   });
 
   // See more history button
@@ -326,10 +366,6 @@ function setupProfileEventListeners() {
     navigateTo("/edit-profile");
   });
 
-  document.getElementById("changeUserBtn").addEventListener("click", () => {
-    console.log("Change user clicked");
-    // TODO: Implement user switching
-  });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
     console.log("Logout clicked");

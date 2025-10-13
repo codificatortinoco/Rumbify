@@ -76,7 +76,8 @@ export default function renderRegister(data = {}) {
         <!-- Back Button -->
         <div class="back-section">
           <button class="back-btn">
-            ← Back to Welcome
+            <img src="assets/arrow.svg" alt="Back" class="back-icon" />
+            Back to Welcome
           </button>
         </div>
       </div>

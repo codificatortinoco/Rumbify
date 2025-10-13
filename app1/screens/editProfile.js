@@ -9,7 +9,7 @@ export default function renderEditProfile() {
       <!-- Header -->
       <div class="edit-profile-header">
         <button class="back-btn" id="backBtn">
-          <img src="assets/backIcon.svg" alt="Back" class="back-icon" />
+          <img src="assets/arrow.svg" alt="Back" class="back-icon" />
         </button>
         <h1 class="edit-profile-title">Edit Profile</h1>
         <button class="save-btn" id="saveBtn">Save</button>
@@ -62,6 +62,43 @@ export default function renderEditProfile() {
             rows="3"
           >${currentUser?.bio || ''}</textarea>
           <div class="char-count" id="bioCharCount">0/200</div>
+        </div>
+
+        <!-- Password Change Section -->
+        <div class="form-group">
+          <label class="form-label">Change Password</label>
+          <div class="password-change-container">
+            <div class="password-input-group">
+              <input 
+                type="password" 
+                id="currentPasswordInput" 
+                class="form-input" 
+                placeholder="Current Password"
+                maxlength="100"
+              />
+            </div>
+            <div class="password-input-group">
+              <input 
+                type="password" 
+                id="newPasswordInput" 
+                class="form-input" 
+                placeholder="New Password"
+                maxlength="100"
+              />
+            </div>
+            <div class="password-input-group">
+              <input 
+                type="password" 
+                id="confirmPasswordInput" 
+                class="form-input" 
+                placeholder="Confirm New Password"
+                maxlength="100"
+              />
+            </div>
+            <div class="password-requirements">
+              <small>Password must be at least 8 characters long and contain at least one letter and one number.</small>
+            </div>
+          </div>
         </div>
 
         <!-- Interests Section -->
@@ -259,10 +296,16 @@ function setupEditProfileEventListeners() {
 function setupFormValidation() {
   const nameInput = document.getElementById("nameInput");
   const emailInput = document.getElementById("emailInput");
+  const currentPasswordInput = document.getElementById("currentPasswordInput");
+  const newPasswordInput = document.getElementById("newPasswordInput");
+  const confirmPasswordInput = document.getElementById("confirmPasswordInput");
   
   // Real-time validation
   nameInput.addEventListener("input", validateName);
   emailInput.addEventListener("input", validateEmail);
+  currentPasswordInput.addEventListener("input", validateCurrentPassword);
+  newPasswordInput.addEventListener("input", validatePassword);
+  confirmPasswordInput.addEventListener("input", validatePassword);
 }
 
 function validateName() {
@@ -292,6 +335,71 @@ function validateEmail() {
   }
 }
 
+function validatePassword() {
+  const newPasswordInput = document.getElementById("newPasswordInput");
+  const confirmPasswordInput = document.getElementById("confirmPasswordInput");
+  const newPassword = newPasswordInput.value;
+  const confirmPassword = confirmPasswordInput.value;
+  
+  // Check if password fields are filled
+  const isNewPasswordFilled = newPassword.length > 0;
+  const isConfirmPasswordFilled = confirmPassword.length > 0;
+  
+  // If no password fields are filled, it's valid (optional change)
+  if (!isNewPasswordFilled && !isConfirmPasswordFilled) {
+    newPasswordInput.classList.remove("error");
+    confirmPasswordInput.classList.remove("error");
+    return true;
+  }
+  
+  // If only one field is filled, it's invalid
+  if (isNewPasswordFilled !== isConfirmPasswordFilled) {
+    newPasswordInput.classList.add("error");
+    confirmPasswordInput.classList.add("error");
+    return false;
+  }
+  
+  // Check password strength
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    newPasswordInput.classList.add("error");
+    return false;
+  }
+  
+  // Check if passwords match
+  if (newPassword !== confirmPassword) {
+    confirmPasswordInput.classList.add("error");
+    return false;
+  }
+  
+  // All validations passed
+  newPasswordInput.classList.remove("error");
+  confirmPasswordInput.classList.remove("error");
+  return true;
+}
+
+function validateCurrentPassword() {
+  const currentPasswordInput = document.getElementById("currentPasswordInput");
+  const newPasswordInput = document.getElementById("newPasswordInput");
+  const currentPassword = currentPasswordInput.value;
+  const newPassword = newPasswordInput.value;
+  
+  // If no new password is provided, current password is not required
+  if (newPassword.length === 0) {
+    currentPasswordInput.classList.remove("error");
+    return true;
+  }
+  
+  // If new password is provided, current password is required
+  if (currentPassword.length === 0) {
+    currentPasswordInput.classList.add("error");
+    return false;
+  }
+  
+  currentPasswordInput.classList.remove("error");
+  return true;
+}
+
 function updateBioCharCount() {
   const bioInput = document.getElementById("bioInput");
   const charCount = document.getElementById("bioCharCount");
@@ -318,8 +426,10 @@ async function handleSaveProfile() {
     // Validate form
     const isNameValid = validateName();
     const isEmailValid = validateEmail();
+    const isPasswordValid = validatePassword();
+    const isCurrentPasswordValid = validateCurrentPassword();
     
-    if (!isNameValid || !isEmailValid) {
+    if (!isNameValid || !isEmailValid || !isPasswordValid || !isCurrentPasswordValid) {
       alert("Please fix the errors in the form before saving");
       return;
     }
@@ -330,6 +440,8 @@ async function handleSaveProfile() {
     const bio = document.getElementById("bioInput").value.trim();
     const profileVisible = document.getElementById("profileVisibility").checked;
     const attendanceVisible = document.getElementById("attendanceVisibility").checked;
+    const currentPassword = document.getElementById("currentPasswordInput").value;
+    const newPassword = document.getElementById("newPasswordInput").value;
     
     // Get selected interests
     const selectedInterests = Array.from(document.querySelectorAll(".selected-interest-chip"))
@@ -344,6 +456,12 @@ async function handleSaveProfile() {
       profile_visible: profileVisible,
       attendance_visible: attendanceVisible
     };
+    
+    // Add password data if provided
+    if (newPassword.length > 0) {
+      updateData.currentPassword = currentPassword;
+      updateData.newPassword = newPassword;
+    }
     
     // Get current user
     const currentUser = getCurrentUser();
@@ -365,7 +483,7 @@ async function handleSaveProfile() {
         // Show success message
         alert("Profile updated successfully!");
         
-        // Navigate back to profile
+        // Navigate back to profile (this will reload the profile with updated data)
         navigateTo("/profile");
       } else {
         throw new Error(response.message || "Failed to update profile");

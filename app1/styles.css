@@ -1825,7 +1825,7 @@ body {
   width: 16px;
   height: 16px;
   filter: brightness(0) invert(1);
-  transform: rotate(90deg);
+  transform: rotate(0deg);
 }
 
 /* Edit Profile Screen Styles */
@@ -1873,6 +1873,11 @@ body {
   width: 24px;
   height: 24px;
   filter: brightness(0) invert(1);
+}
+
+/* Edit Profile back button rotation */
+#edit-profile-screen .back-icon {
+  transform: rotate(180deg);
 }
 
 .edit-profile-title {

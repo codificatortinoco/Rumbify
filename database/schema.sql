@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255),
     profile_image TEXT,
     bio TEXT,
     interests TEXT[] DEFAULT '{}',

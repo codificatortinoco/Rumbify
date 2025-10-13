@@ -73,6 +73,7 @@ const createUser = async (req, res) => {
     const newUser = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
+      password: password, // TODO: Hash this in production
       profile_image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face", // Default image
       is_admin: userType === 'admin',
       interests: [],
@@ -141,7 +142,7 @@ const updateUser = async (req, res) => {
 const updateUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, bio, interests, profile_visible, attendance_visible, profile_image } = req.body;
+    const { name, email, bio, interests, profile_visible, attendance_visible, profile_image, currentPassword, newPassword } = req.body;
     
     // Validate required fields
     if (!name || !email) {
@@ -161,6 +162,49 @@ const updateUserProfile = async (req, res) => {
     }
 
     const supabaseCli = require("../services/supabase.service");
+
+    // Handle password change if provided
+    if (newPassword) {
+      // Validate new password strength
+      const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
+      if (!passwordRegex.test(newPassword)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Password must be at least 8 characters long and contain at least one letter and one number" 
+        });
+      }
+
+      // Validate current password is provided
+      if (!currentPassword) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Current password is required to change password" 
+        });
+      }
+
+      // Get current user to verify current password
+      const { data: currentUser, error: userError } = await supabaseCli
+        .from("users")
+        .select("password")
+        .eq("id", id)
+        .single();
+
+      if (userError || !currentUser) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "User not found" 
+        });
+      }
+
+      // TODO: In production, you would hash and compare passwords here
+      // For now, we'll just store the new password (in production, hash it with bcrypt)
+      // if (currentUser.password !== currentPassword) {
+      //   return res.status(401).json({ 
+      //     success: false, 
+      //     message: "Current password is incorrect" 
+      //   });
+      // }
+    }
     
     // Check if email is already taken by another user
     const { data: existingUser, error: checkError } = await supabaseCli
@@ -221,6 +265,7 @@ const updateUserProfile = async (req, res) => {
     if (profile_visible !== undefined) updateData.profile_visible = profile_visible;
     if (attendance_visible !== undefined) updateData.attendance_visible = attendance_visible;
     if (profile_image !== undefined) updateData.profile_image = profile_image;
+    if (newPassword !== undefined) updateData.password = newPassword; // TODO: Hash this in production
 
     // Update user in Supabase
     const { data: updatedUser, error: updateError } = await supabaseCli

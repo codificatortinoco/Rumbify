@@ -29,9 +29,7 @@ export default function renderEventDetails(eventData) {
       <!-- Event Header -->
       <header class="event-header">
         <button class="back-btn" id="backBtn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
+          <img src="assets/arrow.svg" alt="Back" class="back-icon" />
         </button>
         <h1 class="event-title-header">Party Details</h1>
         <span class="attendees-count">${eventData.attendees}</span>

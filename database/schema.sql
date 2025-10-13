@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS public.users (
     name VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) UNIQUE NOT NULL,
     profile_image TEXT,
+    bio TEXT,
+    interests TEXT[] DEFAULT '{}',
+    is_admin BOOLEAN DEFAULT FALSE,
+    phone VARCHAR(20),
+    profile_visible BOOLEAN DEFAULT TRUE,
+    attendance_visible BOOLEAN DEFAULT TRUE,
     member_since TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

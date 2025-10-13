@@ -14,6 +14,9 @@ export default function renderProfile() {
         </div>
         <h1 class="profile-name" id="profileName">KC Lember</h1>
         <p class="profile-email" id="profileEmail">DJKC@hotmail.com</p>
+        <div class="user-type-badge" id="userTypeBadge">
+          <span class="user-type-text">Member</span>
+        </div>
         
         <!-- Stats -->
         <div class="profile-stats">
@@ -135,6 +138,17 @@ async function loadUserProfile() {
       document.getElementById("attendedCount").textContent = currentUser.attended_count || 0;
       document.getElementById("favoritesCount").textContent = currentUser.favorites_count || 0;
       
+      // Update user type badge
+      const userTypeBadge = document.getElementById("userTypeBadge");
+      const userTypeText = document.querySelector(".user-type-text");
+      if (currentUser.is_admin) {
+        userTypeBadge.className = "user-type-badge admin";
+        userTypeText.textContent = "Admin";
+      } else {
+        userTypeBadge.className = "user-type-badge member";
+        userTypeText.textContent = "Member";
+      }
+      
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");
       if (profilePicture && currentUser.profile_image) {
@@ -156,6 +170,17 @@ async function loadUserProfile() {
       document.getElementById("profileEmail").textContent = response.email || "user@example.com";
       document.getElementById("attendedCount").textContent = response.attended_count || 0;
       document.getElementById("favoritesCount").textContent = response.favorites_count || 0;
+      
+      // Update user type badge
+      const userTypeBadge = document.getElementById("userTypeBadge");
+      const userTypeText = document.querySelector(".user-type-text");
+      if (response.is_admin) {
+        userTypeBadge.className = "user-type-badge admin";
+        userTypeText.textContent = "Admin";
+      } else {
+        userTypeBadge.className = "user-type-badge member";
+        userTypeText.textContent = "Member";
+      }
       
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");
@@ -298,7 +323,7 @@ function setupProfileEventListeners() {
 
   document.getElementById("editProfileBtn").addEventListener("click", () => {
     console.log("Edit profile clicked");
-    // TODO: Navigate to edit profile page
+    navigateTo("/edit-profile");
   });
 
   document.getElementById("changeUserBtn").addEventListener("click", () => {

@@ -38,9 +38,13 @@ window.addEventListener('popstate', (event) => {
 function renderRoute(currentRoute) {
   console.log('renderRoute called with:', currentRoute);
   switch (currentRoute?.path) {
+    case "/welcome":
+      // Redirect to app1 welcome screen
+      window.location.href = '/app1/welcome';
+      break;
     case "/":
-      clearScripts();
-      renderScreen1(currentRoute?.data);
+      // Redirect to app1 welcome screen
+      window.location.href = '/app1/welcome';
       break;
     case "/admin-login":
       clearScripts();
@@ -58,6 +62,10 @@ function renderRoute(currentRoute) {
       clearScripts();
       renderCreateParty(currentRoute?.data);
       break;
+    case "/screen1":
+      clearScripts();
+      renderScreen1(currentRoute?.data);
+      break;
     case "/screen2":
       clearScripts();
       renderScreen2(currentRoute?.data);
@@ -71,8 +79,8 @@ function renderRoute(currentRoute) {
       renderGuestsSummary(currentRoute?.data);
       break;
     default:
-      const app = document.getElementById("app");
-      app.innerHTML = `<h1>404 - Not Found</h1><p>The page you are looking for does not exist.</p>`;
+      // Redirect to app1 welcome screen for any unknown routes
+      window.location.href = '/app1/welcome';
   }
 }
 

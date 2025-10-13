@@ -32,7 +32,7 @@ export default function renderWelcome() {
   });
 
   document.getElementById("admin-btn").addEventListener("click", () => {
-    // Redirect to app2 for administrator login
+    // Redirect to app2 for admin login
     window.location.href = '/app2/admin-login';
   });
 }

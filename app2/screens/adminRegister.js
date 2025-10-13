@@ -109,6 +109,7 @@ export default function renderAdminRegister(data = {}) {
     const password = document.getElementById('admin-password-input').value;
     const repeatPassword = document.getElementById('admin-repeat-password-input').value;
     const phone = document.getElementById('admin-phone-input').value;
+    const userType = "admin"; // Automatically set as admin for app2
     
     // Validate passwords match
     if (password !== repeatPassword) {
@@ -130,12 +131,13 @@ export default function renderAdminRegister(data = {}) {
     submitBtn.disabled = true;
     
     try {
-      // Call admin register endpoint
-      const response = await makeRequest('/admin/register', 'POST', {
+      // Call main users endpoint with admin userType
+      const response = await makeRequest('/users', 'POST', {
         name,
         email,
         password,
-        phone
+        userType,
+        phone // Include phone for admin users
       });
       
       if (response.success) {

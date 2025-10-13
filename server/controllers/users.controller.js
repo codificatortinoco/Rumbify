@@ -12,12 +12,28 @@ const getUsers = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, userType, phone } = req.body;
     
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !userType) {
       return res.status(400).json({ 
         success: false, 
-        message: "Name, email, and password are required" 
+        message: "Name, email, password, and user type are required" 
+      });
+    }
+
+    // Validate user type
+    if (!['member', 'admin'].includes(userType)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "User type must be either 'member' or 'admin'" 
+      });
+    }
+
+    // Validate phone for admin users
+    if (userType === 'admin' && !phone) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Phone number is required for admin accounts" 
       });
     }
 
@@ -58,8 +74,15 @@ const createUser = async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       profile_image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face", // Default image
+      is_admin: userType === 'admin',
+      interests: [],
       member_since: new Date().toISOString()
     };
+
+    // Add phone field for admin users
+    if (userType === 'admin' && phone) {
+      newUser.phone = phone.trim();
+    }
 
     const { data: createdUser, error: createError } = await supabaseCli
       .from("users")
@@ -76,18 +99,26 @@ const createUser = async (req, res) => {
     }
 
     // Return user data (without password)
+    const userResponse = {
+      id: createdUser.id,
+      name: createdUser.name,
+      email: createdUser.email,
+      profile_image: createdUser.profile_image,
+      is_admin: createdUser.is_admin,
+      attended_count: 0,
+      favorites_count: 0,
+      interests: createdUser.interests || []
+    };
+
+    // Include phone for admin users
+    if (userType === 'admin' && createdUser.phone) {
+      userResponse.phone = createdUser.phone;
+    }
+
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      user: {
-        id: createdUser.id,
-        name: createdUser.name,
-        email: createdUser.email,
-        profile_image: createdUser.profile_image,
-        attended_count: 0,
-        favorites_count: 0,
-        interests: []
-      }
+      user: userResponse
     });
 
   } catch (error) {
@@ -104,6 +135,141 @@ const updateUser = async (req, res) => {
   const { id: userId } = req.params;
   const response = await updateUserInDb({ name }, userId);
   res.send(response);
+};
+
+// New endpoint for updating user profile with comprehensive data
+const updateUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, bio, interests, profile_visible, attendance_visible, profile_image } = req.body;
+    
+    // Validate required fields
+    if (!name || !email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Name and email are required" 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid email format" 
+      });
+    }
+
+    const supabaseCli = require("../services/supabase.service");
+    
+    // Check if email is already taken by another user
+    const { data: existingUser, error: checkError } = await supabaseCli
+      .from("users")
+      .select("id, email, name")
+      .eq("email", email.toLowerCase().trim())
+      .neq("id", id)
+      .limit(1);
+
+    if (checkError) {
+      console.error("Error checking existing user:", checkError);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Database error occurred" 
+      });
+    }
+
+    if (existingUser && existingUser.length > 0) {
+      return res.status(409).json({ 
+        success: false, 
+        message: "An account with this email already exists" 
+      });
+    }
+
+    // Check if name is already taken by another user
+    const { data: existingName, error: nameCheckError } = await supabaseCli
+      .from("users")
+      .select("id, name")
+      .eq("name", name.trim())
+      .neq("id", id)
+      .limit(1);
+
+    if (nameCheckError) {
+      console.error("Error checking existing name:", nameCheckError);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Database error occurred" 
+      });
+    }
+
+    if (existingName && existingName.length > 0) {
+      return res.status(409).json({ 
+        success: false, 
+        message: "An account with this username already exists" 
+      });
+    }
+
+    // Prepare update data
+    const updateData = {
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Add optional fields if provided
+    if (bio !== undefined) updateData.bio = bio.trim();
+    if (interests !== undefined) updateData.interests = interests;
+    if (profile_visible !== undefined) updateData.profile_visible = profile_visible;
+    if (attendance_visible !== undefined) updateData.attendance_visible = attendance_visible;
+    if (profile_image !== undefined) updateData.profile_image = profile_image;
+
+    // Update user in Supabase
+    const { data: updatedUser, error: updateError } = await supabaseCli
+      .from("users")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error updating user:", updateError);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to update user profile" 
+      });
+    }
+
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Return updated user data
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        bio: updatedUser.bio,
+        profile_image: updatedUser.profile_image,
+        interests: updatedUser.interests || [],
+        profile_visible: updatedUser.profile_visible,
+        attendance_visible: updatedUser.attendance_visible,
+        member_since: updatedUser.member_since,
+        updated_at: updatedUser.updated_at
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in updateUserProfile:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error" 
+    });
+  }
 };
 
 const deleteUser = async (req, res) => {
@@ -218,9 +384,10 @@ const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         profile_image: user.profile_image,
+        is_admin: user.is_admin || false,
         attended_count: 0, // These would be calculated from actual data
         favorites_count: 0,
-        interests: []
+        interests: user.interests || []
       }
     });
 
@@ -237,6 +404,7 @@ module.exports = {
   getUsers,
   createUser,
   updateUser,
+  updateUserProfile,
   deleteUser,
   getUserProfile,
   loginUser

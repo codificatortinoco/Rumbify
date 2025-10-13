@@ -3,6 +3,7 @@ const {
   createUser,
   getUsers,
   updateUser,
+  updateUserProfile,
   deleteUser,
   getUserProfile,
   loginUser
@@ -16,6 +17,8 @@ router.post("/users", createUser);
 router.post("/users/login", loginUser);
 
 router.patch("/users/:id", updateUser);
+
+router.put("/users/:id", updateUserProfile);
 
 router.delete("/users/:id", deleteUser);
 

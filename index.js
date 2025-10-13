@@ -21,14 +21,14 @@ app.use(express.json());
 app.use("/app1", express.static(path.join(__dirname, "app1")));
 app.use("/app2", express.static(path.join(__dirname, "app2")));
 
-// Ruta principal - redirige a la aplicación principal
+// Ruta principal - redirige a la pantalla de bienvenida
 app.get("/", (req, res) => {
-  res.redirect("/app1");
+  res.redirect("/app1/welcome");
 });
 
 // Ruta de inicio para la aplicación principal
 app.get("/start", (req, res) => {
-  res.redirect("/app1");
+  res.redirect("/app1/welcome");
 });
 
 // Handle SPA routing for app1 - serve index.html for any non-API routes

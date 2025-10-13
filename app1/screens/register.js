@@ -1,6 +1,6 @@
 import { navigateTo, setLoggedInUser, makeRequest } from "../app.js";
 
-export default function renderRegister() {
+export default function renderRegister(data = {}) {
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="register-screen">
@@ -98,6 +98,7 @@ export default function renderRegister() {
     const email = document.getElementById('email-input').value;
     const password = document.getElementById('password-input').value;
     const repeatPassword = document.getElementById('repeat-password-input').value;
+    const userType = "member"; // Automatically set as member for app1
     
     // Validate passwords match
     if (password !== repeatPassword) {
@@ -117,13 +118,13 @@ export default function renderRegister() {
     submitBtn.textContent = 'Creating Account...';
     submitBtn.disabled = true;
     
-    // Call backend API
-    makeRequest('/users', 'POST', { name, email, password })
+    // Call backend API with user type
+    makeRequest('/users', 'POST', { name, email, password, userType })
       .then(response => {
         if (response.success) {
           // Set logged in user and redirect to dashboard
           setLoggedInUser(response.user);
-          navigateTo("/dashboard", { userType: "member", email });
+          navigateTo("/dashboard", { userType, email });
         } else {
           alert(response.message || 'Registration failed. Please try again.');
         }

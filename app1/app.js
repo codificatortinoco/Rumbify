@@ -1,10 +1,10 @@
 import renderWelcome from "./screens/welcome.js";
-import renderScreen1 from "./screens/screen1.js";
 import renderLogin from "./screens/login.js";
 import renderRegister from "./screens/register.js";
 import renderDashboard from "./screens/dashboard.js";
 import renderEventDetails from "./screens/eventDetails.js";
 import renderProfile from "./screens/profile.js";
+import renderEditProfile from "./screens/editProfile.js";
 
 const socket = io("/", { path: "/real-time" });
 
@@ -20,7 +20,7 @@ function getInitialRoute() {
   
   // Check if user is logged in for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/profile', '/event-details'];
+  const protectedRoutes = ['/dashboard', '/profile', '/edit-profile', '/event-details'];
   
   if (protectedRoutes.includes(cleanPath) && !isLoggedIn) {
     return { path: '/welcome', data: {} };
@@ -39,7 +39,7 @@ function renderRoute(currentRoute) {
       break;
     case "/":
       clearScripts();
-      renderScreen1(currentRoute?.data);
+      renderWelcome(currentRoute?.data);
       break;
     case "/login":
       clearScripts();
@@ -61,9 +61,13 @@ function renderRoute(currentRoute) {
       clearScripts();
       renderProfile(currentRoute?.data);
       break;
+    case "/edit-profile":
+      clearScripts();
+      renderEditProfile(currentRoute?.data);
+      break;
     default:
-      const app = document.getElementById("app");
-      app.innerHTML = `<h1>404 - Not Found</h1><p>The page you are looking for does not exist.</p>`;
+      clearScripts();
+      renderWelcome(currentRoute?.data);
   }
 }
 
@@ -84,7 +88,7 @@ window.addEventListener('popstate', (event) => {
 function navigateTo(path, data) {
   // Check authentication for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/profile', '/event-details'];
+  const protectedRoutes = ['/dashboard', '/profile', '/edit-profile', '/event-details'];
   
   if (protectedRoutes.includes(path) && !isLoggedIn) {
     console.log('Access denied: User not logged in');

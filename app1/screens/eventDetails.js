@@ -238,7 +238,7 @@ function setupBottomNavigation() {
           window.location.assign("/app2/create-party");
           break;
         case "Profile":
-          console.log("Profile clicked");
+          navigateTo("/profile");
           break;
       }
     });

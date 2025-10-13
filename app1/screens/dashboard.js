@@ -1,4 +1,4 @@
-import { makeRequest, navigateTo } from "../app.js";
+import { makeRequest, navigateTo, getCurrentUser } from "../app.js";
 
 // Configuration for data source
 const CONFIG = {
@@ -12,17 +12,20 @@ const CONFIG = {
 };
 
 export default function renderDashboard() {
+  const currentUser = getCurrentUser();
+  const userName = currentUser?.name || "User";
+  
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="dashboard">
       <!-- Header Section -->
       <header class="dashboard-header">
-        <div class="profile-section">
+        <div class="profile-section" id="headerProfileBtn">
           <div class="profile-pic">
-            <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face" alt="Profile" />
+            <img src="${currentUser?.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face'}" alt="Profile" />
           </div>
           <div class="profile-info">
-            <h3>Welcome, KC</h3>
+            <h3>Welcome, ${userName}</h3>
             <span class="member-badge">Member</span>
           </div>
         </div>
@@ -75,9 +78,9 @@ export default function renderDashboard() {
 
       <!-- Bottom Navigation -->
       <nav class="bottom-nav">
-        <div class="nav-item active" data-nav="My Parties">
+        <div class="nav-item active" data-nav="Parties">
           <span class="nav-icon icon-party"></span>
-          <span>My Parties</span>
+          <span>Parties</span>
         </div>
         <div class="nav-item" data-nav="Home">
           <span class="nav-icon icon-home"></span>
@@ -115,6 +118,9 @@ function initializeDashboard() {
   
   // Setup bottom navigation
   setupBottomNavigation();
+  
+  // Setup header profile button
+  setupHeaderProfileButton();
 }
 
 // Data Service Layer
@@ -730,7 +736,6 @@ function setupBottomNavigation() {
       // Handle navigation por data attribute (más robusto y rápido)
       const target = item.dataset.nav;
       switch (target) {
-        case "My Parties":
         case "Parties":
           navigateTo("/dashboard");
           break;
@@ -738,11 +743,22 @@ function setupBottomNavigation() {
           navigateTo("/");
           break;
         case "Profile":
-          console.log("Profile clicked");
+          navigateTo("/profile");
           break;
       }
     });
   });
+}
+
+// Setup header profile button
+function setupHeaderProfileButton() {
+  const headerProfileBtn = document.getElementById('headerProfileBtn');
+  if (headerProfileBtn) {
+    headerProfileBtn.style.cursor = 'pointer';
+    headerProfileBtn.addEventListener('click', () => {
+      navigateTo("/profile");
+    });
+  }
 }
 
 // Build tags bar dynamically from known options and current data

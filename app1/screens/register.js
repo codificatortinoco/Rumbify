@@ -1,4 +1,4 @@
-import { navigateTo } from "../app.js";
+import { navigateTo, setLoggedInUser, makeRequest } from "../app.js";
 
 export default function renderRegister() {
   const app = document.getElementById("app");
@@ -19,6 +19,16 @@ export default function renderRegister() {
           <p class="register-subtitle">Access the most anticipated events.</p>
           
           <form class="form-container">
+            <div class="input-group">
+              <input 
+                type="text" 
+                id="name-input" 
+                class="form-input" 
+                placeholder="Enter Full Name"
+                required
+              />
+            </div>
+            
             <div class="input-group">
               <input 
                 type="email" 
@@ -84,6 +94,7 @@ export default function renderRegister() {
 
   function handleRegister(e) {
     e.preventDefault();
+    const name = document.getElementById('name-input').value;
     const email = document.getElementById('email-input').value;
     const password = document.getElementById('password-input').value;
     const repeatPassword = document.getElementById('repeat-password-input').value;
@@ -94,11 +105,38 @@ export default function renderRegister() {
       return;
     }
     
-    // TODO: Implement register logic
-    console.log('Register attempt:', { email, password });
+    // Validate required fields
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      alert('Please fill in all fields!');
+      return;
+    }
     
-    // For now, redirect to dashboard
-    navigateTo("/dashboard", { userType: "member", email });
+    // Show loading state
+    const submitBtn = document.querySelector('.register-btn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Creating Account...';
+    submitBtn.disabled = true;
+    
+    // Call backend API
+    makeRequest('/users', 'POST', { name, email, password })
+      .then(response => {
+        if (response.success) {
+          // Set logged in user and redirect to dashboard
+          setLoggedInUser(response.user);
+          navigateTo("/dashboard", { userType: "member", email });
+        } else {
+          alert(response.message || 'Registration failed. Please try again.');
+        }
+      })
+      .catch(error => {
+        console.error('Registration error:', error);
+        alert('Registration failed. Please check your connection and try again.');
+      })
+      .finally(() => {
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      });
   }
 
   function handleBackToLogin(e) {

@@ -1,6 +1,12 @@
-import { navigateTo } from "../app.js";
+import { navigateTo, isUserLoggedIn } from "../app.js";
 
 export default function renderWelcome() {
+  // Check if user is already logged in
+  if (isUserLoggedIn()) {
+    navigateTo("/dashboard");
+    return;
+  }
+  
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="welcome-screen">

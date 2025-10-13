@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS public.prices (
 -- Create users table (if not exists)
 CREATE TABLE IF NOT EXISTS public.users (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) UNIQUE NOT NULL,
     profile_image TEXT,
     member_since TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -76,6 +76,8 @@ CREATE INDEX IF NOT EXISTS idx_parties_liked ON public.parties(liked);
 CREATE INDEX IF NOT EXISTS idx_parties_created_at ON public.parties(created_at);
 CREATE INDEX IF NOT EXISTS idx_prices_party_id ON public.prices(party_id);
 CREATE INDEX IF NOT EXISTS idx_prices_name ON public.prices(price_name);
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+CREATE INDEX IF NOT EXISTS idx_users_name ON public.users(name);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.parties ENABLE ROW LEVEL SECURITY;

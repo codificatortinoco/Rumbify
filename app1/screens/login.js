@@ -1,4 +1,4 @@
-import { navigateTo } from "../app.js";
+import { navigateTo, setLoggedInUser, makeRequest } from "../app.js";
 
 export default function renderLogin(data = {}) {
   const app = document.getElementById("app");
@@ -83,11 +83,38 @@ export default function renderLogin(data = {}) {
     const email = document.getElementById('email-input').value;
     const password = document.getElementById('password-input').value;
     
-    // TODO: Implement login logic
-    console.log('Login attempt:', { email, password });
+    // Validate required fields
+    if (!email.trim() || !password.trim()) {
+      alert('Please fill in all fields!');
+      return;
+    }
     
-    // For members, redirect to regular dashboard
-    navigateTo("/dashboard", { userType: "member", email });
+    // Show loading state
+    const submitBtn = document.querySelector('.login-btn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Signing In...';
+    submitBtn.disabled = true;
+    
+    // Call backend API
+    makeRequest('/users/login', 'POST', { email, password })
+      .then(response => {
+        if (response.success) {
+          // Set logged in user and redirect to dashboard
+          setLoggedInUser(response.user);
+          navigateTo("/dashboard", { userType: "member", email });
+        } else {
+          alert(response.message || 'Login failed. Please check your credentials.');
+        }
+      })
+      .catch(error => {
+        console.error('Login error:', error);
+        alert('Login failed. Please check your connection and try again.');
+      })
+      .finally(() => {
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      });
   }
 
   function handleForgotPassword(e) {

@@ -4,7 +4,6 @@ const path = require("path");
 const { createServer } = require("http");
 
 const usersRouter = require("./server/routes/users.router");
-const screen1EventsRouter = require("./server/routes/screen1Events.router");
 const partiesRouter = require("./server/routes/parties.router");
 const adminRouter = require("./server/routes/admin.router");
 const { initSocketInstance } = require("./server/services/socket.service");
@@ -43,7 +42,6 @@ app.get("/app2/*", (req, res) => {
 
 // Routes
 app.use("/", usersRouter);
-app.use("/", screen1EventsRouter);
 app.use("/", partiesRouter);
 app.use("/", adminRouter);
 

@@ -6,6 +6,8 @@ import renderAdminDashboard from "./screens/adminDashboard.js";
 import renderCreateParty from "./screens/Create Party/createParty.js";
 import renderManageParty from "./screens/manageParty.js";
 import renderGuestsSummary from "./screens/guestsSummary.js";
+import renderProfile from "./screens/profile.js";
+import renderEditProfile from "./screens/editProfile.js";
 
 const socket = io("/", { path: "/real-time" });
 
@@ -77,6 +79,15 @@ function renderRoute(currentRoute) {
     case "/guests-summary":
       clearScripts();
       renderGuestsSummary(currentRoute?.data);
+      break;
+    case "/profile":
+      console.log('Rendering profile screen in app2');
+      clearScripts();
+      renderProfile(currentRoute?.data);
+      break;
+    case "/edit-profile":
+      clearScripts();
+      renderEditProfile(currentRoute?.data);
       break;
     default:
       // Redirect to app1 welcome screen for any unknown routes

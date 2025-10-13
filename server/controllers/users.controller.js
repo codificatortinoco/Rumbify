@@ -69,20 +69,19 @@ const createUser = async (req, res) => {
       }
     }
 
-    // Create new user
+    // Create new user (temporarily without password until database is updated)
     const newUser = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
-      password: password, // TODO: Hash this in production
+      // password: password, // TODO: Add this back after database migration
       profile_image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face", // Default image
       is_admin: userType === 'admin',
-      interests: [],
-      member_since: new Date().toISOString()
+      interests: []
     };
 
-    // Add phone field for admin users
+    // Add phone field for admin users (only if column exists)
     if (userType === 'admin' && phone) {
-      newUser.phone = phone.trim();
+      // newUser.phone = phone.trim(); // TODO: Add this back after database migration
     }
 
     const { data: createdUser, error: createError } = await supabaseCli
@@ -111,10 +110,10 @@ const createUser = async (req, res) => {
       interests: createdUser.interests || []
     };
 
-    // Include phone for admin users
-    if (userType === 'admin' && createdUser.phone) {
-      userResponse.phone = createdUser.phone;
-    }
+    // Include phone for admin users (after database migration)
+    // if (userType === 'admin' && createdUser.phone) {
+    //   userResponse.phone = createdUser.phone;
+    // }
 
     res.status(201).json({
       success: true,

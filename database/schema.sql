@@ -96,6 +96,10 @@ CREATE POLICY "Enable read access for all users" ON public.parties FOR SELECT US
 CREATE POLICY "Enable read access for all users" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON public.prices FOR SELECT USING (true);
 
+-- Create policies for user creation and updates
+CREATE POLICY "Enable insert for all users" ON public.users FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update for all users" ON public.users FOR UPDATE USING (true);
+
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

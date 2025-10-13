@@ -26,7 +26,12 @@ export default function renderAdminDashboard(data = {}) {
             <p class="admin-email">${email}</p>
             <p class="admin-phone">${phone}</p>
           </div>
-          <button class="admin-logout-btn" onclick="handleLogout()">Logout</button>
+          <div class="admin-header-actions">
+            <button class="admin-profile-btn" id="profileBtn">
+              <img src="assets/person.svg" alt="Profile" class="profile-icon" />
+            </button>
+            <button class="admin-logout-btn" onclick="handleLogout()">Logout</button>
+          </div>
         </div>
 
         <!-- Admin Dashboard Content -->
@@ -119,12 +124,27 @@ export default function renderAdminDashboard(data = {}) {
     console.log('Settings clicked');
     // TODO: Navigate to settings
   }
+  // Profile button event listener
+  const profileBtn = document.getElementById('profileBtn');
+  if (profileBtn) {
+    console.log('Profile button found, adding event listener');
+    profileBtn.addEventListener('click', () => {
+      console.log('Profile button clicked, navigating to /profile');
+      navigateTo('/profile');
+    });
+  } else {
+    console.error('Profile button not found!');
+  }
+  
   // Bottom nav event bindings
   const bottomNav = document.querySelector('.bottom-nav');
+  console.log('Bottom nav found:', bottomNav);
   const navItems = bottomNav ? Array.from(bottomNav.querySelectorAll('.nav-item')) : [];
+  console.log('Nav items found:', navItems.length);
   navItems.forEach((item) => {
     item.style.touchAction = 'manipulation';
     item.addEventListener('click', () => {
+      console.log('Bottom nav item clicked:', item.dataset.nav);
       navItems.forEach(i => i.classList.remove('active'));
       item.classList.add('active');
       const target = item.dataset.nav;
@@ -135,8 +155,9 @@ export default function renderAdminDashboard(data = {}) {
         // Create Party in app2
         navigateTo('/create-party');
       } else if (target === 'profile') {
-        // Admin Dashboard profile
-        navigateTo('/admin-dashboard');
+        // Navigate to profile screen
+        console.log('Bottom nav profile button clicked, navigating to /profile');
+        navigateTo('/profile');
       }
     });
   });

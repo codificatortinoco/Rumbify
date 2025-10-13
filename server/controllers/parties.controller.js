@@ -186,51 +186,71 @@ const getAllParties = async (req, res) => {
 
 const searchParties = async (req, res) => {
   try {
-    const { q } = req.query;
-    
-    if (!q) {
-      return res.json([]);
+    const { q = "", tags = "", category = "" } = req.query || {};
+
+    // Normalize filters
+    const tagList = String(tags)
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    // Try DB first
+    let queryBuilder = supabaseCli.from("parties").select("*");
+
+    if (q) {
+      queryBuilder = queryBuilder.or(
+        `title.ilike.%${q}%,administrator.ilike.%${q}%,location.ilike.%${q}%`
+      );
+    }
+    if (category) {
+      queryBuilder = queryBuilder.eq("category", category);
+    }
+    if (tagList.length) {
+      // tags is an array column in DB; use contains operator
+      queryBuilder = queryBuilder.contains("tags", tagList);
     }
 
-    // Try to get from database first
-    const { data, error } = await supabaseCli
-      .from("parties")
-      .select("*")
-      .or(`title.ilike.%${q}%,administrator.ilike.%${q}%,location.ilike.%${q}%`)
-      .order("created_at", { ascending: false });
+    queryBuilder = queryBuilder.order("created_at", { ascending: false });
+
+    const { data, error } = await queryBuilder;
 
     if (error) {
       console.error("Database error:", error);
-      // Fallback to mock data search
-      const filteredParties = mockParties.filter(party => 
-        party.title.toLowerCase().includes(q.toLowerCase()) ||
-        party.administrator.toLowerCase().includes(q.toLowerCase()) ||
-        party.location.toLowerCase().includes(q.toLowerCase())
-      );
-      return res.json(filteredParties);
-    }
-
-    if (data && data.length > 0) {
+    } else if (data && data.length > 0) {
       return res.json(data);
     }
 
-    // If no data in database, search mock data
-    const filteredParties = mockParties.filter(party => 
-      party.title.toLowerCase().includes(q.toLowerCase()) ||
-      party.administrator.toLowerCase().includes(q.toLowerCase()) ||
-      party.location.toLowerCase().includes(q.toLowerCase())
-    );
-    res.json(filteredParties);
+    // Fallback to mock search
+    const qLower = String(q).toLowerCase();
+    const filteredParties = mockParties.filter((party) => {
+      const matchesText = !qLower ||
+        party.title.toLowerCase().includes(qLower) ||
+        party.administrator.toLowerCase().includes(qLower) ||
+        party.location.toLowerCase().includes(qLower);
+      const matchesCategory = !category || party.category === category;
+      const matchesTags = !tagList.length || tagList.every((t) => party.tags?.includes(t));
+      return matchesText && matchesCategory && matchesTags;
+    });
+    return res.json(filteredParties);
   } catch (error) {
     console.error("Error searching parties:", error);
-    // Fallback to mock data search
-    const { q } = req.query;
-    const filteredParties = mockParties.filter(party => 
-      party.title.toLowerCase().includes(q.toLowerCase()) ||
-      party.administrator.toLowerCase().includes(q.toLowerCase()) ||
-      party.location.toLowerCase().includes(q.toLowerCase())
-    );
-    res.json(filteredParties);
+    // Safe fallback: return mock filtered by any provided query
+    const { q = "", tags = "", category = "" } = req.query || {};
+    const tagList = String(tags)
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    const qLower = String(q).toLowerCase();
+    const filteredParties = mockParties.filter((party) => {
+      const matchesText = !qLower ||
+        party.title.toLowerCase().includes(qLower) ||
+        party.administrator.toLowerCase().includes(qLower) ||
+        party.location.toLowerCase().includes(qLower);
+      const matchesCategory = !category || party.category === category;
+      const matchesTags = !tagList.length || tagList.every((t) => party.tags?.includes(t));
+      return matchesText && matchesCategory && matchesTags;
+    });
+    return res.json(filteredParties);
   }
 };
 

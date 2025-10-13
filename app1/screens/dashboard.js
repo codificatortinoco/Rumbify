@@ -37,6 +37,18 @@ export default function renderDashboard() {
           <span class="search-icon">Buscar</span>
           <input type="text" placeholder="Search Party..." id="searchInput" />
         </div>
+
+        <!-- Categories Row -->
+        <div class="filter-bar" id="categoryBar">
+          <button class="filter-pill active" data-category="">All</button>
+          <button class="filter-pill" data-category="hot-topic">Hot Topic</button>
+          <button class="filter-pill" data-category="upcoming">Upcoming</button>
+        </div>
+
+        <!-- Tags Row -->
+        <div class="filter-bar tags" id="tagsBar">
+          <!-- Tag pills will be injected dynamically on load -->
+        </div>
       </div>
 
       <!-- Hot Topic Section -->
@@ -89,6 +101,8 @@ function initializeDashboard() {
   
   // Setup search functionality
   setupSearch();
+  // Setup filters UI (categories + tags)
+  setupFilters();
   
   // Setup carousel functionality
   setupCarousel();
@@ -144,6 +158,21 @@ class PartyDataService {
   }
 
   static async searchParties(query) {
+    // Overloaded: can receive object or string
+    if (typeof query === "object") {
+      const { q = "", tags = [], category = "" } = query || {};
+      try {
+        const params = new URLSearchParams();
+        if (q) params.set("q", q);
+        if (Array.isArray(tags) && tags.length) params.set("tags", tags.join(","));
+        if (category) params.set("category", category);
+        const response = await makeRequest(`${CONFIG.API_ENDPOINTS.SEARCH}?${params.toString()}`, "GET");
+        return response;
+      } catch (error) {
+        console.error("Error searching parties with filters:", error);
+        throw error;
+      }
+    }
     if (CONFIG.USE_MOCK_DATA) {
       return this.searchMockParties(query);
     }
@@ -250,10 +279,23 @@ class PartyDataService {
 
   static searchMockParties(query) {
     const allParties = [...this.getMockHotTopicParties(), ...this.getMockUpcomingParties()];
+    // Support string or object
+    if (typeof query === "object") {
+      const { q = "", tags = [], category = "" } = query || {};
+      return allParties.filter(party => {
+        const matchesText = !q || party.title.toLowerCase().includes(q.toLowerCase()) ||
+          party.administrator.toLowerCase().includes(q.toLowerCase()) ||
+          party.location.toLowerCase().includes(q.toLowerCase());
+        const matchesCategory = !category || party.category === category;
+        const matchesTags = !tags?.length || tags.every(t => party.tags?.includes(t));
+        return matchesText && matchesCategory && matchesTags;
+      });
+    }
+    const q = String(query || "");
     return allParties.filter(party => 
-      party.title.toLowerCase().includes(query.toLowerCase()) ||
-      party.administrator.toLowerCase().includes(query.toLowerCase()) ||
-      party.location.toLowerCase().includes(query.toLowerCase())
+      party.title.toLowerCase().includes(q.toLowerCase()) ||
+      party.administrator.toLowerCase().includes(q.toLowerCase()) ||
+      party.location.toLowerCase().includes(q.toLowerCase())
     );
   }
 
@@ -490,6 +532,9 @@ function createUpcomingCard(event) {
 
 function setupSearch() {
   const searchInput = document.getElementById("searchInput");
+  const categoryBar = document.getElementById("categoryBar");
+  let selectedCategory = "";
+  let selectedTags = [];
   let searchTimeout;
   
   searchInput.addEventListener("input", async (e) => {
@@ -498,7 +543,7 @@ function setupSearch() {
     // Clear previous timeout
     clearTimeout(searchTimeout);
     
-    if (searchTerm.length === 0) {
+    if (searchTerm.length === 0 && !selectedCategory && selectedTags.length === 0) {
       // If search is empty, reload all data
       loadPartyData();
       return;
@@ -507,15 +552,51 @@ function setupSearch() {
     // Debounce search to avoid too many API calls
     searchTimeout = setTimeout(async () => {
       try {
-        const searchResults = await PartyDataService.searchParties(searchTerm);
+        const searchResults = await PartyDataService.searchParties({ q: searchTerm, tags: selectedTags, category: selectedCategory });
         displaySearchResults(searchResults);
       } catch (error) {
         console.error("Search error:", error);
         // Fallback to client-side filtering
-        filterEventsLocally(searchTerm);
+        filterEventsLocally(searchTerm, selectedTags, selectedCategory);
       }
     }, 300);
   });
+
+  // Category click handling
+  categoryBar.addEventListener("click", (e) => {
+    const pill = e.target.closest(".filter-pill");
+    if (!pill) return;
+    // Toggle active state: single-select
+    categoryBar.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
+    pill.classList.add('active');
+    selectedCategory = pill.dataset.category || "";
+
+    triggerSearch();
+  });
+
+  // Expose to tags setup
+  setupSearch._setSelectedTags = (tags) => {
+    selectedTags = tags;
+    triggerSearch();
+  };
+
+  function triggerSearch() {
+    const q = searchInput.value.trim();
+    if (!q && !selectedCategory && selectedTags.length === 0) {
+      loadPartyData();
+      return;
+    }
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+      try {
+        const results = await PartyDataService.searchParties({ q, tags: selectedTags, category: selectedCategory });
+        displaySearchResults(results);
+      } catch (err) {
+        console.error('Search with filters failed:', err);
+        filterEventsLocally(q, selectedTags, selectedCategory);
+      }
+    }, 150);
+  }
 }
 
 function displaySearchResults(results) {
@@ -528,15 +609,19 @@ function displaySearchResults(results) {
   renderUpcomingEvents(upcomingResults);
 }
 
-function filterEventsLocally(searchTerm) {
+function filterEventsLocally(searchTerm, tags = [], category = "") {
   // Fallback client-side filtering
   const hotTopicCards = document.querySelectorAll(".hot-topic-card");
   hotTopicCards.forEach(card => {
     const title = card.querySelector(".event-title").textContent.toLowerCase();
     const location = card.querySelector(".detail-item span").textContent.toLowerCase();
     const administrator = card.querySelectorAll(".detail-item span")[2].textContent.toLowerCase();
+    const tagTexts = Array.from(card.querySelectorAll('.tag')).map(t => t.textContent.trim());
     
-    const matches = title.includes(searchTerm) || location.includes(searchTerm) || administrator.includes(searchTerm);
+    const matchesText = !searchTerm || title.includes(searchTerm) || location.includes(searchTerm) || administrator.includes(searchTerm);
+    const matchesTags = !tags?.length || tags.every(t => tagTexts.includes(t));
+    const matchesCategory = !category || card.closest('.hot-topic-card'); // hot-topic section
+    const matches = matchesText && matchesTags && (!category || category === 'hot-topic');
     card.style.display = matches ? "block" : "none";
   });
 
@@ -545,8 +630,11 @@ function filterEventsLocally(searchTerm) {
     const title = card.querySelector(".event-title").textContent.toLowerCase();
     const location = card.querySelector(".detail-item span").textContent.toLowerCase();
     const administrator = card.querySelectorAll(".detail-item span")[2].textContent.toLowerCase();
+    const tagTexts = Array.from(card.querySelectorAll('.tag')).map(t => t.textContent.trim());
     
-    const matches = title.includes(searchTerm) || location.includes(searchTerm) || administrator.includes(searchTerm);
+    const matchesText = !searchTerm || title.includes(searchTerm) || location.includes(searchTerm) || administrator.includes(searchTerm);
+    const matchesTags = !tags?.length || tags.every(t => tagTexts.includes(t));
+    const matches = matchesText && matchesTags && (!category || category === 'upcoming');
     card.style.display = matches ? "block" : "none";
   });
 }
@@ -654,5 +742,34 @@ function setupBottomNavigation() {
           break;
       }
     });
+  });
+}
+
+// Build tags bar dynamically from known options and current data
+function setupFilters() {
+  const tagsBar = document.getElementById('tagsBar');
+  // Popular tags (can be extended). Mirrors admin create options partially.
+  const DEFAULT_TAGS = [
+    "Disco Music", "Elegant", "Cocktailing", "Electronic", "Neon", "Summer", "Outdoor", "House", "Techno"
+  ];
+  tagsBar.innerHTML = DEFAULT_TAGS.map(t => `<button class="filter-pill" data-tag="${t}">${t}</button>`).join("");
+
+  const activeTags = new Set();
+
+  tagsBar.addEventListener('click', (e) => {
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
+    const tag = pill.dataset.tag;
+    if (pill.classList.contains('active')) {
+      pill.classList.remove('active');
+      activeTags.delete(tag);
+    } else {
+      pill.classList.add('active');
+      activeTags.add(tag);
+    }
+    // Inform search module
+    if (typeof setupSearch._setSelectedTags === 'function') {
+      setupSearch._setSelectedTags(Array.from(activeTags));
+    }
   });
 }

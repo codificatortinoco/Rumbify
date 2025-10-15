@@ -5,6 +5,7 @@ import renderDashboard from "./screens/dashboard.js";
 import renderEventDetails from "./screens/eventDetails.js";
 import renderProfile from "./screens/profile.js";
 import renderEditProfile from "./screens/editProfile.js";
+import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.js";
 
 const socket = io("/", { path: "/real-time" });
 
@@ -17,6 +18,13 @@ function getInitialRoute() {
   const path = window.location.pathname;
   // Remove /app1 prefix if present
   const cleanPath = path.replace('/app1', '') || '/welcome';
+  
+  // Si el usuario es admin, redirigir a app2
+  if (authManager.isUserAdmin()) {
+    console.log('Admin detected in app1, redirecting to app2');
+    window.location.href = '/app2/admin-dashboard';
+    return { path: '/welcome', data: {} };
+  }
   
   // Check if user is logged in for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -32,6 +40,18 @@ function getInitialRoute() {
 let route = getInitialRoute();
 
 function renderRoute(currentRoute) {
+  // Verificación adicional: si el usuario es admin, redirigir a app2
+  if (authManager.isUserAdmin()) {
+    console.log('Admin detected in app1, redirecting to app2');
+    window.location.href = '/app2/admin-dashboard';
+    return;
+  }
+  
+  if (!checkRouteAccess(currentRoute?.path)) {
+    handleUnauthorizedAccess(currentRoute?.path);
+    return;
+  }
+
   switch (currentRoute?.path) {
     case "/welcome":
       clearScripts();

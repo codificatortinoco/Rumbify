@@ -8,13 +8,14 @@ const {
   getUserProfile,
   loginUser
 } = require("../controllers/users.controller");
+const { requireMember } = require("../middleware/auth.middleware");
 const router = express.Router();
 
 router.get("/users", getUsers);
 
 router.post("/users", createUser);
 
-router.post("/users/login", loginUser);
+router.post("/users/login", requireMember, loginUser);
 
 router.patch("/users/:id", updateUser);
 

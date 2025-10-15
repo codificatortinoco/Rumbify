@@ -1,12 +1,24 @@
 import { navigateTo } from "../app.js";
+import { authManager } from "../auth.js";
 
 export default function renderAdminDashboard(data = {}) {
-  // Get admin user data from localStorage or passed data
-  let adminUser = data.user;
-  if (!adminUser) {
-    const storedUser = localStorage.getItem('adminUser');
-    adminUser = storedUser ? JSON.parse(storedUser) : null;
+  if (!authManager.isUserAdmin()) {
+    if (authManager.isUserMember()) {
+      window.location.href = '/app2/screen1';
+    } else {
+      window.location.href = '/app2/admin-login';
+    }
+    return;
   }
+
+  // Protección adicional: asegurar que el admin nunca pueda acceder a app1
+  if (window.location.href.includes('/app1')) {
+    console.log('Admin detected on app1, redirecting to admin-dashboard');
+    window.location.href = '/app2/admin-dashboard';
+    return;
+  }
+
+  let adminUser = data.user || authManager.getCurrentUser();
   
   const email = adminUser?.email || 'admin@rumbify.com';
   const name = adminUser?.name || 'Administrator';
@@ -98,65 +110,47 @@ export default function renderAdminDashboard(data = {}) {
   window.handleSettings = handleSettings;
 
   function handleLogout() {
-    console.log('Admin logout');
-    // Clear admin data from localStorage
-    localStorage.removeItem('adminUser');
+    authManager.clearAuth();
     navigateTo("/admin-login");
   }
 
   function handleManageEvents() {
-    console.log('Manage Events clicked');
     const selectedPartyId = localStorage.getItem('selectedPartyId');
     navigateTo("/manage-party", { partyId: selectedPartyId || null });
   }
 
   function handleManageUsers() {
     console.log('Manage Users clicked');
-    // TODO: Navigate to users management
   }
 
   function handleAnalytics() {
     console.log('Analytics clicked');
-    // TODO: Navigate to analytics
   }
 
   function handleSettings() {
     console.log('Settings clicked');
-    // TODO: Navigate to settings
   }
-  // Profile button event listener
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) {
-    console.log('Profile button found, adding event listener');
     profileBtn.addEventListener('click', () => {
-      console.log('Profile button clicked, navigating to /profile');
       navigateTo('/profile');
     });
-  } else {
-    console.error('Profile button not found!');
   }
   
-  // Bottom nav event bindings
   const bottomNav = document.querySelector('.bottom-nav');
-  console.log('Bottom nav found:', bottomNav);
   const navItems = bottomNav ? Array.from(bottomNav.querySelectorAll('.nav-item')) : [];
-  console.log('Nav items found:', navItems.length);
+  
   navItems.forEach((item) => {
     item.style.touchAction = 'manipulation';
     item.addEventListener('click', () => {
-      console.log('Bottom nav item clicked:', item.dataset.nav);
       navItems.forEach(i => i.classList.remove('active'));
       item.classList.add('active');
       const target = item.dataset.nav;
       if (target === 'parties') {
-        // Stay in Admin Dashboard (app2)
         navigateTo('/admin-dashboard');
       } else if (target === 'new') {
-        // Create Party in app2
         navigateTo('/create-party');
       } else if (target === 'profile') {
-        // Navigate to profile screen
-        console.log('Bottom nav profile button clicked, navigating to /profile');
         navigateTo('/profile');
       }
     });

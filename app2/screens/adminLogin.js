@@ -1,6 +1,16 @@
 import { navigateTo, makeRequest } from "../app.js";
+import { authManager } from "../auth.js";
 
 export default function renderAdminLogin(data = {}) {
+  if (authManager.isAuthenticated()) {
+    if (authManager.isUserAdmin()) {
+      window.location.href = '/app2/admin-dashboard';
+    } else if (authManager.isUserMember()) {
+      window.location.href = '/app1/dashboard';
+    }
+    return;
+  }
+
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="admin-login-screen">
@@ -96,13 +106,7 @@ export default function renderAdminLogin(data = {}) {
       });
       
       if (response.success) {
-        console.log('Admin login successful:', response.user);
-        
-        // Store admin data in localStorage
-        localStorage.setItem('adminUser', JSON.stringify(response.user));
-        
-        // Redirect to admin dashboard
-        console.log('Login successful, navigating to admin-dashboard');
+        authManager.setAdminUser(response.user);
         navigateTo("/admin-dashboard", { 
           userType: "admin", 
           user: response.user 
@@ -114,7 +118,6 @@ export default function renderAdminLogin(data = {}) {
       console.error('Admin login error:', error);
       alert('Login failed. Please try again.');
     } finally {
-      // Restore button state
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
     }
@@ -122,19 +125,16 @@ export default function renderAdminLogin(data = {}) {
 
   function handleForgotPassword(e) {
     e.preventDefault();
-    // TODO: Implement admin forgot password logic
     console.log('Admin forgot password clicked');
   }
 
   function handleRegister(e) {
     e.preventDefault();
-    console.log('Register button clicked, navigating to admin-register');
     navigateTo("/admin-register");
   }
 
   function handleBackToWelcome(e) {
     e.preventDefault();
-    // Navigate back to main app (app1) welcome screen
     window.location.href = '/app1/welcome';
   }
 }

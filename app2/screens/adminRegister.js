@@ -1,6 +1,16 @@
 import { navigateTo, makeRequest } from "../app.js";
+import { authManager } from "../auth.js";
 
 export default function renderAdminRegister(data = {}) {
+  if (authManager.isAuthenticated()) {
+    if (authManager.isUserAdmin()) {
+      window.location.href = '/app2/admin-dashboard';
+    } else if (authManager.isUserMember()) {
+      window.location.href = '/app1/dashboard';
+    }
+    return;
+  }
+
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="admin-register-screen">

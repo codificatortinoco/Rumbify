@@ -8,6 +8,7 @@ import renderManageParty from "./screens/manageParty.js";
 import renderGuestsSummary from "./screens/guestsSummary.js";
 import renderProfile from "./screens/profile.js";
 import renderEditProfile from "./screens/editProfile.js";
+import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.js";
 
 const socket = io("/", { path: "/real-time" });
 
@@ -15,10 +16,8 @@ function clearScripts() {
   document.getElementById("app").innerHTML = "";
 }
 
-// Initialize route based on current URL path
 function getInitialRoute() {
   const path = window.location.pathname;
-  // Remove /app2 prefix if present
   const cleanPath = path.replace('/app2', '') || '/admin-login';
   return { path: cleanPath, data: {} };
 }
@@ -26,7 +25,6 @@ function getInitialRoute() {
 let route = getInitialRoute();
 renderRoute(route);
 
-// Handle browser back/forward navigation
 window.addEventListener('popstate', (event) => {
   if (event.state) {
     route = event.state;
@@ -38,15 +36,31 @@ window.addEventListener('popstate', (event) => {
 });
 
 function renderRoute(currentRoute) {
-  console.log('renderRoute called with:', currentRoute);
+  // Verificación adicional: si el usuario es admin, nunca permitir acceso a app1
+  if (authManager.isUserAdmin() && window.location.href.includes('/app1')) {
+    console.log('Admin detected on app1, redirecting to admin-dashboard');
+    window.location.href = '/app2/admin-dashboard';
+    return;
+  }
+  
+  if (!checkRouteAccess(currentRoute?.path)) {
+    handleUnauthorizedAccess(currentRoute?.path);
+    return;
+  }
+
   switch (currentRoute?.path) {
     case "/welcome":
-      // Redirect to app1 welcome screen
-      window.location.href = '/app1/welcome';
-      break;
     case "/":
-      // Redirect to app1 welcome screen
-      window.location.href = '/app1/welcome';
+      // Si hay usuario autenticado, redirigir según su tipo
+      if (authManager.isAuthenticated()) {
+        if (authManager.isUserAdmin()) {
+          window.location.href = '/app2/admin-dashboard';
+        } else if (authManager.isUserMember()) {
+          window.location.href = '/app1/dashboard';
+        }
+      } else {
+        window.location.href = '/app1/welcome';
+      }
       break;
     case "/admin-login":
       clearScripts();
@@ -81,7 +95,6 @@ function renderRoute(currentRoute) {
       renderGuestsSummary(currentRoute?.data);
       break;
     case "/profile":
-      console.log('Rendering profile screen in app2');
       clearScripts();
       renderProfile(currentRoute?.data);
       break;
@@ -90,19 +103,27 @@ function renderRoute(currentRoute) {
       renderEditProfile(currentRoute?.data);
       break;
     default:
-      // Redirect to app1 welcome screen for any unknown routes
-      window.location.href = '/app1/welcome';
+      // Verificar si el usuario es admin antes de redirigir a app1
+      if (authManager.isUserAdmin()) {
+        window.location.href = '/app2/admin-dashboard';
+      } else {
+        window.location.href = '/app1/welcome';
+      }
   }
 }
 
 function navigateTo(path, data) {
-  console.log('navigateTo called with:', { path, data });
+  // Verificar si el usuario es admin y está intentando navegar a app1
+  if (authManager.isUserAdmin() && (path.includes('/app1') || path.includes('app1'))) {
+    console.log('Admin attempting to access app1, redirecting to admin-dashboard');
+    window.location.href = '/app2/admin-dashboard';
+    return;
+  }
+  
   route = { path, data };
   renderRoute(route);
   
-  // Update browser URL without page reload
   const newUrl = `/app2${path}`;
-  console.log('Updating URL to:', newUrl);
   window.history.pushState({ path, data }, '', newUrl);
 }
 

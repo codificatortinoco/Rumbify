@@ -2,6 +2,7 @@ import renderWelcome from "./screens/welcome.js";
 import renderLogin from "./screens/login.js";
 import renderRegister from "./screens/register.js";
 import renderDashboard from "./screens/dashboard.js";
+import renderMemberDashboard from "./screens/memberDashboard.js";
 import renderEventDetails from "./screens/eventDetails.js";
 import renderProfile from "./screens/profile.js";
 import renderEditProfile from "./screens/editProfile.js";
@@ -28,7 +29,7 @@ function getInitialRoute() {
   
   // Check if user is logged in for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/parties', '/profile', '/edit-profile', '/event-details'];
+  const protectedRoutes = ['/dashboard', '/parties', '/home', '/profile', '/edit-profile', '/event-details'];
   
   if (protectedRoutes.includes(cleanPath) && !isLoggedIn) {
     return { path: '/welcome', data: {} };
@@ -77,6 +78,10 @@ function renderRoute(currentRoute) {
       clearScripts();
       renderDashboard(currentRoute?.data);
       break;
+    case "/home":
+      clearScripts();
+      renderMemberDashboard(currentRoute?.data);
+      break;
     case "/event-details":
       clearScripts();
       renderEventDetails(currentRoute?.data);
@@ -112,7 +117,7 @@ window.addEventListener('popstate', (event) => {
 function navigateTo(path, data) {
   // Check authentication for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/parties', '/profile', '/edit-profile', '/event-details'];
+  const protectedRoutes = ['/dashboard', '/parties', '/home', '/profile', '/edit-profile', '/event-details'];
   
   if (protectedRoutes.includes(path) && !isLoggedIn) {
     console.log('Access denied: User not logged in');

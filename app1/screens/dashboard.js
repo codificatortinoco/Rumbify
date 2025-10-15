@@ -740,7 +740,7 @@ function setupBottomNavigation() {
           navigateTo("/parties");
           break;
         case "Home":
-          navigateTo("/");
+          navigateTo("/home");
           break;
         case "Profile":
           navigateTo("/profile");

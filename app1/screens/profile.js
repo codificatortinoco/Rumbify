@@ -405,7 +405,7 @@ function setupBottomNavigation() {
           break;
         case "home":
         case "Home":
-          navigateTo("/parties");
+          navigateTo("/home");
           break;
         case "profile":
         case "Profile":

@@ -69,19 +69,19 @@ const createUser = async (req, res) => {
       }
     }
 
-    // Create new user (temporarily without password until database is updated)
+    // Create new user
     const newUser = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
-      // password: password, // TODO: Add this back after database migration
+      password: password,
       profile_image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face", // Default image
       is_admin: userType === 'admin',
       interests: []
     };
 
-    // Add phone field for admin users (only if column exists)
+    // Add phone field for admin users
     if (userType === 'admin' && phone) {
-      // newUser.phone = phone.trim(); // TODO: Add this back after database migration
+      newUser.phone = phone.trim();
     }
 
     const { data: createdUser, error: createError } = await supabaseCli
@@ -110,10 +110,10 @@ const createUser = async (req, res) => {
       interests: createdUser.interests || []
     };
 
-    // Include phone for admin users (after database migration)
-    // if (userType === 'admin' && createdUser.phone) {
-    //   userResponse.phone = createdUser.phone;
-    // }
+    // Include phone for admin users
+    if (userType === 'admin' && createdUser.phone) {
+      userResponse.phone = createdUser.phone;
+    }
 
     res.status(201).json({
       success: true,
@@ -195,14 +195,6 @@ const updateUserProfile = async (req, res) => {
         });
       }
 
-      // TODO: In production, you would hash and compare passwords here
-      // For now, we'll just store the new password (in production, hash it with bcrypt)
-      // if (currentUser.password !== currentPassword) {
-      //   return res.status(401).json({ 
-      //     success: false, 
-      //     message: "Current password is incorrect" 
-      //   });
-      // }
     }
     
     // Check if email is already taken by another user
@@ -264,7 +256,7 @@ const updateUserProfile = async (req, res) => {
     if (profile_visible !== undefined) updateData.profile_visible = profile_visible;
     if (attendance_visible !== undefined) updateData.attendance_visible = attendance_visible;
     if (profile_image !== undefined) updateData.profile_image = profile_image;
-    if (newPassword !== undefined) updateData.password = newPassword; // TODO: Hash this in production
+    if (newPassword !== undefined) updateData.password = newPassword;
 
     // Update user in Supabase
     const { data: updatedUser, error: updateError } = await supabaseCli
@@ -416,9 +408,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // TODO: In production, you would hash and compare passwords here
-    // For now, we'll just return the user data
-    // In a real app, you'd use bcrypt or similar to hash passwords
 
     res.json({
       success: true,

@@ -401,11 +401,11 @@ function setupBottomNavigation() {
       switch (target) {
         case "parties":
         case "My Parties":
-          navigateTo("/dashboard");
+          navigateTo("/parties");
           break;
         case "home":
         case "Home":
-          navigateTo("/dashboard");
+          navigateTo("/parties");
           break;
         case "profile":
         case "Profile":

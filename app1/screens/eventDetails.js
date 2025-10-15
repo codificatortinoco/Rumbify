@@ -230,7 +230,7 @@ function setupBottomNavigation() {
       const text = item.querySelector("span").textContent;
       switch (text) {
         case "Parties":
-          navigateTo("/dashboard");
+          navigateTo("/parties");
           break;
         case "New Party":
           window.location.assign("/app2/create-party");

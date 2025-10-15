@@ -28,7 +28,7 @@ function getInitialRoute() {
   
   // Check if user is logged in for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/profile', '/edit-profile', '/event-details'];
+  const protectedRoutes = ['/dashboard', '/parties', '/profile', '/edit-profile', '/event-details'];
   
   if (protectedRoutes.includes(cleanPath) && !isLoggedIn) {
     return { path: '/welcome', data: {} };
@@ -73,6 +73,10 @@ function renderRoute(currentRoute) {
       clearScripts();
       renderDashboard(currentRoute?.data);
       break;
+    case "/parties":
+      clearScripts();
+      renderDashboard(currentRoute?.data);
+      break;
     case "/event-details":
       clearScripts();
       renderEventDetails(currentRoute?.data);
@@ -108,7 +112,7 @@ window.addEventListener('popstate', (event) => {
 function navigateTo(path, data) {
   // Check authentication for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/profile', '/edit-profile', '/event-details'];
+  const protectedRoutes = ['/dashboard', '/parties', '/profile', '/edit-profile', '/event-details'];
   
   if (protectedRoutes.includes(path) && !isLoggedIn) {
     console.log('Access denied: User not logged in');

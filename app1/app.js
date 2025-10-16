@@ -1,8 +1,8 @@
 import renderWelcome from "./screens/welcome.js";
 import renderLogin from "./screens/login.js";
 import renderRegister from "./screens/register.js";
-import renderDashboard from "./screens/dashboard.js";
-import renderMemberDashboard from "./screens/memberDashboard.js";
+import renderDashboard, { cleanupDashboard } from "./screens/dashboard.js";
+import renderMemberDashboard, { cleanupMemberDashboard } from "./screens/memberDashboard.js";
 import renderEventDetails from "./screens/eventDetails.js";
 import renderProfile from "./screens/profile.js";
 import renderEditProfile from "./screens/editProfile.js";
@@ -11,6 +11,9 @@ import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.
 const socket = io("/", { path: "/real-time" });
 
 function clearScripts() {
+  cleanupDashboard();
+  cleanupMemberDashboard();
+  
   document.getElementById("app").innerHTML = "";
 }
 

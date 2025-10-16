@@ -11,9 +11,21 @@ const CONFIG = {
   }
 };
 
+let dashboardController = {
+  isActive: false,
+  abortController: null,
+  isLoading: false
+};
+
 export default function renderDashboard() {
   const currentUser = getCurrentUser();
   const userName = currentUser?.name || "User";
+  
+  dashboardController.isActive = true;
+  if (dashboardController.abortController) {
+    dashboardController.abortController.abort();
+  }
+  dashboardController.abortController = new AbortController();
   
   const app = document.getElementById("app");
   app.innerHTML = `
@@ -94,7 +106,6 @@ export default function renderDashboard() {
     </div>
   `;
 
-  // Initialize dashboard functionality
   initializeDashboard();
 }
 
@@ -102,24 +113,17 @@ function initializeDashboard() {
   // Load party data
   loadPartyData();
   
-  // Setup search functionality
   setupSearch();
-  // Setup filters UI (categories + tags)
   setupFilters();
   
-  // Setup carousel functionality
   setupCarousel();
   
-  // Setup like functionality
   setupLikeButtons();
   
-  // Setup event details navigation
   setupEventDetailsNavigation();
   
-  // Setup bottom navigation
   setupBottomNavigation();
   
-  // Setup header profile button
   setupHeaderProfileButton();
 }
 
@@ -383,23 +387,52 @@ class PartyDataService {
 }
 
 async function loadPartyData() {
+  if (!dashboardController.isActive || dashboardController.isLoading) {
+    console.log("Dashboard no longer active or already loading, skipping data load");
+    return;
+  }
+
+  dashboardController.isLoading = true;
+  showLoadingState();
+
   try {
-    // Load hot topic events
     const hotTopicEvents = await PartyDataService.getHotTopicParties();
+    
+    if (!dashboardController.isActive) {
+      console.log("Dashboard no longer active, skipping hot topic render");
+      return;
+    }
     renderHotTopicEvents(hotTopicEvents);
     
-    // Load upcoming events
     const upcomingEvents = await PartyDataService.getUpcomingParties();
+    
+    if (!dashboardController.isActive) {
+      console.log("Dashboard no longer active, skipping upcoming render");
+      return;
+    }
     renderUpcomingEvents(upcomingEvents);
+    
+    hideLoadingState();
   } catch (error) {
     console.error("Error loading party data:", error);
-    // Show error message instead of mock data
-    showDatabaseError(error.message);
+    
+    if (dashboardController.isActive) {
+      hideLoadingState();
+      showDatabaseError(error.message);
+    }
+  } finally {
+    dashboardController.isLoading = false;
   }
 }
 
 function showDatabaseError(message) {
+  if (!dashboardController.isActive) {
+    return;
+  }
+
   const app = document.getElementById("app");
+  if (!app) return;
+
   app.innerHTML = `
     <div id="error-container" style="
       display: flex;
@@ -422,31 +455,70 @@ function showDatabaseError(message) {
       ">
         <h2 style="margin: 0 0 15px 0; font-size: 24px; color: #e74c3c;">Error de Conexión</h2>
         <p style="margin: 0 0 20px 0; line-height: 1.5; color: #666;">
-          No se pudo conectar con la base de datos.
+          ${message || 'No se pudo conectar con la base de datos.'}
         </p>
         <p style="margin: 0 0 20px 0; font-size: 14px; color: #999;">
-          Verifica que Supabase esté configurado correctamente.
+          Verifica tu conexión a internet y que el servidor esté funcionando correctamente.
         </p>
-        <button onclick="location.reload()" style="
-          background: #3498db;
-          border: none;
-          color: white;
-          padding: 12px 24px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 16px;
-        ">
-          Reintentar
-        </button>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button onclick="retryConnection()" style="
+            background: #3498db;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+          ">
+            Reintentar
+          </button>
+          <button onclick="navigateTo('/home')" style="
+            background: #95a5a6;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+          ">
+            Ir a Inicio
+          </button>
+        </div>
       </div>
     </div>
   `;
 }
 
+window.retryConnection = function() {
+  if (dashboardController.isActive) {
+    loadPartyData();
+  }
+};
+
+function showLoadingState() {
+  const hotTopicCarousel = document.getElementById("hotTopicCarousel");
+  const upcomingEvents = document.getElementById("upcomingEvents");
+  
+  if (hotTopicCarousel) {
+    hotTopicCarousel.innerHTML = '<div class="loading-spinner">Cargando eventos...</div>';
+  }
+  
+  if (upcomingEvents) {
+    upcomingEvents.innerHTML = '<div class="loading-spinner">Cargando eventos próximos...</div>';
+  }
+}
+
+function hideLoadingState() {
+}
 
 function renderHotTopicEvents(events) {
   const carousel = document.getElementById("hotTopicCarousel");
   const dots = document.getElementById("hotTopicDots");
+  
+  if (!carousel || !dots) {
+    console.warn("Hot topic elements not found, skipping render");
+    return;
+  }
   
   if (!events || !Array.isArray(events)) {
     carousel.innerHTML = "";
@@ -462,6 +534,11 @@ function renderHotTopicEvents(events) {
 
 function renderUpcomingEvents(events) {
   const container = document.getElementById("upcomingEvents");
+  
+  if (!container) {
+    console.warn("Element 'upcomingEvents' not found, skipping render");
+    return;
+  }
   
   if (!events || !Array.isArray(events)) {
     container.innerHTML = "";
@@ -558,12 +635,23 @@ function setupSearch() {
     // Debounce search to avoid too many API calls
     searchTimeout = setTimeout(async () => {
       try {
+        if (!dashboardController.isActive) {
+          return;
+        }
+        
         const searchResults = await PartyDataService.searchParties({ q: searchTerm, tags: selectedTags, category: selectedCategory });
+        
+        if (!dashboardController.isActive) {
+          return;
+        }
+        
         displaySearchResults(searchResults);
       } catch (error) {
         console.error("Search error:", error);
-        // Fallback to client-side filtering
-        filterEventsLocally(searchTerm, selectedTags, selectedCategory);
+        
+        if (dashboardController.isActive) {
+          filterEventsLocally(searchTerm, selectedTags, selectedCategory);
+        }
       }
     }, 300);
   });
@@ -580,7 +668,6 @@ function setupSearch() {
     triggerSearch();
   });
 
-  // Expose to tags setup
   setupSearch._setSelectedTags = (tags) => {
     selectedTags = tags;
     triggerSearch();
@@ -727,13 +814,10 @@ function setupBottomNavigation() {
     // Mejor respuesta táctil en móviles
     item.style.touchAction = "manipulation";
     item.addEventListener("click", () => {
-      // Remove active class from all items
       navItems.forEach(nav => nav.classList.remove("active"));
       
-      // Add active class to clicked item (icon + text inherit color)
       item.classList.add("active");
       
-      // Handle navigation por data attribute (más robusto y rápido)
       const target = item.dataset.nav;
       switch (target) {
         case "Parties":
@@ -750,7 +834,6 @@ function setupBottomNavigation() {
   });
 }
 
-// Setup header profile button
 function setupHeaderProfileButton() {
   const headerProfileBtn = document.getElementById('headerProfileBtn');
   if (headerProfileBtn) {
@@ -761,10 +844,8 @@ function setupHeaderProfileButton() {
   }
 }
 
-// Build tags bar dynamically from known options and current data
 function setupFilters() {
   const tagsBar = document.getElementById('tagsBar');
-  // Popular tags (can be extended). Mirrors admin create options partially.
   const DEFAULT_TAGS = [
     "Disco Music", "Elegant", "Cocktailing", "Electronic", "Neon", "Summer", "Outdoor", "House", "Techno"
   ];
@@ -783,9 +864,16 @@ function setupFilters() {
       pill.classList.add('active');
       activeTags.add(tag);
     }
-    // Inform search module
     if (typeof setupSearch._setSelectedTags === 'function') {
       setupSearch._setSelectedTags(Array.from(activeTags));
     }
   });
+}
+
+export function cleanupDashboard() {
+  dashboardController.isActive = false;
+  dashboardController.isLoading = false;
+  if (dashboardController.abortController) {
+    dashboardController.abortController.abort();
+  }
 }

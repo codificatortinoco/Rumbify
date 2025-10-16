@@ -9,9 +9,21 @@ const CONFIG = {
   }
 };
 
+let memberDashboardController = {
+  isActive: false,
+  abortController: null,
+  isLoading: false
+};
+
 export default function renderMemberDashboard() {
   const currentUser = getCurrentUser();
   const userName = currentUser?.name || "User";
+  
+  memberDashboardController.isActive = true;
+  if (memberDashboardController.abortController) {
+    memberDashboardController.abortController.abort();
+  }
+  memberDashboardController.abortController = new AbortController();
   
   const app = document.getElementById("app");
   app.innerHTML = `
@@ -85,7 +97,6 @@ export default function renderMemberDashboard() {
     </div>
   `;
 
-  // Initialize dashboard functionality
   initializeMemberDashboard();
 }
 
@@ -93,19 +104,14 @@ function initializeMemberDashboard() {
   // Load upcoming events for user
   loadUpcomingForYou();
   
-  // Setup carousel functionality
   setupUpcomingCarousel();
   
-  // Setup action buttons
   setupActionButtons();
   
-  // Setup bottom navigation
   setupBottomNavigation();
   
-  // Setup header profile button
   setupHeaderProfileButton();
   
-  // Setup add party button
   setupAddPartyButton();
 }
 
@@ -182,18 +188,51 @@ class MemberDataService {
 }
 
 async function loadUpcomingForYou() {
+  if (!memberDashboardController.isActive || memberDashboardController.isLoading) {
+    console.log("Member dashboard no longer active or already loading, skipping data load");
+    return;
+  }
+
+  memberDashboardController.isLoading = true;
+  showUpcomingLoadingState();
+
   try {
     const upcomingEvents = await MemberDataService.getUpcomingForYou();
+    
+    if (!memberDashboardController.isActive) {
+      console.log("Member dashboard no longer active, skipping render");
+      return;
+    }
+    
     renderUpcomingCarousel(upcomingEvents);
   } catch (error) {
     console.error("Error loading upcoming for you:", error);
+  } finally {
+    memberDashboardController.isLoading = false;
   }
 }
 
+function showUpcomingLoadingState() {
+  const carousel = document.getElementById("upcomingCarousel");
+  const dots = document.getElementById("upcomingDots");
+  
+  if (carousel) {
+    carousel.innerHTML = '<div class="loading-spinner">Cargando eventos para ti...</div>';
+  }
+  
+  if (dots) {
+    dots.innerHTML = '';
+  }
+}
 
 function renderUpcomingCarousel(events) {
   const carousel = document.getElementById("upcomingCarousel");
   const dots = document.getElementById("upcomingDots");
+  
+  if (!carousel || !dots) {
+    console.warn("Upcoming carousel elements not found, skipping render");
+    return;
+  }
   
   if (!events || events.length === 0) {
     carousel.innerHTML = '<p>No hay eventos próximos</p>';
@@ -355,20 +394,16 @@ function setupBottomNavigation() {
   navItems.forEach(item => {
     item.style.touchAction = "manipulation";
     item.addEventListener("click", () => {
-      // Remove active class from all items
       navItems.forEach(nav => nav.classList.remove("active"));
       
-      // Add active class to clicked item
       item.classList.add("active");
       
-      // Handle navigation
       const target = item.dataset.nav;
       switch (target) {
         case "Parties":
           navigateTo("/parties");
           break;
         case "Home":
-          // Already on home page
           break;
         case "Profile":
           navigateTo("/profile");
@@ -386,3 +421,12 @@ function setupHeaderProfileButton() {
     });
   }
 }
+
+export function cleanupMemberDashboard() {
+  memberDashboardController.isActive = false;
+  memberDashboardController.isLoading = false;
+  if (memberDashboardController.abortController) {
+    memberDashboardController.abortController.abort();
+  }
+}
+

@@ -315,12 +315,25 @@ export default function renderCreateParty(data = {}) {
       const description = document.getElementById("party-description")?.value.trim() || "";
       const attendees = `0/${maxAtt}`;
 
+      // Obtener el email del usuario autenticado
+      const adminUser = localStorage.getItem('adminUser');
+      const userEmail = adminUser ? JSON.parse(adminUser).email : null;
+
       if (!title || !address || !city || !country || !dateVal || !hourVal || !administrator) {
         alert("Por favor, completa todos los campos obligatorios.");
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
         return;
       }
+      
+      if (!userEmail) {
+        alert("Error: No se encontró información de usuario autenticado. Por favor, inicia sesión nuevamente.");
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        return;
+      }
+      
+      console.log("User email for authentication:", userEmail);
       if (!maxAtt || maxAtt < 1) {
         alert("Maximum attendees must be at least 1.");
         submitBtn.textContent = originalText;
@@ -347,6 +360,7 @@ export default function renderCreateParty(data = {}) {
         return;
       }
 
+
       const payload = {
         title,
         location,
@@ -359,24 +373,23 @@ export default function renderCreateParty(data = {}) {
         image,
         tags,
         description,
+        prices: collectedPrices, // Incluir precios en el payload principal
+        email: userEmail, // Incluir email para autenticación
       };
 
+      console.log("Sending payload to /newParty:", payload);
       const createRes = await makeRequest("/newParty", "POST", payload);
+      console.log("Response from /newParty:", createRes);
+      
       if (!createRes || createRes.error) {
-        throw new Error(createRes?.error || "Error creating party");
+        throw new Error(createRes?.error || createRes?.message || "Error creating party");
       }
 
-      const partyId = createRes.data?.id || createRes.id;
+      // Los precios ya se insertaron junto con la fiesta
+      const partyId = createRes.data?.id || createRes.party?.id || createRes.id;
       if (!partyId) {
+        console.error("Full response:", createRes);
         throw new Error("No party id returned");
-      }
-
-      // Insertar precios
-      for (const price of collectedPrices) {
-        const priceRes = await makeRequest(`/parties/${partyId}/prices`, "POST", price);
-        if (!priceRes || priceRes.error) {
-          throw new Error(priceRes?.error || "Error inserting price");
-        }
       }
 
       alert("Party creada correctamente");

@@ -112,6 +112,30 @@ export default function renderProfile() {
 
   // Initialize profile functionality
   initializeProfile();
+  
+  // Add test function for debugging profile statistics
+  window.testProfileStats = function() {
+    const createdParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    console.log('=== PROFILE STATS TEST ===');
+    console.log('Created parties in localStorage:', createdParties);
+    console.log('Parties count:', createdParties.length);
+    
+    let totalAttendees = 0;
+    createdParties.forEach(party => {
+      const [current] = party.attendees.split('/');
+      totalAttendees += parseInt(current) || 0;
+    });
+    console.log('Total attendees:', totalAttendees);
+    
+    // Update the display
+    document.getElementById("attendedCount").textContent = createdParties.length;
+    document.getElementById("favoritesCount").textContent = totalAttendees.toLocaleString();
+    
+    console.log('Profile stats updated!');
+    console.log('=== END TEST ===');
+  };
+  
+  console.log('Profile test function available: window.testProfileStats()');
 }
 
 async function initializeProfile() {
@@ -133,12 +157,27 @@ async function loadUserProfile() {
     // Get current logged-in admin user data
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     
+    // Calculate statistics from created parties in localStorage
+    const createdParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    let partiesCount = createdParties.length;
+    let totalAttendees = 0;
+    
+    if (createdParties.length > 0) {
+      createdParties.forEach(party => {
+        const [current] = party.attendees.split('/');
+        totalAttendees += parseInt(current) || 0;
+      });
+    }
+    
+    console.log('Profile: Created parties count:', partiesCount);
+    console.log('Profile: Total attendees:', totalAttendees);
+    
     if (adminUser && Object.keys(adminUser).length > 0) {
       // Use logged-in admin user data
       document.getElementById("profileName").textContent = adminUser.name || "Admin";
       document.getElementById("profileEmail").textContent = adminUser.email || "admin@example.com";
-      document.getElementById("attendedCount").textContent = adminUser.parties_count || 13;
-      document.getElementById("favoritesCount").textContent = adminUser.attendees_count || "3.2k";
+      document.getElementById("attendedCount").textContent = partiesCount || adminUser.parties_count || 13;
+      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : (adminUser.attendees_count || "3.2k");
       
       // Update user type badge
       const userTypeBadge = document.getElementById("userTypeBadge");
@@ -173,8 +212,8 @@ async function loadUserProfile() {
       // Update profile information with real data
       document.getElementById("profileName").textContent = response.name || "Admin";
       document.getElementById("profileEmail").textContent = response.email || "admin@example.com";
-      document.getElementById("attendedCount").textContent = response.parties_count || 13;
-      document.getElementById("favoritesCount").textContent = response.attendees_count || "3.2k";
+      document.getElementById("attendedCount").textContent = partiesCount || response.parties_count || 13;
+      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : (response.attendees_count || "3.2k");
       
       // Update user type badge
       const userTypeBadge = document.getElementById("userTypeBadge");
@@ -216,11 +255,11 @@ async function loadUserProfile() {
         is_admin: true
       };
 
-      // Update profile information
+      // Update profile information with calculated data
       document.getElementById("profileName").textContent = mockUser.name;
       document.getElementById("profileEmail").textContent = mockUser.email;
-      document.getElementById("attendedCount").textContent = mockUser.parties_count;
-      document.getElementById("favoritesCount").textContent = mockUser.attendees_count;
+      document.getElementById("attendedCount").textContent = partiesCount || mockUser.parties_count;
+      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : mockUser.attendees_count;
       
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");

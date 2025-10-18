@@ -111,6 +111,38 @@ export default function renderAdminDashboard(data = {}) {
 
   // Load admin statistics
   loadAdminStatistics();
+  
+  // Add test function for debugging admin statistics
+  window.testAdminStats = function() {
+    const createdParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    console.log('=== ADMIN STATS TEST ===');
+    console.log('Created parties in localStorage:', createdParties);
+    console.log('Parties count:', createdParties.length);
+    
+    let totalAttendees = 0;
+    let totalRevenue = 0;
+    
+    createdParties.forEach(party => {
+      const [current, max] = party.attendees.split('/');
+      totalAttendees += parseInt(current) || 0;
+      const maxAttendees = parseInt(max) || 0;
+      totalRevenue += maxAttendees * 50; // Estimate $50 per ticket
+    });
+    
+    console.log('Total attendees:', totalAttendees);
+    console.log('Estimated revenue:', totalRevenue);
+    
+    // Update the display
+    document.getElementById('totalEvents').textContent = createdParties.length;
+    document.getElementById('activeUsers').textContent = totalAttendees || '0';
+    document.getElementById('pendingApprovals').textContent = createdParties.length || '0';
+    document.getElementById('revenue').textContent = totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : '$0';
+    
+    console.log('Admin stats updated!');
+    console.log('=== END TEST ===');
+  };
+  
+  console.log('Admin test function available: window.testAdminStats()');
 
   function handleLogout() {
     authManager.clearAuth();
@@ -166,16 +198,33 @@ async function loadAdminStatistics() {
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     const adminEmail = adminUser.email;
     
+    // Calculate statistics from created parties in localStorage
+    const createdParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    const totalEvents = createdParties.length;
+    let totalAttendees = 0;
+    let totalRevenue = 0;
+    
+    createdParties.forEach(party => {
+      const [current, max] = party.attendees.split('/');
+      totalAttendees += parseInt(current) || 0;
+      const maxAttendees = parseInt(max) || 0;
+      totalRevenue += maxAttendees * 50; // Estimate $50 per ticket
+    });
+    
+    console.log('Admin Dashboard: Created parties count:', totalEvents);
+    console.log('Admin Dashboard: Total attendees:', totalAttendees);
+    console.log('Admin Dashboard: Estimated revenue:', totalRevenue);
+    
     console.log('Admin user data:', adminUser);
     console.log('Admin email:', adminEmail);
     
     if (!adminEmail) {
-      console.warn('No admin email found for authentication, showing default values');
-      // Show default values
-      document.getElementById('totalEvents').textContent = '0';
-      document.getElementById('activeUsers').textContent = '0';
-      document.getElementById('pendingApprovals').textContent = '0';
-      document.getElementById('revenue').textContent = '$0';
+      console.warn('No admin email found for authentication, showing calculated values');
+      // Show calculated values from localStorage
+      document.getElementById('totalEvents').textContent = totalEvents;
+      document.getElementById('activeUsers').textContent = totalAttendees || '0';
+      document.getElementById('pendingApprovals').textContent = totalEvents || '0';
+      document.getElementById('revenue').textContent = totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : '$0';
       return;
     }
     
@@ -186,27 +235,27 @@ async function loadAdminStatistics() {
     if (response.success && response.statistics) {
       const stats = response.statistics;
       
-      // Update the statistics display
-      document.getElementById('totalEvents').textContent = stats.totalEvents || 0;
-      document.getElementById('activeUsers').textContent = stats.activeUsers || 0;
-      document.getElementById('pendingApprovals').textContent = stats.pendingApprovals || 0;
-      document.getElementById('revenue').textContent = stats.revenue || '$0';
+      // Update the statistics display with calculated values as fallback
+      document.getElementById('totalEvents').textContent = stats.totalEvents || totalEvents || 0;
+      document.getElementById('activeUsers').textContent = stats.activeUsers || totalAttendees || 0;
+      document.getElementById('pendingApprovals').textContent = stats.pendingApprovals || totalEvents || 0;
+      document.getElementById('revenue').textContent = stats.revenue || (totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : '$0');
       
       console.log('Admin statistics loaded successfully:', stats);
     } else {
       console.warn('Failed to load admin statistics:', response.message || 'Unknown error');
-      // Show default values instead of error
-      document.getElementById('totalEvents').textContent = '0';
-      document.getElementById('activeUsers').textContent = '0';
-      document.getElementById('pendingApprovals').textContent = '0';
-      document.getElementById('revenue').textContent = '$0';
+      // Show calculated values from localStorage instead of error
+      document.getElementById('totalEvents').textContent = totalEvents || '0';
+      document.getElementById('activeUsers').textContent = totalAttendees || '0';
+      document.getElementById('pendingApprovals').textContent = totalEvents || '0';
+      document.getElementById('revenue').textContent = totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : '$0';
     }
   } catch (error) {
     console.error('Error loading admin statistics:', error);
-    // Show default values instead of error
-    document.getElementById('totalEvents').textContent = '0';
-    document.getElementById('activeUsers').textContent = '0';
-    document.getElementById('pendingApprovals').textContent = '0';
-    document.getElementById('revenue').textContent = '$0';
+    // Show calculated values from localStorage instead of error
+    document.getElementById('totalEvents').textContent = totalEvents || '0';
+    document.getElementById('activeUsers').textContent = totalAttendees || '0';
+    document.getElementById('pendingApprovals').textContent = totalEvents || '0';
+    document.getElementById('revenue').textContent = totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : '$0';
   }
 }

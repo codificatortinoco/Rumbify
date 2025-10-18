@@ -580,21 +580,58 @@ const getAdminParties = async (req, res) => {
   try {
     const { email } = req.body;
     
+    console.log("[getAdminParties] Request body:", req.body);
+    console.log("[getAdminParties] Email from request:", email);
+    
     if (!email) {
+      console.log("[getAdminParties] No email provided");
       return res.status(400).json({ success: false, message: "Email is required" });
     }
 
-    // Get parties created by this admin
+    // First, get the admin user to find their name
+    console.log("[getAdminParties] Looking up admin user by email:", email);
+    const { data: adminUser, error: userError } = await supabaseCli
+      .from("users")
+      .select("id, name, email, is_admin")
+      .eq("email", email.toLowerCase().trim())
+      .single();
+
+    console.log("[getAdminParties] Admin user lookup result:", { adminUser, userError });
+
+    if (userError || !adminUser) {
+      console.log("[getAdminParties] Admin user not found:", userError);
+      return res.status(401).json({ success: false, message: "Admin user not found" });
+    }
+
+    if (!adminUser.is_admin) {
+      console.log("[getAdminParties] User is not admin:", adminUser);
+      return res.status(403).json({ success: false, message: "Access denied. Administrator privileges required." });
+    }
+
+    // Get parties created by this admin using their NAME as administrator
+    console.log("[getAdminParties] Querying parties for administrator name:", adminUser.name);
+    console.log("[getAdminParties] Admin user details:", {
+      id: adminUser.id,
+      name: adminUser.name,
+      email: adminUser.email,
+      is_admin: adminUser.is_admin
+    });
+    
     const { data: parties, error } = await supabaseCli
       .from("parties")
       .select("*")
-      .eq("administrator", email)
+      .eq("administrator", adminUser.name)
       .order("created_at", { ascending: false });
+
+    console.log("[getAdminParties] Supabase query result:", { parties, error });
+    console.log("[getAdminParties] Query used: administrator =", adminUser.name);
 
     if (error) {
       console.error("Error fetching admin parties:", error);
       return res.status(500).json({ success: false, message: "Error fetching parties" });
     }
+
+    console.log("[getAdminParties] Found parties:", parties?.length || 0);
 
     // Add status based on category and other factors
     const partiesWithStatus = parties.map(party => ({
@@ -602,6 +639,7 @@ const getAdminParties = async (req, res) => {
       status: party.category === 'hot-topic' ? 'active' : 'inactive'
     }));
 
+    console.log("[getAdminParties] Returning parties with status:", partiesWithStatus.length);
     res.json({ success: true, parties: partiesWithStatus });
   } catch (error) {
     console.error("Error in getAdminParties:", error);
@@ -617,11 +655,26 @@ const getAdminMetrics = async (req, res) => {
       return res.status(400).json({ success: false, message: "Email is required" });
     }
 
-    // Get parties created by this admin
+    // First, get the admin user to find their name
+    const { data: adminUser, error: userError } = await supabaseCli
+      .from("users")
+      .select("id, name, email, is_admin")
+      .eq("email", email.toLowerCase().trim())
+      .single();
+
+    if (userError || !adminUser) {
+      return res.status(401).json({ success: false, message: "Admin user not found" });
+    }
+
+    if (!adminUser.is_admin) {
+      return res.status(403).json({ success: false, message: "Access denied. Administrator privileges required." });
+    }
+
+    // Get parties created by this admin using their NAME as administrator
     const { data: parties, error } = await supabaseCli
       .from("parties")
       .select("attendees, prices(price)")
-      .eq("administrator", email);
+      .eq("administrator", adminUser.name);
 
     if (error) {
       console.error("Error fetching admin metrics:", error);

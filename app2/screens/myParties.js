@@ -100,37 +100,67 @@ export default function renderMyParties(data = {}) {
   loadQuickMetrics();
   
   // Add test function for debugging
-  window.testCreateParty = function() {
-    const testParty = {
-      id: Date.now(),
-      title: "Test Party",
-      location: "Test Location",
-      date: "18/10/25 • 20:00",
-      attendees: "50/100",
-      administrator: "Test Admin",
-      image: "",
-      tags: ["Test"],
-      description: "Test description",
-      status: 'active',
-      category: 'upcoming',
-      created_at: new Date().toISOString()
-    };
+  window.testPartyRetrieval = async function() {
+    console.log('=== TESTING PARTY RETRIEVAL ===');
     
-    const existingParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
-    existingParties.unshift(testParty);
-    localStorage.setItem('createdParties', JSON.stringify(existingParties));
+    // Check localStorage
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    console.log('1. Admin user in localStorage:', adminUser);
     
-    console.log('Test party created:', testParty);
-    console.log('All parties:', JSON.parse(localStorage.getItem('createdParties')));
+    if (!adminUser.email) {
+      console.error('❌ No admin email found in localStorage');
+      return;
+    }
     
-    // Reload the parties
-    loadAdminParties();
-    loadQuickMetrics();
+    console.log('2. Admin email:', adminUser.email);
     
-    alert('Test party created! Check console for details.');
+    // Test API call directly
+    try {
+      console.log('3. Making direct API call...');
+      const response = await makeRequest('/admin/parties', 'POST', { email: adminUser.email });
+      console.log('4. API Response:', response);
+      
+      if (response.success) {
+        console.log('✅ API call successful');
+        console.log('5. Number of parties returned:', response.parties?.length || 0);
+        if (response.parties && response.parties.length > 0) {
+          console.log('6. First party:', response.parties[0]);
+        }
+      } else {
+        console.error('❌ API call failed:', response.message);
+      }
+    } catch (error) {
+      console.error('❌ API call error:', error);
+    }
+    
+    console.log('=== END TEST ===');
   };
   
-  console.log('Test function available: window.testCreateParty()');
+  // Add function to test database directly
+  window.testDatabaseDirectly = async function() {
+    console.log('=== TESTING DATABASE DIRECTLY ===');
+    
+    try {
+      // Test getting all parties
+      console.log('1. Testing getAllParties endpoint...');
+      const allPartiesResponse = await makeRequest('/parties', 'GET');
+      console.log('2. All parties response:', allPartiesResponse);
+      
+      if (allPartiesResponse && allPartiesResponse.length > 0) {
+        console.log('✅ Found parties in database:', allPartiesResponse.length);
+        console.log('3. First party:', allPartiesResponse[0]);
+        console.log('4. Administrator field:', allPartiesResponse[0].administrator);
+      } else {
+        console.log('❌ No parties found in database');
+      }
+    } catch (error) {
+      console.error('❌ Database test error:', error);
+    }
+    
+    console.log('=== END DATABASE TEST ===');
+  };
+  
+  console.log('Database test function available: window.testDatabaseDirectly()');
 
   function handleLogout() {
     authManager.clearAuth();
@@ -210,21 +240,54 @@ async function loadAdminParties() {
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     const adminEmail = adminUser.email;
     
+    console.log('Admin user from localStorage:', adminUser);
+    console.log('Admin email:', adminEmail);
+    
     if (!adminEmail) {
       console.warn('No admin email found for authentication');
       document.getElementById('eventsList').innerHTML = '<div class="no-events">No events found</div>';
       return;
     }
 
-    console.log('Loading admin parties...');
+    console.log('Making API request to /admin/parties with email:', adminEmail);
     const response = await makeRequest('/admin/parties', 'POST', { email: adminEmail });
     console.log('Parties response:', response);
     
     if (response.success && response.parties) {
+      console.log('Successfully loaded parties:', response.parties.length);
       displayParties(response.parties);
     } else {
       console.warn('Failed to load parties from API:', response.message || 'Unknown error');
-      document.getElementById('eventsList').innerHTML = '<div class="no-events">No events found</div>';
+      
+      // TEMPORARY FIX: Try to load all parties if admin-specific query fails
+      console.log('Attempting to load all parties as fallback...');
+      try {
+        const allPartiesResponse = await makeRequest('/parties', 'GET');
+        console.log('All parties response:', allPartiesResponse);
+        
+        if (allPartiesResponse && allPartiesResponse.length > 0) {
+          console.log('Found parties in fallback query:', allPartiesResponse.length);
+          // Filter to show only parties created by this admin (if administrator field matches)
+          const adminParties = allPartiesResponse.filter(party => 
+            party.administrator === adminEmail || 
+            party.administrator === adminUser.name ||
+            party.administrator === adminUser.email
+          );
+          
+          if (adminParties.length > 0) {
+            console.log('Found admin parties in fallback:', adminParties.length);
+            displayParties(adminParties);
+          } else {
+            console.log('No parties found for this admin in fallback');
+            document.getElementById('eventsList').innerHTML = '<div class="no-events">No events found</div>';
+          }
+        } else {
+          document.getElementById('eventsList').innerHTML = '<div class="no-events">No events found</div>';
+        }
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        document.getElementById('eventsList').innerHTML = '<div class="no-events">No events found</div>';
+      }
     }
   } catch (error) {
     console.error('Error loading admin parties:', error);

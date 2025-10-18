@@ -301,6 +301,16 @@ export default function renderCreateParty(data = {}) {
     submitBtn.disabled = true;
 
     try {
+      // Get admin user email for authentication first
+      const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+      const adminEmail = adminUser.email;
+      
+      if (!adminEmail) {
+        alert("No admin user found. Please log in again.");
+        navigateTo("/admin-login");
+        return;
+      }
+
       const title = document.getElementById("party-title").value.trim();
       const address = document.getElementById("party-address").value.trim();
       const city = document.getElementById("party-city").value.trim();
@@ -309,13 +319,14 @@ export default function renderCreateParty(data = {}) {
       const dateVal = document.getElementById("party-date").value; // yyyy-mm-dd
       const hourVal = document.getElementById("party-hour").value; // HH:mm
       const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
-      const administrator = document.getElementById("party-administrator").value.trim();
+      // Use admin name as administrator instead of form input
+      const administrator = adminUser.name;
       const number = document.getElementById("party-number").value.trim();
       const image = document.getElementById("party-image").value.trim();
       const description = document.getElementById("party-description")?.value.trim() || "";
       const attendees = `0/${maxAtt}`;
 
-      if (!title || !address || !city || !country || !dateVal || !hourVal || !administrator) {
+      if (!title || !address || !city || !country || !dateVal || !hourVal) {
         alert("Por favor, completa todos los campos obligatorios.");
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -360,6 +371,7 @@ export default function renderCreateParty(data = {}) {
         tags,
         description,
         prices: collectedPrices, // Include prices in the main payload
+        email: adminEmail, // Include admin email for authentication
       };
 
       const createRes = await makeRequest("/newParty", "POST", payload);

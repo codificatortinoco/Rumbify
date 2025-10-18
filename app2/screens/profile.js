@@ -150,6 +150,42 @@ async function initializeProfile() {
   
   // Setup bottom navigation
   setupBottomNavigation();
+  
+  // Add test function for debugging
+  window.testProfileParties = async function() {
+    console.log('=== TESTING PROFILE PARTIES ===');
+    
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    console.log('1. Admin user:', adminUser);
+    console.log('2. Admin name:', adminUser.name);
+    console.log('3. Admin email:', adminUser.email);
+    
+    try {
+      console.log('4. Testing /admin/parties endpoint...');
+      const response = await makeRequest('/admin/parties', 'POST', { email: adminUser.email });
+      console.log('5. API Response:', response);
+      
+      if (response.success && response.parties) {
+        console.log('6. Number of parties returned:', response.parties.length);
+        console.log('7. First few parties:', response.parties.slice(0, 3));
+        
+        // Check administrator field
+        response.parties.forEach((party, index) => {
+          console.log(`8. Party ${index + 1}:`, {
+            title: party.title,
+            administrator: party.administrator,
+            matches: party.administrator === adminUser.name
+          });
+        });
+      }
+    } catch (error) {
+      console.error('9. Error:', error);
+    }
+    
+    console.log('=== END TEST ===');
+  };
+  
+  console.log('Profile test function available: window.testProfileParties()');
 }
 
 async function loadUserProfile() {
@@ -185,6 +221,9 @@ async function loadUserProfile() {
       
       // Load user interests
       loadUserInterests(adminUser.interests || []);
+      
+      // Load correct metrics for this admin
+      await loadProfileMetrics(adminUser.email);
       
       console.log("Profile loaded from logged-in admin user:", adminUser);
       return;
@@ -275,21 +314,39 @@ async function loadUserParties() {
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     const adminEmail = adminUser.email;
 
+    console.log('Profile - Admin user from localStorage:', adminUser);
+    console.log('Profile - Admin email:', adminEmail);
+
     if (!adminEmail) {
       console.warn('No admin email found for authentication');
       document.getElementById("partiesList").innerHTML = '<div class="no-parties">No parties found</div>';
       return;
     }
 
-    // Fetch parties from API
+    // Fetch parties from API (this now uses name-based filtering)
+    console.log('Profile - Making API request to /admin/parties with email:', adminEmail);
     const response = await makeRequest('/admin/parties', 'POST', { email: adminEmail });
-    console.log('Parties response:', response);
+    console.log('Profile - Parties response:', response);
 
     let partiesToShow = [];
 
     if (response.success && response.parties && response.parties.length > 0) {
-      // Convert API parties to the format expected by profile screen
-      partiesToShow = response.parties.slice(0, 3).map(party => ({
+      console.log('Profile - Successfully loaded parties:', response.parties.length);
+      
+      // FRONTEND FILTERING: Filter parties by administrator name as fallback
+      const adminName = adminUser.name;
+      console.log('Profile - Filtering parties by admin name:', adminName);
+      
+      const filteredParties = response.parties.filter(party => {
+        const matches = party.administrator === adminName;
+        console.log(`Profile - Party "${party.title}" administrator: "${party.administrator}" matches: ${matches}`);
+        return matches;
+      });
+      
+      console.log('Profile - Filtered parties count:', filteredParties.length);
+      
+      // Convert filtered parties to the format expected by profile screen
+      partiesToShow = filteredParties.slice(0, 3).map(party => ({
         id: party.id,
         title: party.title,
         date: party.date.split(' • ')[0], // Just the date part
@@ -299,9 +356,11 @@ async function loadUserParties() {
         buttonClass: "manage-btn"
       }));
     } else {
-      console.warn('No parties found in API response');
+      console.warn('Profile - No parties found in API response');
       partiesToShow = [];
     }
+
+    console.log('Profile - Parties to show:', partiesToShow.length);
 
     const partiesList = document.getElementById("partiesList");
     partiesList.innerHTML = partiesToShow.map(party => `
@@ -319,6 +378,26 @@ async function loadUserParties() {
 
   } catch (error) {
     console.error("Error loading user parties:", error);
+    document.getElementById("partiesList").innerHTML = '<div class="no-parties">Error loading parties</div>';
+  }
+}
+
+async function loadProfileMetrics(adminEmail) {
+  try {
+    console.log('Profile - Loading metrics for admin:', adminEmail);
+    const response = await makeRequest('/admin/metrics', 'POST', { email: adminEmail });
+    console.log('Profile - Metrics response:', response);
+    
+    if (response.success && response.metrics) {
+      const metrics = response.metrics;
+      document.getElementById("attendedCount").textContent = metrics.totalAttendees || "0";
+      document.getElementById("favoritesCount").textContent = metrics.totalRevenue || "$0";
+      console.log('Profile - Updated metrics:', metrics);
+    } else {
+      console.warn('Profile - Failed to load metrics:', response.message);
+    }
+  } catch (error) {
+    console.error('Profile - Error loading metrics:', error);
   }
 }
 

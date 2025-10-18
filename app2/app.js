@@ -8,6 +8,7 @@ import renderManageParty from "./screens/manageParty.js";
 import renderGuestsSummary from "./screens/guestsSummary.js";
 import renderProfile from "./screens/profile.js";
 import renderEditProfile from "./screens/editProfile.js";
+import renderMyParties from "./screens/myParties.js";
 import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.js";
 
 const socket = io("/", { path: "/real-time" });
@@ -101,6 +102,10 @@ function renderRoute(currentRoute) {
     case "/edit-profile":
       clearScripts();
       renderEditProfile(currentRoute?.data);
+      break;
+    case "/my-parties":
+      clearScripts();
+      renderMyParties(currentRoute?.data);
       break;
     default:
       // Verificar si el usuario es admin antes de redirigir a app1

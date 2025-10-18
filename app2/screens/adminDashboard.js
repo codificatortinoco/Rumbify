@@ -1,4 +1,4 @@
-import { navigateTo } from "../app.js";
+import { navigateTo, makeRequest } from "../app.js";
 import { authManager } from "../auth.js";
 
 export default function renderAdminDashboard(data = {}) {
@@ -53,19 +53,19 @@ export default function renderAdminDashboard(data = {}) {
           <div class="admin-stats-grid">
             <div class="stat-card">
               <h3>Total Events</h3>
-              <p class="stat-number">24</p>
+              <p class="stat-number" id="totalEvents">0</p>
             </div>
             <div class="stat-card">
               <h3>Active Users</h3>
-              <p class="stat-number">1,247</p>
+              <p class="stat-number" id="activeUsers">0</p>
             </div>
             <div class="stat-card">
               <h3>Pending Approvals</h3>
-              <p class="stat-number">8</p>
+              <p class="stat-number" id="pendingApprovals">0</p>
             </div>
             <div class="stat-card">
               <h3>Revenue</h3>
-              <p class="stat-number">$12,450</p>
+              <p class="stat-number" id="revenue">$0</p>
             </div>
           </div>
 
@@ -109,6 +109,9 @@ export default function renderAdminDashboard(data = {}) {
   window.handleAnalytics = handleAnalytics;
   window.handleSettings = handleSettings;
 
+  // Load admin statistics
+  loadAdminStatistics();
+
   function handleLogout() {
     authManager.clearAuth();
     navigateTo("/admin-login");
@@ -133,7 +136,7 @@ export default function renderAdminDashboard(data = {}) {
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) {
     profileBtn.addEventListener('click', () => {
-      navigateTo('/profile');
+      navigateTo('/edit-profile');
     });
   }
   
@@ -147,12 +150,63 @@ export default function renderAdminDashboard(data = {}) {
       item.classList.add('active');
       const target = item.dataset.nav;
       if (target === 'parties') {
-        navigateTo('/admin-dashboard');
+        navigateTo('/my-parties');
       } else if (target === 'new') {
         navigateTo('/create-party');
       } else if (target === 'profile') {
-        navigateTo('/profile');
+        navigateTo('/edit-profile');
       }
     });
   });
+}
+
+async function loadAdminStatistics() {
+  try {
+    // Get current admin user email for authentication
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    const adminEmail = adminUser.email;
+    
+    console.log('Admin user data:', adminUser);
+    console.log('Admin email:', adminEmail);
+    
+    if (!adminEmail) {
+      console.warn('No admin email found for authentication, showing default values');
+      // Show default values
+      document.getElementById('totalEvents').textContent = '0';
+      document.getElementById('activeUsers').textContent = '0';
+      document.getElementById('pendingApprovals').textContent = '0';
+      document.getElementById('revenue').textContent = '$0';
+      return;
+    }
+    
+    console.log('Attempting to fetch admin statistics...');
+    const response = await makeRequest('/admin/statistics', 'POST', { email: adminEmail });
+    console.log('API response:', response);
+    
+    if (response.success && response.statistics) {
+      const stats = response.statistics;
+      
+      // Update the statistics display
+      document.getElementById('totalEvents').textContent = stats.totalEvents || 0;
+      document.getElementById('activeUsers').textContent = stats.activeUsers || 0;
+      document.getElementById('pendingApprovals').textContent = stats.pendingApprovals || 0;
+      document.getElementById('revenue').textContent = stats.revenue || '$0';
+      
+      console.log('Admin statistics loaded successfully:', stats);
+    } else {
+      console.warn('Failed to load admin statistics:', response.message || 'Unknown error');
+      // Show default values instead of error
+      document.getElementById('totalEvents').textContent = '0';
+      document.getElementById('activeUsers').textContent = '0';
+      document.getElementById('pendingApprovals').textContent = '0';
+      document.getElementById('revenue').textContent = '$0';
+    }
+  } catch (error) {
+    console.error('Error loading admin statistics:', error);
+    // Show default values instead of error
+    document.getElementById('totalEvents').textContent = '0';
+    document.getElementById('activeUsers').textContent = '0';
+    document.getElementById('pendingApprovals').textContent = '0';
+    document.getElementById('revenue').textContent = '$0';
+  }
 }

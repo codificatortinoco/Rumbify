@@ -359,28 +359,55 @@ export default function renderCreateParty(data = {}) {
         image,
         tags,
         description,
+        prices: collectedPrices, // Include prices in the main payload
       };
 
       const createRes = await makeRequest("/newParty", "POST", payload);
-      if (!createRes || createRes.error) {
-        throw new Error(createRes?.error || "Error creating party");
+      console.log("Create party response:", createRes);
+      
+      if (!createRes || !createRes.success) {
+        throw new Error(createRes?.message || createRes?.error || "Error creating party");
       }
 
-      const partyId = createRes.data?.id || createRes.id;
+      const partyId = createRes.party?.id || createRes.data?.id || createRes.id;
       if (!partyId) {
+        console.error("No party id found in response:", createRes);
         throw new Error("No party id returned");
       }
 
-      // Insertar precios
-      for (const price of collectedPrices) {
-        const priceRes = await makeRequest(`/parties/${partyId}/prices`, "POST", price);
-        if (!priceRes || priceRes.error) {
-          throw new Error(priceRes?.error || "Error inserting price");
-        }
-      }
-
+      // Prices are already handled in the createParty controller
+      console.log("Party created successfully with ID:", partyId);
+      
+      // Store the created party in localStorage for the My Parties screen to access
+      const createdParty = {
+        id: partyId,
+        title,
+        location,
+        date: `${formatDate(dateVal)} • ${hourVal}`,
+        attendees,
+        administrator,
+        image,
+        tags,
+        description,
+        status: 'active',
+        category: 'upcoming',
+        created_at: new Date().toISOString()
+      };
+      
+      console.log('=== CREATING PARTY ===');
+      console.log('Party data to store:', createdParty);
+      
+      // Get existing parties from localStorage
+      const existingParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+      console.log('Existing parties in localStorage:', existingParties);
+      
+      existingParties.unshift(createdParty); // Add new party at the beginning
+      localStorage.setItem('createdParties', JSON.stringify(existingParties));
+      
+      console.log('Updated parties in localStorage:', JSON.parse(localStorage.getItem('createdParties')));
+      console.log('=== PARTY CREATED AND STORED ===');
       alert("Party creada correctamente");
-      navigateTo("/admin-dashboard");
+      navigateTo("/my-parties");
     } catch (err) {
       console.error(err);
       alert(err.message || "Error creando la fiesta");
@@ -402,11 +429,11 @@ export default function renderCreateParty(data = {}) {
         item.classList.add('active');
         const target = item.dataset.nav;
         if (target === 'parties') {
-          navigateTo('/admin-dashboard');
+          navigateTo('/my-parties');
         } else if (target === 'new') {
           navigateTo('/create-party');
         } else if (target === 'profile') {
-          navigateTo('/admin-dashboard');
+          navigateTo('/edit-profile');
         }
       });
     });

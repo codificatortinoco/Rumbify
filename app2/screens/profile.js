@@ -94,17 +94,17 @@ export default function renderProfile() {
 
       <!-- Bottom Navigation -->
       <nav class="bottom-nav">
-        <div class="nav-item" data-nav="dashboard">
-          <span class="nav-icon icon-dashboard"></span>
-          <span>Dashboard</span>
+        <div class="nav-item" id="nav-parties" data-nav="parties">
+          <span class="nav-icon icon-party" aria-hidden="true"></span>
+          <span class="nav-label">My Parties</span>
         </div>
-        <div class="nav-item" data-nav="parties">
-          <span class="nav-icon icon-party"></span>
-          <span>Parties</span>
+        <div class="nav-item" id="nav-new" data-nav="new">
+          <span class="nav-icon icon-plus" aria-hidden="true"></span>
+          <span class="nav-label">New Party</span>
         </div>
-        <div class="nav-item active" data-nav="profile">
-          <span class="nav-icon icon-user"></span>
-          <span>Profile</span>
+        <div class="nav-item active" id="nav-profile" data-nav="profile">
+          <span class="nav-icon icon-user" aria-hidden="true"></span>
+          <span class="nav-label">Profile</span>
         </div>
       </nav>
     </div>
@@ -243,39 +243,85 @@ async function loadUserProfile() {
 
 async function loadUserParties() {
   try {
-    // Mock parties data for admin
-    const mockParties = [
-      {
-        id: 1,
-        title: "Pre-New Year Party",
-        date: "22/11/21",
-        status: "In progress",
-        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
+    // First try to load from localStorage (created parties)
+    const localParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    
+    let partiesToShow = [];
+    
+    if (localParties.length > 0) {
+      // Convert localStorage parties to the format expected by profile screen
+      partiesToShow = localParties.slice(0, 3).map(party => ({
+        id: party.id,
+        title: party.title,
+        date: party.date.split(' • ')[0], // Just the date part
+        status: party.status === 'active' ? 'In progress' : party.status === 'inactive' ? 'Inactive' : 'Finished',
+        image: party.image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
         buttonText: "Manage",
         buttonClass: "manage-btn"
-      },
-      {
-        id: 2,
-        title: "Lore's Pool Party",
-        date: "11/10/21",
-        status: "Inactive",
-        image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=80&h=80&fit=crop",
-        buttonText: "Statistics",
-        buttonClass: "stats-btn"
-      },
-      {
-        id: 3,
-        title: "Chicago Night",
-        date: "5/9/21",
-        status: "Finished",
-        image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=80&h=80&fit=crop",
-        buttonText: "Statistics",
-        buttonClass: "stats-btn"
+      }));
+      
+      // Fill remaining slots with mock data if needed
+      if (partiesToShow.length < 3) {
+        const mockParties = [
+          {
+            id: 2,
+            title: "Lore's Pool Party",
+            date: "11/10/21",
+            status: "Inactive",
+            image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=80&h=80&fit=crop",
+            buttonText: "Statistics",
+            buttonClass: "stats-btn"
+          },
+          {
+            id: 3,
+            title: "Chicago Night",
+            date: "5/9/21",
+            status: "Finished",
+            image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=80&h=80&fit=crop",
+            buttonText: "Statistics",
+            buttonClass: "stats-btn"
+          }
+        ];
+        
+        // Add mock parties to fill up to 3 total
+        const remainingSlots = 3 - partiesToShow.length;
+        partiesToShow = [...partiesToShow, ...mockParties.slice(0, remainingSlots)];
       }
-    ];
+    } else {
+      // No local parties, show mock data
+      partiesToShow = [
+        {
+          id: 1,
+          title: "Pre-New Year Party",
+          date: "22/11/21",
+          status: "In progress",
+          image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
+          buttonText: "Manage",
+          buttonClass: "manage-btn"
+        },
+        {
+          id: 2,
+          title: "Lore's Pool Party",
+          date: "11/10/21",
+          status: "Inactive",
+          image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=80&h=80&fit=crop",
+          buttonText: "Statistics",
+          buttonClass: "stats-btn"
+        },
+        {
+          id: 3,
+          title: "Chicago Night",
+          date: "5/9/21",
+          status: "Finished",
+          image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=80&h=80&fit=crop",
+          buttonText: "Statistics",
+          buttonClass: "stats-btn"
+        }
+      ];
+    }
 
     const partiesList = document.getElementById("partiesList");
-    partiesList.innerHTML = mockParties.map(party => `
+    partiesList.innerHTML = partiesToShow.map(party => `
       <div class="party-item">
         <img src="${party.image}" alt="${party.title}" class="party-image" />
         <div class="party-content">
@@ -400,29 +446,21 @@ function handleLogout() {
 }
 
 function setupBottomNavigation() {
-  const navItems = document.querySelectorAll(".bottom-nav .nav-item");
+  const bottomNav = document.querySelector('.bottom-nav');
+  const navItems = bottomNav ? Array.from(bottomNav.querySelectorAll('.nav-item')) : [];
   
-  navItems.forEach(item => {
-    item.style.touchAction = "manipulation";
-    item.addEventListener("click", () => {
-      // Remove active class from all items
-      navItems.forEach(nav => nav.classList.remove("active"));
-      
-      // Add active class to clicked item
-      item.classList.add("active");
-      
-      // Handle navigation
+  navItems.forEach((item) => {
+    item.style.touchAction = 'manipulation';
+    item.addEventListener('click', () => {
+      navItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
       const target = item.dataset.nav;
-      switch (target) {
-        case "dashboard":
-          navigateTo("/admin-dashboard");
-          break;
-        case "parties":
-          navigateTo("/admin-dashboard");
-          break;
-        case "profile":
-          // Already on profile page
-          break;
+      if (target === 'parties') {
+        navigateTo('/admin-dashboard');
+      } else if (target === 'new') {
+        navigateTo('/create-party');
+      } else if (target === 'profile') {
+        // Already on profile page
       }
     });
   });

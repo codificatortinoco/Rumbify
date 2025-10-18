@@ -49,7 +49,8 @@ const createUser = async (req, res) => {
       console.error("Error checking existing user:", checkError);
       return res.status(500).json({ 
         success: false, 
-        message: "Database error occurred" 
+        message: "Database connection failed. Please check your Supabase configuration and ensure the project is active.",
+        error: checkError.message || "Unknown database error"
       });
     }
 
@@ -94,7 +95,8 @@ const createUser = async (req, res) => {
       console.error("Error creating user:", createError);
       return res.status(500).json({ 
         success: false, 
-        message: "Failed to create user account" 
+        message: "Failed to create user account. Please check your Supabase configuration and ensure the project is active.",
+        error: createError.message || "Unknown database error"
       });
     }
 
@@ -433,6 +435,44 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Test Supabase connection
+const testSupabaseConnection = async (req, res) => {
+  try {
+    const supabaseCli = require("../services/supabase.service");
+    
+    console.log('Testing Supabase connection...');
+    const { data, error } = await supabaseCli
+      .from('users')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return res.status(500).json({
+        success: false,
+        message: "Supabase connection failed",
+        error: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+    }
+    
+    console.log('Supabase connection test successful');
+    return res.status(200).json({
+      success: true,
+      message: "Supabase connection successful",
+      data: data
+    });
+  } catch (err) {
+    console.error('Supabase connection test error:', err);
+    return res.status(500).json({
+      success: false,
+      message: "Supabase connection test failed",
+      error: err.message
+    });
+  }
+};
+
 module.exports = {
   getUsers,
   createUser,
@@ -440,5 +480,6 @@ module.exports = {
   updateUserProfile,
   deleteUser,
   getUserProfile,
-  loginUser
+  loginUser,
+  testSupabaseConnection
 };

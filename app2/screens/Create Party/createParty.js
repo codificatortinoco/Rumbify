@@ -378,34 +378,9 @@ export default function renderCreateParty(data = {}) {
       // Prices are already handled in the createParty controller
       console.log("Party created successfully with ID:", partyId);
       
-      // Store the created party in localStorage for the My Parties screen to access
-      const createdParty = {
-        id: partyId,
-        title,
-        location,
-        date: `${formatDate(dateVal)} • ${hourVal}`,
-        attendees,
-        administrator,
-        image,
-        tags,
-        description,
-        status: 'active',
-        category: 'upcoming',
-        created_at: new Date().toISOString()
-      };
-      
-      console.log('=== CREATING PARTY ===');
-      console.log('Party data to store:', createdParty);
-      
-      // Get existing parties from localStorage
-      const existingParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
-      console.log('Existing parties in localStorage:', existingParties);
-      
-      existingParties.unshift(createdParty); // Add new party at the beginning
-      localStorage.setItem('createdParties', JSON.stringify(existingParties));
-      
-      console.log('Updated parties in localStorage:', JSON.parse(localStorage.getItem('createdParties')));
-      console.log('=== PARTY CREATED AND STORED ===');
+      console.log('=== PARTY CREATED SUCCESSFULLY ===');
+      console.log('Party ID:', partyId);
+      console.log('Party data:', createRes.party);
       alert("Party creada correctamente");
       navigateTo("/my-parties");
     } catch (err) {

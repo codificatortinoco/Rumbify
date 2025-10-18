@@ -186,4 +186,21 @@ export default function renderAdminRegister(data = {}) {
     // Navigate back to main app (app1) welcome screen
     window.location.href = '/app1/welcome';
   }
+  
+  // Add test function for debugging registration
+  window.testAdminRegister = function() {
+    console.log('=== TESTING ADMIN REGISTRATION ===');
+    
+    // Fill form with test data
+    document.getElementById('admin-name-input').value = 'Test Admin';
+    document.getElementById('admin-email-input').value = 'testadmin@example.com';
+    document.getElementById('admin-password-input').value = 'password123';
+    document.getElementById('admin-repeat-password-input').value = 'password123';
+    document.getElementById('admin-phone-input').value = '1234567890';
+    
+    console.log('Form filled with test data');
+    console.log('You can now submit the form manually or call handleAdminRegister()');
+  };
+  
+  console.log('Admin register test function available: window.testAdminRegister()');
 }

@@ -205,21 +205,13 @@ export default function renderMyParties(data = {}) {
 
 async function loadAdminParties() {
   try {
-    // Clear any old cached data and force refresh
-    console.log('Loading admin parties - checking localStorage...');
-    console.log('Current localStorage createdParties:', localStorage.getItem('createdParties'));
+    console.log('Loading admin parties from Supabase...');
     
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     const adminEmail = adminUser.email;
     
     if (!adminEmail) {
-      console.warn('No admin email found, checking localStorage for created parties');
-      // Try to load from localStorage instead
-      const localParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
-      if (localParties.length > 0) {
-        displayParties(localParties);
-        return;
-      }
+      console.warn('No admin email found for authentication');
       document.getElementById('eventsList').innerHTML = '<div class="no-events">No events found</div>';
       return;
     }
@@ -232,27 +224,11 @@ async function loadAdminParties() {
       displayParties(response.parties);
     } else {
       console.warn('Failed to load parties from API:', response.message || 'Unknown error');
-      // Try to load from localStorage as fallback
-      const localParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
-      if (localParties.length > 0) {
-        console.log('Loading parties from localStorage:', localParties);
-        displayParties(localParties);
-      } else {
-        // Show mock data for demonstration if no local parties
-        displayMockParties();
-      }
+      document.getElementById('eventsList').innerHTML = '<div class="no-events">No events found</div>';
     }
   } catch (error) {
     console.error('Error loading admin parties:', error);
-    // Try to load from localStorage as fallback
-    const localParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
-    if (localParties.length > 0) {
-      console.log('Loading parties from localStorage (fallback):', localParties);
-      displayParties(localParties);
-    } else {
-      // Show mock data for demonstration if no local parties
-      displayMockParties();
-    }
+    document.getElementById('eventsList').innerHTML = '<div class="no-events">Error loading events</div>';
   }
 }
 
@@ -344,55 +320,34 @@ function getStatusText(status) {
 
 async function loadQuickMetrics() {
   try {
+    console.log('Loading quick metrics from Supabase...');
+    
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     const adminEmail = adminUser.email;
     
-    // First try to calculate from localStorage parties
-    const localParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
-    
-    if (localParties.length > 0) {
-      // Calculate metrics from created parties
-      let totalAttendees = 0;
-      let totalRevenue = 0;
-      
-      localParties.forEach(party => {
-        // Extract current attendees from attendees string (e.g., "50/100")
-        const [current] = party.attendees.split('/');
-        totalAttendees += parseInt(current) || 0;
-        
-        // Estimate revenue (this is simplified - in real app you'd have actual ticket sales)
-        const [maxAttendees] = party.attendees.split('/');
-        const max = parseInt(maxAttendees) || 0;
-        const estimatedRevenue = max * 50; // Assume $50 per ticket
-        totalRevenue += estimatedRevenue;
-      });
-      
-      document.getElementById('totalAttendees').textContent = totalAttendees.toLocaleString();
-      document.getElementById('totalRevenue').textContent = `$${totalRevenue.toLocaleString()}`;
-      return;
-    }
-    
     if (!adminEmail) {
+      console.warn('No admin email found for authentication');
       document.getElementById('totalAttendees').textContent = '0';
       document.getElementById('totalRevenue').textContent = '$0';
       return;
     }
 
+    console.log('Loading metrics from API...');
     const response = await makeRequest('/admin/metrics', 'POST', { email: adminEmail });
+    console.log('Metrics response:', response);
     
     if (response.success && response.metrics) {
       const metrics = response.metrics;
       document.getElementById('totalAttendees').textContent = metrics.totalAttendees || '0';
       document.getElementById('totalRevenue').textContent = metrics.totalRevenue || '$0';
     } else {
-      // Show mock data
-      document.getElementById('totalAttendees').textContent = '1,120';
-      document.getElementById('totalRevenue').textContent = '$520,000';
+      console.warn('Failed to load metrics from API:', response.message || 'Unknown error');
+      document.getElementById('totalAttendees').textContent = '0';
+      document.getElementById('totalRevenue').textContent = '$0';
     }
   } catch (error) {
     console.error('Error loading metrics:', error);
-    // Show mock data
-    document.getElementById('totalAttendees').textContent = '1,120';
-    document.getElementById('totalRevenue').textContent = '$520,000';
+    document.getElementById('totalAttendees').textContent = '0';
+    document.getElementById('totalRevenue').textContent = '$0';
   }
 }

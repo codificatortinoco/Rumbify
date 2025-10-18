@@ -433,47 +433,22 @@ const createParty = async (req, res) => {
       };
       console.log("[createParty] Insert payload:", payload);
 
-      // Create party first
-      let created, insertErr;
-      try {
-        const result = await supabaseCli
-          .from("parties")
-          .insert([payload])
-          .select();
-        created = result.data;
-        insertErr = result.error;
-      } catch (dbError) {
-        console.error("Database connection error:", dbError);
-        // Return a mock response for testing when database is not available
-        const mockParty = {
-          id: Date.now(), // Generate a mock ID
-          ...payload,
-          created_at: new Date().toISOString()
-        };
-        return res.status(201).json({ 
-          success: true, 
-          party: mockParty,
-          message: "Party created (mock - database unavailable)"
+      // Create party in database
+      const result = await supabaseCli
+        .from("parties")
+        .insert([payload])
+        .select();
+      
+      if (result.error) {
+        console.error("Database insert error:", result.error);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to create party in database", 
+          error: result.error 
         });
       }
 
-      if (insertErr) {
-        console.error("Database insert error:", insertErr);
-        // Check if it's a connection error and return mock response
-        if (insertErr.message && insertErr.message.includes('fetch failed')) {
-          const mockParty = {
-            id: Date.now(),
-            ...payload,
-            created_at: new Date().toISOString()
-          };
-          return res.status(201).json({ 
-            success: true, 
-            party: mockParty,
-            message: "Party created (mock - database unavailable)"
-          });
-        }
-        return res.status(500).json({ success: false, message: "Failed to create party", error: insertErr });
-      }
+      const created = result.data;
 
       const party = created?.[0];
 

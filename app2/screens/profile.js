@@ -157,27 +157,14 @@ async function loadUserProfile() {
     // Get current logged-in admin user data
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     
-    // Calculate statistics from created parties in localStorage
-    const createdParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
-    let partiesCount = createdParties.length;
-    let totalAttendees = 0;
-    
-    if (createdParties.length > 0) {
-      createdParties.forEach(party => {
-        const [current] = party.attendees.split('/');
-        totalAttendees += parseInt(current) || 0;
-      });
-    }
-    
-    console.log('Profile: Created parties count:', partiesCount);
-    console.log('Profile: Total attendees:', totalAttendees);
+        console.log('Loading profile statistics from Supabase...');
     
     if (adminUser && Object.keys(adminUser).length > 0) {
       // Use logged-in admin user data
       document.getElementById("profileName").textContent = adminUser.name || "Admin";
       document.getElementById("profileEmail").textContent = adminUser.email || "admin@example.com";
-      document.getElementById("attendedCount").textContent = partiesCount || adminUser.parties_count || 13;
-      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : (adminUser.attendees_count || "3.2k");
+      document.getElementById("attendedCount").textContent = adminUser.parties_count || 0;
+      document.getElementById("favoritesCount").textContent = adminUser.attendees_count || "0";
       
       // Update user type badge
       const userTypeBadge = document.getElementById("userTypeBadge");
@@ -282,14 +269,27 @@ async function loadUserProfile() {
 
 async function loadUserParties() {
   try {
-    // First try to load from localStorage (created parties)
-    const localParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    console.log('Loading user parties from Supabase...');
     
+    // Get current admin user email for authentication
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    const adminEmail = adminUser.email;
+
+    if (!adminEmail) {
+      console.warn('No admin email found for authentication');
+      document.getElementById("partiesList").innerHTML = '<div class="no-parties">No parties found</div>';
+      return;
+    }
+
+    // Fetch parties from API
+    const response = await makeRequest('/admin/parties', 'POST', { email: adminEmail });
+    console.log('Parties response:', response);
+
     let partiesToShow = [];
-    
-    if (localParties.length > 0) {
-      // Convert localStorage parties to the format expected by profile screen
-      partiesToShow = localParties.slice(0, 3).map(party => ({
+
+    if (response.success && response.parties && response.parties.length > 0) {
+      // Convert API parties to the format expected by profile screen
+      partiesToShow = response.parties.slice(0, 3).map(party => ({
         id: party.id,
         title: party.title,
         date: party.date.split(' • ')[0], // Just the date part
@@ -298,65 +298,9 @@ async function loadUserParties() {
         buttonText: "Manage",
         buttonClass: "manage-btn"
       }));
-      
-      // Fill remaining slots with mock data if needed
-      if (partiesToShow.length < 3) {
-        const mockParties = [
-          {
-            id: 2,
-            title: "Lore's Pool Party",
-            date: "11/10/21",
-            status: "Inactive",
-            image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=80&h=80&fit=crop",
-            buttonText: "Statistics",
-            buttonClass: "stats-btn"
-          },
-          {
-            id: 3,
-            title: "Chicago Night",
-            date: "5/9/21",
-            status: "Finished",
-            image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=80&h=80&fit=crop",
-            buttonText: "Statistics",
-            buttonClass: "stats-btn"
-          }
-        ];
-        
-        // Add mock parties to fill up to 3 total
-        const remainingSlots = 3 - partiesToShow.length;
-        partiesToShow = [...partiesToShow, ...mockParties.slice(0, remainingSlots)];
-      }
     } else {
-      // No local parties, show mock data
-      partiesToShow = [
-        {
-          id: 1,
-          title: "Pre-New Year Party",
-          date: "22/11/21",
-          status: "In progress",
-          image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
-          buttonText: "Manage",
-          buttonClass: "manage-btn"
-        },
-        {
-          id: 2,
-          title: "Lore's Pool Party",
-          date: "11/10/21",
-          status: "Inactive",
-          image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=80&h=80&fit=crop",
-          buttonText: "Statistics",
-          buttonClass: "stats-btn"
-        },
-        {
-          id: 3,
-          title: "Chicago Night",
-          date: "5/9/21",
-          status: "Finished",
-          image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=80&h=80&fit=crop",
-          buttonText: "Statistics",
-          buttonClass: "stats-btn"
-        }
-      ];
+      console.warn('No parties found in API response');
+      partiesToShow = [];
     }
 
     const partiesList = document.getElementById("partiesList");

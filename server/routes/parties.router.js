@@ -40,7 +40,7 @@ router.get("/parties/:id/guests", requireAdmin, require("../controllers/guests.c
 router.get("/parties/:id/guests/summary", requireAdmin, require("../controllers/guests.controller").getGuestsSummary);
 
 // Create new party (Admin only) - temporarily disabled auth for testing
-router.post("/newParty", createParty);
+router.post("/newParty", requireAdmin, createParty);
 
 // Get admin statistics (Admin only)
 router.post("/admin/statistics", requireAdmin, getAdminStatistics);

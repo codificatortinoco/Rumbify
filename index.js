@@ -6,6 +6,7 @@ const { createServer } = require("http");
 const usersRouter = require("./server/routes/users.router");
 const partiesRouter = require("./server/routes/parties.router");
 const adminRouter = require("./server/routes/admin.router");
+const codesRouter = require("./server/routes/codes.router");
 const { initSocketInstance } = require("./server/services/socket.service");
 
 const PORT = 5050;
@@ -44,6 +45,7 @@ app.get("/app2/*", (req, res) => {
 app.use("/", usersRouter);
 app.use("/", partiesRouter);
 app.use("/", adminRouter);
+app.use("/codes", codesRouter);
 
 // Services
 initSocketInstance(httpServer);

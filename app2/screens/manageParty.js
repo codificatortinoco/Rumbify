@@ -350,13 +350,31 @@ function displayGeneratedCodes(ticketType, quantity, codes) {
   codesList.innerHTML = normalizedCodes.map(codeStr => `
     <div class="code-item-row">
       <span class="code-item">${codeStr}</span>
-      <button class="copy-single" onclick="copySingleCode('${codeStr}')">Copy</button>
+      <button class="copy-single" onclick="copySingleCode(this, '${codeStr}')">Copy</button>
     </div>
   `).join('');
 
   // Show modal
   displayModal.style.display = 'block';
 }
+
+// Copy single code function (global for onclick)
+window.copySingleCode = function(button, code) {
+  navigator.clipboard.writeText(code).then(() => {
+    // Show temporary feedback
+    const originalText = button.textContent;
+    button.textContent = 'Copied!';
+    button.style.background = '#2ecc71';
+    
+    setTimeout(() => {
+      button.textContent = originalText;
+      button.style.background = '';
+    }, 1000);
+  }).catch(err => {
+    console.error('Failed to copy code:', err);
+    alert('Failed to copy code. Please try again.');
+  });
+};
 
 async function loadPartyPrices(partyIdParam) {
   const ticketSelect = document.getElementById('ticketType');
@@ -403,25 +421,6 @@ function updateTicketTypeOptions(prices) {
     console.log('Using fallback ticket type options');
   }
 }
-
-// Copy single code function (global for onclick)
-window.copySingleCode = function(code) {
-  navigator.clipboard.writeText(code).then(() => {
-    // Show temporary feedback
-    const button = event.target;
-    const originalText = button.textContent;
-    button.textContent = 'Copied!';
-    button.style.background = '#2ecc71';
-    
-    setTimeout(() => {
-      button.textContent = originalText;
-      button.style.background = '';
-    }, 1000);
-  }).catch(err => {
-    console.error('Failed to copy code:', err);
-    alert('Failed to copy code. Please try again.');
-  });
-};
 
 // Add test function for codes API
 window.testCodesAPI = async function() {

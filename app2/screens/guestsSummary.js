@@ -67,6 +67,20 @@ export default async function renderGuestsSummary(routeData = {}) {
           <span class="nav-label">Profile</span>
         </div>
       </nav>
+
+      <!-- Modal: aceptar/denegar invitado -->
+      <div id="guestModal" class="modal-overlay hidden">
+        <div class="modal-card">
+          <div class="modal-close" id="gm-close">×</div>
+          <div class="modal-title">Solicitud de invitación</div>
+          <img id="gm-avatar" src="/app2/assets/userIcon.svg" alt="Avatar" class="modal-avatar"/>
+          <div id="gm-name" class="modal-name">Invitado</div>
+          <div class="modal-actions">
+            <button id="gm-approve" class="btn btn-approve">✓</button>
+            <button id="gm-reject" class="btn btn-reject">X</button>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -91,13 +105,16 @@ export default async function renderGuestsSummary(routeData = {}) {
     const summaryUrl = `/parties/${partyId}/guests/summary${adminEmail ? `?email=${encodeURIComponent(adminEmail)}` : ''}`;
     const summary = await makeRequest(summaryUrl, 'GET');
 
+    // Mantener referencia para actualizar UI luego
+    let summaryData = summary;
+
     document.getElementById('partyTitle').textContent = summary?.party?.title || `Party #${partyId}`;
     document.getElementById('pendingCount').textContent = summary?.totals?.pending ?? 0;
     document.getElementById('validatedCount').textContent = summary?.totals?.validated ?? 0;
     document.getElementById('deniedCount').textContent = summary?.totals?.denied ?? 0;
 
     const renderItems = (items, status) => items.map(g => `
-      <li class="guest-item">
+      <li class="guest-item" data-id="${g.id}" data-name="${g.name}" data-status="${status}">
         <img src="/app2/assets/userIcon.svg" alt="${g.name}" class="guest-avatar"/>
         <div class="guest-info">
           <div class="guest-name">${g.name}</div>
@@ -107,9 +124,98 @@ export default async function renderGuestsSummary(routeData = {}) {
       </li>
     `).join('');
 
+    const refreshUI = () => {
+      document.getElementById('pendingCount').textContent = summaryData?.totals?.pending ?? 0;
+      document.getElementById('validatedCount').textContent = summaryData?.totals?.validated ?? 0;
+      document.getElementById('deniedCount').textContent = summaryData?.totals?.denied ?? 0;
+      document.getElementById('validatedList').innerHTML = renderItems(summaryData?.lists?.validated || [], 'Valid');
+      document.getElementById('pendingList').innerHTML = renderItems(summaryData?.lists?.pending || [], 'Pending');
+      document.getElementById('deniedList').innerHTML = renderItems(summaryData?.lists?.denied || [], 'Invalid');
+      bindGuestItemClicks();
+    };
+
     document.getElementById('validatedList').innerHTML = renderItems(summary?.lists?.validated || [], 'Valid');
     document.getElementById('pendingList').innerHTML = renderItems(summary?.lists?.pending || [], 'Pending');
     document.getElementById('deniedList').innerHTML = renderItems(summary?.lists?.denied || [], 'Invalid');
+
+    // Modal handlers
+    const modalEl = document.getElementById('guestModal');
+    const modalNameEl = document.getElementById('gm-name');
+    const modalApproveBtn = document.getElementById('gm-approve');
+    const modalRejectBtn = document.getElementById('gm-reject');
+    const modalCloseBtn = document.getElementById('gm-close');
+    let currentGuest = null;
+
+    const openModal = (guest) => {
+      currentGuest = guest;
+      modalNameEl.textContent = guest?.name || 'Invitado';
+      modalEl.classList.remove('hidden');
+    };
+    const closeModal = () => {
+      modalEl.classList.add('hidden');
+      currentGuest = null;
+    };
+    modalCloseBtn?.addEventListener('click', closeModal);
+
+    const bindGuestItemClicks = () => {
+      document.querySelectorAll('.guest-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const guest = {
+            id: el.getAttribute('data-id'),
+            name: el.getAttribute('data-name'),
+            status: el.getAttribute('data-status')
+          };
+          openModal(guest);
+        });
+      });
+    };
+
+    bindGuestItemClicks();
+
+    const moveGuestInSummary = (guestId, newStatus) => {
+      // Remove from all lists
+      ['pending','validated','denied'].forEach(key => {
+        const arr = summaryData?.lists?.[key] || [];
+        const idx = arr.findIndex(i => String(i.id) === String(guestId));
+        if (idx !== -1) arr.splice(idx, 1);
+        summaryData.lists[key] = arr;
+      });
+      // Add to target list
+      const targetKey = newStatus === 'validated' ? 'validated' : 'denied';
+      const displayName = currentGuest?.name || 'Invitado';
+      summaryData.lists[targetKey] = [{ id: guestId, name: displayName }, ...(summaryData.lists[targetKey] || [])];
+      // Recompute totals
+      const totalArr = ['pending','validated','denied'].map(k => summaryData.lists[k]?.length || 0);
+      summaryData.totals.validated = summaryData.lists.validated.length;
+      summaryData.totals.pending = summaryData.lists.pending.length;
+      summaryData.totals.denied = summaryData.lists.denied.length;
+    };
+
+    modalApproveBtn?.addEventListener('click', async () => {
+      if (!currentGuest) return;
+      try {
+        const url = `/parties/${partyId}/guests/${currentGuest.id}/status${adminEmail ? `?email=${encodeURIComponent(adminEmail)}` : ''}`;
+        await makeRequest(url, 'PATCH', { status: 'validated' });
+        moveGuestInSummary(currentGuest.id, 'validated');
+        refreshUI();
+        closeModal();
+      } catch (e) {
+        console.error('Error approving guest:', e);
+      }
+    });
+
+    modalRejectBtn?.addEventListener('click', async () => {
+      if (!currentGuest) return;
+      try {
+        const url = `/parties/${partyId}/guests/${currentGuest.id}/status${adminEmail ? `?email=${encodeURIComponent(adminEmail)}` : ''}`;
+        await makeRequest(url, 'PATCH', { status: 'denied' });
+        moveGuestInSummary(currentGuest.id, 'denied');
+        refreshUI();
+        closeModal();
+      } catch (e) {
+        console.error('Error denying guest:', e);
+      }
+    });
   } catch (err) {
     console.error('Error loading guests summary:', err);
   }

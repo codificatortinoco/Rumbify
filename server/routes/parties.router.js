@@ -12,49 +12,32 @@ const {
   getAdminMetrics,
   deleteParty,
 } = require("../controllers/parties.controller");
+const guestsController = require("../controllers/guests.controller");
 const { requireAdmin } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
-// Get hot topic parties
+// Public/Member routes
 router.get("/parties/hot-topic", getHotTopicParties);
-
-// Get upcoming parties
 router.get("/parties/upcoming", getUpcomingParties);
-
-// Get all parties
 router.get("/parties", getAllParties);
-
-// Search parties
 router.get("/parties/search", searchParties);
-
-// Toggle like status
 router.patch("/parties/:id/like", toggleLike);
-
-// Get event details
 router.get("/parties/:id", getEventDetails);
 
-// Delete a party (Admin only)
+// Admin-only routes
 router.delete("/parties/:id", requireAdmin, deleteParty);
 
-// Get guest list for a party (Admin only)
-router.get("/parties/:id/guests", requireAdmin, require("../controllers/guests.controller").getPartyGuests);
+// Guests endpoints (Admin only)
+router.get("/parties/:id/guests", requireAdmin, guestsController.getPartyGuests);
+router.get("/parties/:id/guests/summary", requireAdmin, guestsController.getGuestsSummary);
+router.patch("/parties/:id/guests/:guestId/status", requireAdmin, guestsController.updateGuestStatus);
 
-// New: Guests summary endpoint (Admin only)
-router.get("/parties/:id/guests/summary", requireAdmin, require("../controllers/guests.controller").getGuestsSummary);
-
-// Create new party (Admin only) - temporarily disabled auth for testing
+// Admin management endpoints
 router.post("/newParty", requireAdmin, createParty);
-// Alias route for consistency with frontend naming
 router.post("/create-party", requireAdmin, createParty);
-
-// Get admin statistics (Admin only)
 router.post("/admin/statistics", requireAdmin, getAdminStatistics);
-
-// Get admin parties (Admin only)
 router.post("/admin/parties", requireAdmin, getAdminParties);
-
-// Get admin metrics (Admin only)
 router.post("/admin/metrics", requireAdmin, getAdminMetrics);
 
 module.exports = router;

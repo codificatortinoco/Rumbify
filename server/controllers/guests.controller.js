@@ -121,4 +121,64 @@ async function getGuestsSummary(req, res) {
   }
 }
 
-module.exports = { getPartyGuests, getGuestsSummary };
+// PATCH /parties/:id/guests/:guestId/status
+async function updateGuestStatus(req, res) {
+  try {
+    const { id: partyId, guestId } = req.params;
+    const { status, validado } = req.body || {};
+
+    // Normalizar estado a booleano
+    let newStatus;
+    if (typeof validado === 'boolean') {
+      newStatus = validado;
+    } else if (typeof status === 'string') {
+      const s = status.toLowerCase();
+      newStatus = s === 'validated' || s === 'valid' || s === 'approve' || s === 'approved';
+      if (s === 'denied' || s === 'invalid' || s === 'reject' || s === 'rejected') {
+        newStatus = false;
+      }
+    }
+
+    if (typeof newStatus === 'undefined') {
+      return res.status(400).json({ error: "Missing status/validado in request" });
+    }
+
+    // Intentar actualizar en Invitados_Lista primero
+    let { data, error } = await supabaseCli
+      .from("Invitados_Lista")
+      .update({ validado: newStatus })
+      .eq("id", guestId)
+      .eq("party_id", partyId)
+      .select("id, name, validado, party_id")
+      .single();
+
+    const isMissingTableOrColumn = (err) => !!err && (
+      String(err?.message || "").toLowerCase().includes("could not find") ||
+      String(err?.message || "").toLowerCase().includes("schema cache") ||
+      String(err?.message || "").toLowerCase().includes("relation") ||
+      String(err?.message || "").toLowerCase().includes("column")
+    );
+
+    if (error && isMissingTableOrColumn(error)) {
+      ({ data, error } = await supabaseCli
+        .from("Invitados_Fiesta")
+        .update({ validado: newStatus })
+        .eq("id", guestId)
+        .eq("party_id", partyId)
+        .select("id, name, validado, party_id")
+        .single());
+    }
+
+    if (error) {
+      console.error("Error updating guest status:", error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ success: true, guest: data });
+  } catch (err) {
+    console.error("updateGuestStatus unexpected error:", err);
+    return res.status(500).json({ error: "Unexpected server error" });
+  }
+}
+
+module.exports = { getPartyGuests, getGuestsSummary, updateGuestStatus };

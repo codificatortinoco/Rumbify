@@ -3,6 +3,9 @@ import { navigateTo, makeRequest } from "../app.js";
 export default async function renderManageParty(routeData = {}) {
   const app = document.getElementById("app");
   const partyId = routeData?.partyId || localStorage.getItem('selectedPartyId') || 1; // default demo id
+  // Persist the current party id so nested handlers use the right value
+  localStorage.setItem('selectedPartyId', partyId);
+  const currentPartyId = partyId;
 
   app.innerHTML = `
     <div id="manage-party-screen" class="manage-party">
@@ -55,8 +58,8 @@ export default async function renderManageParty(routeData = {}) {
           <h3>Entry Codes</h3>
           <button id="createCodesBtn" class="create-codes-btn">Create Codes</button>
         </div>
-        <div class="codes-info">
-          <p>Generate entry codes for different ticket types</p>
+        <div class="entry-codes-content">
+          <p class="entry-codes-description">Generate entry codes for different ticket types</p>
         </div>
       </section>
 
@@ -65,26 +68,24 @@ export default async function renderManageParty(routeData = {}) {
         <div class="modal-content">
           <div class="modal-header">
             <h3>Create Entry Codes</h3>
-            <button class="close-btn" id="closeCreateModal">&times;</button>
+            <button id="closeCreateModal" class="close-modal">×</button>
           </div>
-          <div class="modal-body">
-            <form id="createCodesForm">
-              <div class="form-group">
-                <label for="ticketType">Ticket Type</label>
-                <select id="ticketType" required>
-                  <option value="">Loading ticket types...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="codeQuantity">Number of Codes</label>
-                <input type="number" id="codeQuantity" min="1" max="100" value="1" required>
-              </div>
-              <div class="form-actions">
-                <button type="button" class="cancel-btn" id="cancelCreateCodes">Cancel</button>
-                <button type="submit" class="create-btn">Generate Codes</button>
-              </div>
-            </form>
-          </div>
+          <form id="createCodesForm" class="create-codes-form">
+            <div class="form-group">
+              <label for="ticketType">Ticket Type</label>
+              <select id="ticketType" name="ticketType">
+                <option value="" disabled selected>Loading ticket types...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="codeQuantity">Quantity</label>
+              <input id="codeQuantity" name="codeQuantity" type="number" min="1" value="1" />
+            </div>
+            <div class="form-actions">
+              <button type="button" id="cancelCreateCodes" class="btn-secondary">Cancel</button>
+              <button type="submit" class="btn-primary">Generate Codes</button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -92,38 +93,32 @@ export default async function renderManageParty(routeData = {}) {
       <div id="displayCodesModal" class="modal">
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Generated Entry Codes</h3>
-            <button class="close-btn" id="closeDisplayModal">&times;</button>
+            <h3>Generated Codes</h3>
+            <button id="closeDisplayModal" class="close-modal">×</button>
           </div>
-          <div class="modal-body">
-            <div class="codes-container">
-              <div class="codes-info">
-                <p><strong>Ticket Type:</strong> <span id="displayTicketType"></span></p>
-                <p><strong>Quantity:</strong> <span id="displayQuantity"></span></p>
-              </div>
-              <div class="codes-list" id="codesList">
-                <!-- Codes will be displayed here -->
-              </div>
-              <div class="codes-actions">
-                <button class="copy-all-btn" id="copyAllCodes">Copy All</button>
-                <button class="download-btn" id="downloadCodes">Download as Text</button>
-              </div>
+          <div class="codes-display">
+            <p><strong>Ticket Type:</strong> <span id="displayTicketType"></span></p>
+            <p><strong>Quantity:</strong> <span id="displayQuantity"></span></p>
+            <div id="codesList" class="codes-list"></div>
+            <div class="codes-actions">
+              <button id="copyAllCodes" class="btn-secondary">Copy All</button>
+              <button id="downloadCodes" class="btn-primary">Download</button>
             </div>
           </div>
         </div>
       </div>
 
       <nav class="bottom-nav">
-        <div class="nav-item" data-nav="parties">
-          <span class="nav-icon icon-party"></span>
-          <span class="nav-label">My Parties</span>
+        <div class="nav-item active" data-nav="parties">
+          <span class="nav-icon icon-party" aria-hidden="true"></span>
+          <span class="nav-label">Parties</span>
         </div>
         <div class="nav-item" data-nav="new">
-          <span class="nav-icon icon-plus"></span>
-          <span class="nav-label">New Party</span>
+          <span class="nav-icon icon-plus" aria-hidden="true"></span>
+          <span class="nav-label">New</span>
         </div>
         <div class="nav-item" data-nav="profile">
-          <span class="nav-icon icon-user"></span>
+          <span class="nav-icon icon-user" aria-hidden="true"></span>
           <span class="nav-label">Profile</span>
         </div>
       </nav>
@@ -147,9 +142,18 @@ export default async function renderManageParty(routeData = {}) {
 
   // Fetch guests from backend (Supabase via server)
   try {
+    // Obtener email del admin para autenticación de endpoints protegidos
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    const adminEmail = adminUser?.email;
+    let guestsData = [];
+
     const eventDetails = await makeRequest(`/parties/${partyId}`, 'GET');
-    const guestsRes = await fetch(`http://localhost:5050/parties/${partyId}/guests`);
-    const guestsData = await guestsRes.json();
+    if (adminEmail) {
+      const guestsResponse = await makeRequest(`/parties/${partyId}/guests`, 'GET', { email: adminEmail });
+      guestsData = Array.isArray(guestsResponse) ? guestsResponse : (guestsResponse?.guests || []);
+    } else {
+      console.warn('No admin email found; skipping guests fetch');
+    }
 
     // Update status counts
     const capacity = eventDetails?.capacity || 220;
@@ -187,15 +191,12 @@ export default async function renderManageParty(routeData = {}) {
     });
   });
 
-  // Initialize entry codes functionality
-  initializeEntryCodes();
-  
-  // Load party prices for ticket type options
-  loadPartyPrices();
+  // Initialize entry codes with the current party id
+  initializeEntryCodes(currentPartyId);
 }
 
 // Entry Codes Functionality
-function initializeEntryCodes() {
+function initializeEntryCodes(partyIdFromRender) {
   const createCodesBtn = document.getElementById('createCodesBtn');
   const createCodesModal = document.getElementById('createCodesModal');
   const displayCodesModal = document.getElementById('displayCodesModal');
@@ -208,7 +209,7 @@ function initializeEntryCodes() {
   createCodesBtn?.addEventListener('click', async () => {
     createCodesModal.style.display = 'block';
     // Refresh ticket types when modal opens
-    await loadPartyPrices();
+    await loadPartyPrices(partyIdFromRender);
   });
 
   // Close modals
@@ -238,15 +239,18 @@ function initializeEntryCodes() {
   createCodesForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const ticketType = document.getElementById('ticketType').value;
+    const ticketSelect = document.getElementById('ticketType');
+    const selectedOption = ticketSelect?.selectedOptions?.[0];
+    const priceId = parseInt(selectedOption?.value, 10);
+    const ticketTypeName = selectedOption?.dataset?.name || (selectedOption?.textContent || '').split(' - ')[0];
     const quantity = parseInt(document.getElementById('codeQuantity').value);
     
-    if (!ticketType || !quantity) {
+    if ((!priceId && !ticketTypeName) || !quantity) {
       alert('Please fill in all fields');
       return;
     }
     
-    if (ticketType === 'No ticket types found for this party') {
+    if (selectedOption?.textContent === 'No ticket types found for this party') {
       alert('This party has no ticket types configured. Please add ticket types to the party first.');
       return;
     }
@@ -258,13 +262,14 @@ function initializeEntryCodes() {
       submitBtn.textContent = 'Generating...';
       submitBtn.disabled = true;
 
-      // Get current party ID
-      const partyId = localStorage.getItem('selectedPartyId') || 1;
+      // Use the current party ID captured on render
+      const partyId = partyIdFromRender;
       
       // Generate codes
       const response = await makeRequest('/codes/generate', 'POST', {
         party_id: partyId,
-        price_name: ticketType,
+        price_id: priceId,
+        price_name: ticketTypeName,
         quantity: quantity
       });
 
@@ -272,8 +277,13 @@ function initializeEntryCodes() {
         // Close create modal
         createCodesModal.style.display = 'none';
         
+        // Prefer saved_codes (objects from DB) when available; otherwise, use raw codes
+        const codesToDisplay = Array.isArray(response.saved_codes) && response.saved_codes.length
+          ? response.saved_codes
+          : (Array.isArray(response.codes) ? response.codes : []);
+
         // Show generated codes
-        displayGeneratedCodes(ticketType, quantity, response.codes);
+        displayGeneratedCodes(ticketTypeName, quantity, codesToDisplay);
       } else {
         alert('Error generating codes: ' + (response.message || 'Unknown error'));
       }
@@ -333,11 +343,14 @@ function displayGeneratedCodes(ticketType, quantity, codes) {
   displayTicketType.textContent = ticketType;
   displayQuantity.textContent = quantity;
 
-  // Display codes
-  codesList.innerHTML = codes.map(code => `
-    <div class="code-item">
-      <span class="code-text">${code}</span>
-      <button class="copy-code-btn" onclick="copySingleCode('${code}')">Copy</button>
+  // Normalize codes to strings for display
+  const normalizedCodes = Array.isArray(codes) ? codes.map(c => (typeof c === 'string' ? c : c.code)).filter(Boolean) : [];
+
+  // Render codes
+  codesList.innerHTML = normalizedCodes.map(codeStr => `
+    <div class="code-item-row">
+      <span class="code-item">${codeStr}</span>
+      <button class="copy-single" onclick="copySingleCode('${codeStr}')">Copy</button>
     </div>
   `).join('');
 
@@ -345,79 +358,48 @@ function displayGeneratedCodes(ticketType, quantity, codes) {
   displayModal.style.display = 'block';
 }
 
-// Load party prices for ticket type options
-async function loadPartyPrices() {
+async function loadPartyPrices(partyIdParam) {
+  const ticketSelect = document.getElementById('ticketType');
   try {
-    const partyId = localStorage.getItem('selectedPartyId') || 1;
+    const partyId = partyIdParam || localStorage.getItem('selectedPartyId') || 1;
     console.log('Loading party prices for party ID:', partyId);
-    
-    const response = await makeRequest(`/parties/${partyId}`, 'GET');
-    console.log('Party response:', response);
-    
-    if (response && response.prices && response.prices.length > 0) {
-      console.log('Found party prices:', response.prices);
-      updateTicketTypeOptions(response.prices);
-    } else {
-      console.warn('No prices found for this party');
-      // Fallback to default options if no prices found
-      updateTicketTypeOptions([]);
-    }
+    const partyResponse = await makeRequest(`/parties/${partyId}`, 'GET');
+    console.log('Party response:', partyResponse);
+
+    const partyPrices = partyResponse?.prices || [];
+    console.log('Found party prices:', Array.isArray(partyPrices) ? partyPrices.length : 0);
+
+    updateTicketTypeOptions(partyPrices);
   } catch (error) {
     console.error('Error loading party prices:', error);
-    // Fallback to default options on error
-    updateTicketTypeOptions([]);
+    if (ticketSelect) {
+      ticketSelect.innerHTML = '<option disabled selected>Failed to load ticket types</option>';
+    }
   }
 }
 
-// Update ticket type dropdown with party's actual prices
 function updateTicketTypeOptions(prices) {
-  const ticketTypeSelect = document.getElementById('ticketType');
-  
-  if (!ticketTypeSelect) {
+  const ticketSelect = document.getElementById('ticketType');
+  if (!ticketSelect) {
     console.warn('Ticket type select element not found');
     return;
   }
   
-  // Clear existing options
-  ticketTypeSelect.innerHTML = '';
-  
-  if (prices && prices.length > 0) {
-    // Add default option
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Select ticket type';
-    ticketTypeSelect.appendChild(defaultOption);
-    
-    // Add options based on actual party prices
+  ticketSelect.innerHTML = '';
+
+  if (Array.isArray(prices) && prices.length > 0) {
     prices.forEach(price => {
-      const option = document.createElement('option');
-      option.value = price.price_name || price.name || 'Unknown';
-      option.textContent = `${price.price_name || price.name || 'Unknown'} - $${price.price || 'N/A'}`;
-      ticketTypeSelect.appendChild(option);
+      const opt = document.createElement('option');
+      opt.value = String(price.id);
+      opt.dataset.name = price.price_name;
+      opt.textContent = `${price.price_name} - ${price.price}`;
+      ticketSelect.appendChild(opt);
     });
-    
-    console.log('Updated ticket type options with party prices:', prices.length);
   } else {
-    // Fallback options if no prices found
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'No ticket types found for this party';
-    ticketTypeSelect.appendChild(defaultOption);
-    
-    const fallbackOptions = [
-      { value: 'VIP', text: 'VIP' },
-      { value: 'General', text: 'General' },
-      { value: 'Student', text: 'Student' },
-      { value: 'Early Bird', text: 'Early Bird' }
-    ];
-    
-    fallbackOptions.forEach(option => {
-      const optionElement = document.createElement('option');
-      optionElement.value = option.value;
-      optionElement.textContent = option.text;
-      ticketTypeSelect.appendChild(optionElement);
-    });
-    
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'No ticket types found for this party';
+    ticketSelect.appendChild(opt);
     console.log('Using fallback ticket type options');
   }
 }

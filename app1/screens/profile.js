@@ -382,6 +382,8 @@ function setupProfileEventListeners() {
 function handleLogout() {
   // Use the global logout function
   logout();
+  // Redirect to welcome after clearing session
+  navigateTo("/welcome");
 }
 
 function setupBottomNavigation() {

@@ -82,15 +82,15 @@ const generateCodes = async (req, res) => {
     console.log('[generateCodes] Starting code generation...');
     console.log('[generateCodes] Supabase client available:', !!supabaseCli);
     
-    const { party_id, price_name, quantity } = req.body;
+    const { party_id, price_id, price_name, quantity } = req.body;
     
     console.log('[generateCodes] Request body:', req.body);
-    console.log('[generateCodes] Parsed values:', { party_id, price_name, quantity });
+    console.log('[generateCodes] Parsed values:', { party_id, price_id, price_name, quantity });
     
-    if (!party_id || !price_name || !quantity) {
+    if (!party_id || (!price_id && !price_name) || !quantity) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: party_id, price_name, quantity"
+        message: "Missing required fields: party_id, price_id or price_name, quantity"
       });
     }
 
@@ -103,6 +103,8 @@ const generateCodes = async (req, res) => {
 
     // First, get all existing codes from the database to ensure uniqueness
     console.log('[generateCodes] Checking existing codes in database...');
+    let codesTableMissing = false;
+    let existingCodeSet = new Set();
     const { data: existingCodes, error: fetchError } = await supabaseCli
       .from('codes')
       .select('code');
@@ -116,24 +118,29 @@ const generateCodes = async (req, res) => {
         hint: fetchError.hint
       });
       
-      // Check if it's a table doesn't exist error
-      if (fetchError.code === '42P01' || fetchError.message.includes('relation "codes" does not exist')) {
+      // If codes table doesn't exist or is missing from schema cache, continue without DB duplicate check
+      const missingTable = (
+        fetchError.code === '42P01' ||
+        (fetchError.message || '').includes('relation "codes" does not exist') ||
+        fetchError.code?.startsWith('PGRST') ||
+        (fetchError.message || '').includes('Could not find the table') ||
+        (fetchError.hint || '').includes('Perhaps you meant the table')
+      );
+      
+      if (missingTable) {
+        codesTableMissing = true;
+        console.warn('[generateCodes] Codes table missing or not cached; proceeding without DB duplicate check and skipping insert.');
+      } else {
         return res.status(500).json({
           success: false,
-          message: "Codes table does not exist. Please run the database setup script first.",
-          error: "Table 'codes' not found"
+          message: "Error checking existing codes",
+          error: fetchError.message
         });
       }
-      
-      return res.status(500).json({
-        success: false,
-        message: "Error checking existing codes",
-        error: fetchError.message
-      });
+    } else {
+      existingCodeSet = new Set(existingCodes.map(c => c.code));
+      console.log('[generateCodes] Found', existingCodeSet.size, 'existing codes in database');
     }
-
-    const existingCodeSet = new Set(existingCodes.map(c => c.code));
-    console.log('[generateCodes] Found', existingCodeSet.size, 'existing codes in database');
 
     // Generate unique codes
     const codes = [];
@@ -181,59 +188,106 @@ const generateCodes = async (req, res) => {
 
     console.log('[generateCodes] Generated codes:', codes.length);
 
-    // Double-check uniqueness before insertion (additional safety measure)
-    const finalCheck = await supabaseCli
-      .from('codes')
-      .select('code')
-      .in('code', codes);
+    // Resolve price_id (prefer provided, else look up by name)
+    let resolvedPriceId = price_id ? parseInt(price_id) : null;
 
-    if (finalCheck.data && finalCheck.data.length > 0) {
-      console.error('[generateCodes] Found duplicate codes during final check:', finalCheck.data);
-      return res.status(500).json({
-        success: false,
-        message: "Code generation failed due to unexpected duplicates. Please try again."
-      });
+    if (!resolvedPriceId) {
+      const { data: priceRow, error: priceLookupErr } = await supabaseCli
+        .from('prices')
+        .select('id, party_id')
+        .eq('party_id', parseInt(party_id))
+        .eq('price_name', String(price_name))
+        .single();
+
+      if (priceLookupErr) {
+        console.error('[generateCodes] Price lookup error:', priceLookupErr);
+        return res.status(500).json({ success: false, message: 'Error resolving ticket type' });
+      }
+      if (!priceRow) {
+        return res.status(404).json({ success: false, message: 'Ticket type not found for this party' });
+      }
+      resolvedPriceId = priceRow.id;
+    } else {
+      // Validate that the provided price_id belongs to the party
+      const { data: priceCheck, error: priceCheckErr } = await supabaseCli
+        .from('prices')
+        .select('id, party_id')
+        .eq('id', resolvedPriceId)
+        .single();
+      if (priceCheckErr) {
+        console.error('[generateCodes] Price check error:', priceCheckErr);
+        return res.status(500).json({ success: false, message: 'Error verifying ticket type' });
+      }
+      if (!priceCheck || String(priceCheck.party_id) !== String(party_id)) {
+        return res.status(400).json({ success: false, message: 'Ticket type does not belong to this party' });
+      }
     }
 
-    // Insert codes into database
-    const codeRecords = codes.map(code => ({
-      party_id: parseInt(party_id),
-      code: code,
-      price_name: price_name,
-      already_used: false,
-      user_id: null // Will be set when code is used
-    }));
+    // Double-check uniqueness before insertion (additional safety measure)
+    if (!codesTableMissing) {
+      const finalCheck = await supabaseCli
+        .from('codes')
+        .select('code')
+        .in('code', codes);
 
-    const { data: insertedCodes, error } = await supabaseCli
-      .from('codes')
-      .insert(codeRecords)
-      .select('id, code, price_name, already_used');
-
-    if (error) {
-      console.error('[generateCodes] Database error:', error);
-      
-      // Check if it's a unique constraint violation
-      if (error.code === '23505' || error.message.includes('duplicate key')) {
-        return res.status(400).json({
+      if (finalCheck.data && finalCheck.data.length > 0) {
+        console.error('[generateCodes] Found duplicate codes during final check:', finalCheck.data);
+        return res.status(500).json({
           success: false,
-          message: "Code generation failed due to duplicate codes. Please try again."
+          message: "Code generation failed due to unexpected duplicates. Please try again."
         });
       }
-      
-      return res.status(500).json({
-        success: false,
-        message: "Error saving codes to database"
-      });
     }
 
-    console.log('[generateCodes] Successfully saved codes:', insertedCodes.length);
+    // Insert codes into database if table exists
+    if (!codesTableMissing) {
+      const codeRecords = codes.map(code => ({
+        party_id: parseInt(party_id),
+        code: code,
+        price_id: resolvedPriceId,
+        already_used: false,
+        user_id: null // Will be set when code is used
+      }));
 
-    res.json({
-      success: true,
-      message: `Successfully generated ${codes.length} codes`,
-      codes: codes,
-      saved_codes: insertedCodes
-    });
+      const { data: insertedCodes, error } = await supabaseCli
+        .from('codes')
+        .insert(codeRecords)
+        .select('id, code, price_id, already_used');
+
+      if (error) {
+        console.error('[generateCodes] Database error:', error);
+        
+        // Check if it's a unique constraint violation
+        if (error.code === '23505' || (error.message || '').includes('duplicate key')) {
+          return res.status(400).json({
+            success: false,
+            message: "Code generation failed due to duplicate codes. Please try again."
+          });
+        }
+        
+        return res.status(500).json({
+          success: false,
+          message: "Error saving codes to database"
+        });
+      }
+
+      console.log('[generateCodes] Successfully saved codes:', insertedCodes.length);
+
+      return res.json({
+        success: true,
+        message: `Successfully generated ${codes.length} codes`,
+        codes: codes,
+        saved_codes: insertedCodes
+      });
+    } else {
+      console.warn('[generateCodes] Returning generated codes without saving due to missing table');
+      return res.json({
+        success: true,
+        message: `Successfully generated ${codes.length} codes (not saved; codes table missing)`,
+        codes: codes,
+        saved_codes: []
+      });
+    }
 
   } catch (error) {
     console.error('Error in generateCodes:', error);

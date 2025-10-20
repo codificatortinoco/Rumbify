@@ -10,6 +10,7 @@ const {
   getAdminStatistics,
   getAdminParties,
   getAdminMetrics,
+  deleteParty,
 } = require("../controllers/parties.controller");
 const { requireAdmin } = require("../middleware/auth.middleware");
 
@@ -32,6 +33,9 @@ router.patch("/parties/:id/like", toggleLike);
 
 // Get event details
 router.get("/parties/:id", getEventDetails);
+
+// Delete a party (Admin only)
+router.delete("/parties/:id", requireAdmin, deleteParty);
 
 // Get guest list for a party (Admin only)
 router.get("/parties/:id/guests", requireAdmin, require("../controllers/guests.controller").getPartyGuests);

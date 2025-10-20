@@ -1,13 +1,13 @@
 -- Create the codes table if it doesn't exist
 -- Run this in your Supabase SQL Editor
 
--- 1. Create the codes table
+-- 1. Create the codes table (schema aligned with backend)
 CREATE TABLE IF NOT EXISTS public.codes (
   id BIGSERIAL PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   party_id BIGINT NOT NULL,
   code TEXT NOT NULL,
-  price_name TEXT NOT NULL,
+  price_id BIGINT NOT NULL,
   already_used BOOLEAN DEFAULT FALSE,
   user_id BIGINT
 );
@@ -25,6 +25,7 @@ FOR ALL USING (true);
 
 -- 5. Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_codes_party_id ON public.codes(party_id);
+CREATE INDEX IF NOT EXISTS idx_codes_price_id ON public.codes(price_id);
 CREATE INDEX IF NOT EXISTS idx_codes_code ON public.codes(code);
 CREATE INDEX IF NOT EXISTS idx_codes_already_used ON public.codes(already_used);
 

@@ -712,6 +712,85 @@ const getAdminMetrics = async (req, res) => {
   }
 };
 
+// Delete a party and related data (codes, storage image)
+const deleteParty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partyId = Number(id);
+    if (!partyId || Number.isNaN(partyId)) {
+      return res.status(400).json({ success: false, message: "Invalid party id" });
+    }
+
+    // Ensure party exists and capture image URL
+    const { data: party, error: partyFetchErr } = await supabaseCli
+      .from("parties")
+      .select("id, image")
+      .eq("id", partyId)
+      .single();
+
+    if (partyFetchErr) {
+      console.error("Error finding party:", partyFetchErr);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+    if (!party) {
+      return res.status(404).json({ success: false, message: "Party not found" });
+    }
+
+    // Best effort: remove dependent rows (codes, descriptions, prices)
+    try {
+      await supabaseCli.from("codes").delete().eq("party_id", partyId);
+    } catch (codesErr) {
+      console.warn("Codes deletion failed or table missing:", codesErr?.message || codesErr);
+    }
+    try {
+      await supabaseCli.from("descriptions").delete().eq("party_id", partyId);
+    } catch (descErr) {
+      console.warn("Descriptions deletion failed or table missing:", descErr?.message || descErr);
+    }
+    try {
+      await supabaseCli.from("prices").delete().eq("party_id", partyId);
+    } catch (priceErr) {
+      console.warn("Prices deletion failed or table missing:", priceErr?.message || priceErr);
+    }
+
+    // Best effort: delete cover image if stored in Supabase Storage
+    try {
+      const imageUrl = party.image;
+      const publicPrefix = "/storage/v1/object/public/";
+      if (imageUrl && typeof imageUrl === "string" && imageUrl.includes(publicPrefix)) {
+        const path = imageUrl.split(publicPrefix)[1]; // e.g. "party-images/filename.jpg"
+        const bucket = path?.split("/")[0];
+        const objectPath = path?.substring(bucket.length + 1);
+        if (bucket && objectPath) {
+          const { error: removeErr } = await supabaseCli.storage.from(bucket).remove([objectPath]);
+          if (removeErr) {
+            console.warn("Storage remove error:", removeErr.message || removeErr);
+          }
+        }
+      }
+    } catch (imgErr) {
+      console.warn("Image cleanup skipped:", imgErr?.message || imgErr);
+    }
+
+    // Delete party (prices/descriptions cascade via FK)
+    const { data: deleted, error: delErr } = await supabaseCli
+      .from("parties")
+      .delete()
+      .eq("id", partyId)
+      .select();
+
+    if (delErr) {
+      console.error("Party deletion error:", delErr);
+      return res.status(500).json({ success: false, message: "Failed to delete party" });
+    }
+
+    return res.json({ success: true, party: deleted?.[0] || { id: partyId } });
+  } catch (error) {
+    console.error("Unexpected deleteParty error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getHotTopicParties,
   getUpcomingParties,
@@ -723,4 +802,5 @@ module.exports = {
   getAdminStatistics,
   getAdminParties,
   getAdminMetrics,
+  deleteParty,
 };

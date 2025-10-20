@@ -36,33 +36,19 @@ window.addEventListener('popstate', (event) => {
   }
 });
 
+function navigateTo(path, data = {}) {
+  const newRoute = { path, data };
+  window.history.pushState(newRoute, "", `/app2${path}`);
+  renderRoute(newRoute);
+}
+
 function renderRoute(currentRoute) {
-  // Verificación adicional: si el usuario es admin, nunca permitir acceso a app1
-  if (authManager.isUserAdmin() && window.location.href.includes('/app1')) {
-    console.log('Admin detected on app1, redirecting to admin-dashboard');
-    window.location.href = '/app2/admin-dashboard';
-    return;
-  }
-  
-  if (!checkRouteAccess(currentRoute?.path)) {
-    handleUnauthorizedAccess(currentRoute?.path);
+  if (!checkRouteAccess(currentRoute.path)) {
+    handleUnauthorizedAccess(currentRoute.path);
     return;
   }
 
-  switch (currentRoute?.path) {
-    case "/welcome":
-    case "/":
-      // Si hay usuario autenticado, redirigir según su tipo
-      if (authManager.isAuthenticated()) {
-        if (authManager.isUserAdmin()) {
-          window.location.href = '/app2/admin-dashboard';
-        } else if (authManager.isUserMember()) {
-          window.location.href = '/app1/dashboard';
-        }
-      } else {
-        window.location.href = '/app1/welcome';
-      }
-      break;
+  switch (currentRoute.path) {
     case "/admin-login":
       clearScripts();
       renderAdminLogin(currentRoute?.data);
@@ -81,7 +67,7 @@ function renderRoute(currentRoute) {
       break;
     case "/screen1":
       clearScripts();
-      renderScreen1(currentRoute?.data);
+      renderScreen1();
       break;
     case "/screen2":
       clearScripts();
@@ -117,29 +103,16 @@ function renderRoute(currentRoute) {
   }
 }
 
-function navigateTo(path, data) {
-  // Verificar si el usuario es admin y está intentando navegar a app1
-  if (authManager.isUserAdmin() && (path.includes('/app1') || path.includes('app1'))) {
-    console.log('Admin attempting to access app1, redirecting to admin-dashboard');
-    window.location.href = '/app2/admin-dashboard';
-    return;
-  }
-  
-  route = { path, data };
-  renderRoute(route);
-  
-  const newUrl = `/app2${path}`;
-  window.history.pushState({ path, data }, '', newUrl);
-}
-
+// Centralized request helper that always targets current origin to avoid CORS
 async function makeRequest(url, method, body) {
-  const BASE_URL = "http://localhost:5050";
-  let response = await fetch(`${BASE_URL}${url}`, {
+  const BASE_URL = window.location.origin; // same-origin to avoid CORS issues
+  const endpoint = `${BASE_URL}${url}`;
+  let response = await fetch(endpoint, {
     method: method,
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   response = await response.json();

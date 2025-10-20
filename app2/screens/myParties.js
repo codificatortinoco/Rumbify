@@ -185,6 +185,33 @@ export default function renderMyParties(data = {}) {
     }
   }
 
+  function showToast(message, type = 'info') {
+    const existing = document.getElementById('toast-notice');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'toast-notice';
+    toast.textContent = message;
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.style.padding = '10px 14px';
+    toast.style.borderRadius = '8px';
+    toast.style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)';
+    toast.style.color = '#fff';
+    toast.style.fontSize = '14px';
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 200ms ease';
+    const bg = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6';
+    toast.style.background = bg;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity = '1'; });
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 200);
+    }, 2500);
+  }
+
   async function deleteParty(partyId) {
     try {
       const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
@@ -192,15 +219,16 @@ export default function renderMyParties(data = {}) {
       
       if (response.success) {
         console.log('Party deleted successfully');
+        showToast('Event deleted successfully', 'success');
         // Reload the parties list
         loadAdminParties();
       } else {
         console.error('Failed to delete party:', response.message);
-        alert('Failed to delete party. Please try again.');
+        showToast('Failed to delete party', 'error');
       }
     } catch (error) {
       console.error('Error deleting party:', error);
-      alert('Error deleting party. Please try again.');
+      showToast('Error deleting party', 'error');
     }
   }
 
@@ -306,7 +334,7 @@ function displayParties(parties) {
   eventsList.innerHTML = parties.map(party => `
     <div class="event-card">
       <div class="event-image">
-        <img src="${party.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop'}" alt="${party.title}" />
+        <img src="${party.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop'}" alt="${party.title}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop';" />
       </div>
       <div class="event-content">
         <h3 class="event-title">${party.title}</h3>

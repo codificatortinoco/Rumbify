@@ -2,7 +2,11 @@ import { navigateTo, makeRequest } from "../app.js";
 
 export default async function renderGuestsSummary(routeData = {}) {
   const app = document.getElementById("app");
-  const partyId = routeData?.partyId || localStorage.getItem('selectedPartyId') || 1;
+  // Read partyId from route data, URL querystring, or localStorage
+  const queryPartyId = new URLSearchParams(window.location.search).get('partyId');
+  const partyId = routeData?.partyId || queryPartyId || localStorage.getItem('selectedPartyId') || 1;
+  // Persist selected partyId for navigation continuity
+  localStorage.setItem('selectedPartyId', partyId);
 
   app.innerHTML = `
     <div id="guests-summary-screen" class="manage-party">
@@ -80,7 +84,13 @@ export default async function renderGuestsSummary(routeData = {}) {
   document.getElementById('gs-back')?.addEventListener('click', () => navigateTo('/manage-party', { partyId }));
 
   try {
-    const summary = await (await fetch(`http://localhost:5050/parties/${partyId}/guests/summary`)).json();
+    // Usar el helper centralizado y enviar email del admin para pasar el middleware
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    const adminEmail = adminUser?.email;
+
+    const summaryUrl = `/parties/${partyId}/guests/summary${adminEmail ? `?email=${encodeURIComponent(adminEmail)}` : ''}`;
+    const summary = await makeRequest(summaryUrl, 'GET');
+
     document.getElementById('partyTitle').textContent = summary?.party?.title || `Party #${partyId}`;
     document.getElementById('pendingCount').textContent = summary?.totals?.pending ?? 0;
     document.getElementById('validatedCount').textContent = summary?.totals?.validated ?? 0;

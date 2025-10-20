@@ -6,7 +6,11 @@ const supabase = require("../services/supabase.service");
  */
 const requireAdmin = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    // Permitir email por body (POST), query (GET) o header (GET)
+    const bodyEmail = req.body?.email;
+    const queryEmail = req.query?.email;
+    const headerEmail = req.headers["x-admin-email"];
+    const email = bodyEmail || queryEmail || headerEmail;
     
     console.log("[requireAdmin] Request body:", req.body);
     console.log("[requireAdmin] Email from request:", email);
@@ -20,11 +24,11 @@ const requireAdmin = async (req, res, next) => {
     }
 
     // Buscar usuario en la base de datos
-    console.log("[requireAdmin] Looking up user with email:", email.toLowerCase().trim());
+    console.log("[requireAdmin] Looking up user with email:", String(email).toLowerCase().trim());
     const { data: user, error } = await supabase
       .from("users")
       .select("id, name, email, is_admin")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", String(email).toLowerCase().trim())
       .single();
 
     console.log("[requireAdmin] User lookup result:", { user, error });

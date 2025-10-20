@@ -78,6 +78,7 @@ const authManager = new AuthManager();
 function checkRouteAccess(route) {
   const memberRoutes = [
     '/dashboard',
+    '/member-dashboard',
     '/profile',
     '/edit-profile',
     '/event-details'
@@ -126,9 +127,9 @@ function handleUnauthorizedAccess(route) {
     return;
   }
   
-  // Si es miembro, redirigir a dashboard
+  // Si es miembro, redirigir a member-dashboard
   if (authManager.isUserMember()) {
-    window.location.href = '/app1/dashboard';
+    window.location.href = '/app1/member-dashboard';
   } else {
     window.location.href = '/app1/welcome';
   }

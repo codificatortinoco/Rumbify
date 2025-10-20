@@ -2,7 +2,7 @@ import { makeRequest, navigateTo, getCurrentUser } from "../app.js";
 
 // Configuration for data source
 const CONFIG = {
-  USE_MOCK_DATA: false, // Now using Supabase data - Updated: 2025-10-08
+  USE_MOCK_DATA: false, 
   API_ENDPOINTS: {
     HOT_TOPIC: "/parties/hot-topic",
     UPCOMING: "/parties/upcoming",
@@ -472,7 +472,7 @@ function showDatabaseError(message) {
           ">
             Reintentar
           </button>
-          <button onclick="navigateTo('/home')" style="
+          <button onclick="navigateTo('/member-dashboard')" style="
             background: #95a5a6;
             border: none;
             color: white;
@@ -821,10 +821,11 @@ function setupBottomNavigation() {
       const target = item.dataset.nav;
       switch (target) {
         case "Parties":
-          navigateTo("/parties");
+-         navigateTo("/parties");
++         navigateTo("/dashboard");
           break;
         case "Home":
-          navigateTo("/home");
+          navigateTo("/member-dashboard");
           break;
         case "Profile":
           navigateTo("/profile");

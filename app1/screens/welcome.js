@@ -3,7 +3,7 @@ import { navigateTo, isUserLoggedIn } from "../app.js";
 export default function renderWelcome() {
   // Check if user is already logged in
   if (isUserLoggedIn()) {
-    navigateTo("/dashboard");
+    navigateTo("/member-dashboard");
     return;
   }
   

@@ -32,7 +32,7 @@ function getInitialRoute() {
   
   // Check if user is logged in for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/parties', '/home', '/profile', '/edit-profile', '/event-details'];
+  const protectedRoutes = ['/dashboard', '/member-dashboard', '/parties', '/profile', '/edit-profile', '/event-details'];
   
   if (protectedRoutes.includes(cleanPath) && !isLoggedIn) {
     return { path: '/welcome', data: {} };

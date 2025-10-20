@@ -158,6 +158,13 @@ export default function renderCreateParty(data = {}) {
     imageCard.style.backgroundPosition = 'center';
     imageCard.classList.add('has-image');
   };
+  // Helper to convert File -> dataURL (base64)
+  const fileToDataURL = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
   if (imageCard && imageFileInput) {
     imageCard.addEventListener('click', openFileDialog);
@@ -176,29 +183,28 @@ export default function renderCreateParty(data = {}) {
       const localUrl = URL.createObjectURL(file);
       setPreview(localUrl);
 
-      // Try upload to Supabase Storage if available
+      // Upload via backend to persist and get a public URL
       try {
-        const { supabaseCli } = await import('../../services/supabase.service.js');
-        if (!supabaseCli) { throw new Error('Supabase client not available'); }
-        const bucket = 'party-images';
-        const filePath = `party_${Date.now()}_${file.name}`.replace(/\s+/g, '_');
-        const { data, error } = await supabaseCli.storage.from(bucket).upload(filePath, file, { upsert: true, contentType: file.type });
-        if (error) throw error;
-        const { data: pub } = await supabaseCli.storage.from(bucket).getPublicUrl(filePath);
-        if (pub && pub.publicUrl) {
-          imageHidden.value = pub.publicUrl;
+        const dataUrl = await fileToDataURL(file);
+        const uploadRes = await makeRequest('/parties/upload-image', 'POST', {
+          dataUrl,
+          fileName: file.name,
+          contentType: file.type,
+        });
+        if (uploadRes && uploadRes.success && uploadRes.publicUrl) {
+          imageHidden.value = uploadRes.publicUrl;
         } else {
-          imageHidden.value = localUrl;
+          console.warn('Upload responded without publicUrl, using placeholder');
+          imageHidden.value = 'https://placehold.co/600x350?text=Party';
         }
       } catch (err) {
-        // Fallback: usar placeholder en vez de Base64 para evitar 413
-        imageHidden.value = 'https://via.placeholder.com/600x350?text=Party';
+        // Fallback: usar placeholder en vez de Base64/blob para evitar roturas posteriores
         console.warn('Image upload fallback:', err);
+        imageHidden.value = 'https://placehold.co/600x350?text=Party';
       }
     });
   }
-
-  // Setup tags multiselect behavior
+  // Remove duplicate setPreview defined later
   const tagsMulti = document.getElementById("party-tags-multiselect");
   const tagsToggle = document.getElementById("party-tags-toggle");
   const tagsMenu = document.getElementById("party-tags-menu");

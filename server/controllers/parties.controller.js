@@ -636,7 +636,7 @@ const getAdminParties = async (req, res) => {
     // Add status based on category and other factors
     const partiesWithStatus = parties.map(party => ({
       ...party,
-      status: party.category === 'hot-topic' ? 'active' : 'inactive'
+      status: (party.category === 'hot-topic' || party.category === 'upcoming') ? 'active' : 'inactive'
     }));
 
     console.log("[getAdminParties] Returning parties with status:", partiesWithStatus.length);
@@ -814,13 +814,34 @@ const uploadPartyImage = async (req, res) => {
     const sanitizedName = String(fileName).replace(/\s+/g, "_");
     const filePath = `parties/${Date.now()}_${sanitizedName}`;
 
-    const { data: uploaded, error: uploadError } = await supabaseCli.storage
-      .from(bucket)
-      .upload(filePath, buffer, { upsert: true, contentType: mime });
+    // Attempt upload, auto-create bucket if missing
+    let uploadError = null;
+    let uploaded = null;
+    try {
+      const upRes = await supabaseCli.storage
+        .from(bucket)
+        .upload(filePath, buffer, { upsert: true, contentType: mime });
+      uploaded = upRes.data;
+      uploadError = upRes.error || null;
+    } catch (e) {
+      uploadError = e;
+    }
 
     if (uploadError) {
-      console.error("Upload error:", uploadError);
-      return res.status(500).json({ success: false, message: "Fallo al subir imagen", error: uploadError.message });
+      const msg = uploadError?.message || String(uploadError);
+      console.warn("Upload failed, trying to create bucket:", msg);
+      // Try to create bucket (requires service role)
+      try {
+        await supabaseCli.storage.createBucket(bucket, { public: true });
+        const retry = await supabaseCli.storage
+          .from(bucket)
+          .upload(filePath, buffer, { upsert: true, contentType: mime });
+        uploaded = retry.data;
+        uploadError = retry.error || null;
+      } catch (createErr) {
+        console.error("Bucket creation/upload retry failed:", createErr?.message || createErr);
+        return res.status(500).json({ success: false, message: "Fallo al subir imagen", error: msg });
+      }
     }
 
     const { data: pub } = await supabaseCli.storage.from(bucket).getPublicUrl(filePath);

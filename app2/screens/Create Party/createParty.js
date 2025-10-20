@@ -179,6 +179,7 @@ export default function renderCreateParty(data = {}) {
       // Try upload to Supabase Storage if available
       try {
         const { supabaseCli } = await import('../../services/supabase.service.js');
+        if (!supabaseCli) { throw new Error('Supabase client not available'); }
         const bucket = 'party-images';
         const filePath = `party_${Date.now()}_${file.name}`.replace(/\s+/g, '_');
         const { data, error } = await supabaseCli.storage.from(bucket).upload(filePath, file, { upsert: true, contentType: file.type });
@@ -190,8 +191,8 @@ export default function renderCreateParty(data = {}) {
           imageHidden.value = localUrl;
         }
       } catch (err) {
-        // Fallback: keep local object URL
-        imageHidden.value = localUrl;
+        // Fallback: usar placeholder en vez de Base64 para evitar 413
+        imageHidden.value = 'https://via.placeholder.com/600x350?text=Party';
         console.warn('Image upload fallback:', err);
       }
     });

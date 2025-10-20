@@ -11,6 +11,7 @@ const {
   getAdminParties,
   getAdminMetrics,
   deleteParty,
+  uploadPartyImage,
 } = require("../controllers/parties.controller");
 const guestsController = require("../controllers/guests.controller");
 const { requireAdmin } = require("../middleware/auth.middleware");
@@ -27,6 +28,7 @@ router.get("/parties/:id", getEventDetails);
 
 // Admin-only routes
 router.delete("/parties/:id", requireAdmin, deleteParty);
+router.post("/parties/upload-image", requireAdmin, uploadPartyImage);
 
 // Guests endpoints (Admin only)
 router.get("/parties/:id/guests", requireAdmin, guestsController.getPartyGuests);

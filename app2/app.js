@@ -104,20 +104,45 @@ function renderRoute(currentRoute) {
 }
 
 // Centralized request helper that always targets current origin to avoid CORS
-async function makeRequest(url, method, body) {
+async function makeRequest(url, method, body, extraHeaders = {}) {
   const BASE_URL = window.location.origin; // same-origin to avoid CORS issues
   const endpoint = `${BASE_URL}${url}`;
-  let response = await fetch(endpoint, {
-    method: method,
-    headers: {
-      "Content-Type": "application/json",
-    },
+
+  // Attach admin email header automatically if present
+  let adminEmail = null;
+  try {
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    adminEmail = adminUser?.email || null;
+  } catch (_) {}
+
+  const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    ...(adminEmail ? { 'x-admin-email': adminEmail } : {}),
+    ...extraHeaders,
+  };
+
+  const resp = await fetch(endpoint, {
+    method,
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  response = await response.json();
+  const contentType = (resp.headers.get('content-type') || '').toLowerCase();
 
-  return response;
+  // Try to parse JSON if available; otherwise, read text for clearer errors
+  if (contentType.includes('application/json')) {
+    const json = await resp.json();
+    return json;
+  } else {
+    const text = await resp.text();
+    // Normalize into a consistent object so callers can show message
+    return {
+      success: resp.ok,
+      status: resp.status,
+      message: text || `Unexpected ${resp.status} response`,
+    };
+  }
 }
 
 export { navigateTo, socket, makeRequest };

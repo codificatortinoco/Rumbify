@@ -736,21 +736,25 @@ const deleteParty = async (req, res) => {
       return res.status(404).json({ success: false, message: "Party not found" });
     }
 
-    // Best effort: remove dependent rows (codes, descriptions, prices)
+    // Best effort: remove entry codes
     try {
       await supabaseCli.from("codes").delete().eq("party_id", partyId);
     } catch (codesErr) {
       console.warn("Codes deletion failed or table missing:", codesErr?.message || codesErr);
     }
+
+    // Best effort: remove prices
+    try {
+      await supabaseCli.from("prices").delete().eq("party_id", partyId);
+    } catch (pricesErr) {
+      console.warn("Prices deletion failed or table missing:", pricesErr?.message || pricesErr);
+    }
+
+    // Best effort: remove descriptions
     try {
       await supabaseCli.from("descriptions").delete().eq("party_id", partyId);
     } catch (descErr) {
       console.warn("Descriptions deletion failed or table missing:", descErr?.message || descErr);
-    }
-    try {
-      await supabaseCli.from("prices").delete().eq("party_id", partyId);
-    } catch (priceErr) {
-      console.warn("Prices deletion failed or table missing:", priceErr?.message || priceErr);
     }
 
     // Best effort: delete cover image if stored in Supabase Storage
@@ -772,7 +776,7 @@ const deleteParty = async (req, res) => {
       console.warn("Image cleanup skipped:", imgErr?.message || imgErr);
     }
 
-    // Delete party (prices/descriptions cascade via FK)
+    // Delete party (explicit after dependents)
     const { data: deleted, error: delErr } = await supabaseCli
       .from("parties")
       .delete()
@@ -781,13 +785,54 @@ const deleteParty = async (req, res) => {
 
     if (delErr) {
       console.error("Party deletion error:", delErr);
-      return res.status(500).json({ success: false, message: "Failed to delete party" });
+      return res.status(500).json({ success: false, message: "Failed to delete party", error: delErr?.message || delErr });
     }
 
     return res.json({ success: true, party: deleted?.[0] || { id: partyId } });
   } catch (error) {
     console.error("Unexpected deleteParty error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// Upload party image via backend using Supabase service role
+const uploadPartyImage = async (req, res) => {
+  try {
+    const { dataUrl, fileName = `party_${Date.now()}.jpg`, contentType } = req.body || {};
+    if (!dataUrl || typeof dataUrl !== "string") {
+      return res.status(400).json({ success: false, message: "dataUrl requerido" });
+    }
+    const match = dataUrl.match(/^data:(.*?);base64,(.*)$/);
+    if (!match) {
+      return res.status(400).json({ success: false, message: "Formato dataUrl inválido" });
+    }
+    const mime = contentType || match[1] || "image/jpeg";
+    const base64 = match[2];
+    const buffer = Buffer.from(base64, "base64");
+
+    const bucket = "party-images";
+    const sanitizedName = String(fileName).replace(/\s+/g, "_");
+    const filePath = `parties/${Date.now()}_${sanitizedName}`;
+
+    const { data: uploaded, error: uploadError } = await supabaseCli.storage
+      .from(bucket)
+      .upload(filePath, buffer, { upsert: true, contentType: mime });
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      return res.status(500).json({ success: false, message: "Fallo al subir imagen", error: uploadError.message });
+    }
+
+    const { data: pub } = await supabaseCli.storage.from(bucket).getPublicUrl(filePath);
+    const publicUrl = pub?.publicUrl;
+    if (!publicUrl) {
+      return res.status(500).json({ success: false, message: "No se pudo obtener URL pública" });
+    }
+
+    return res.status(200).json({ success: true, publicUrl, path: filePath, bucket });
+  } catch (err) {
+    console.error("Unexpected uploadPartyImage error:", err);
+    return res.status(500).json({ success: false, message: "Error interno al subir imagen" });
   }
 };
 
@@ -803,4 +848,5 @@ module.exports = {
   getAdminParties,
   getAdminMetrics,
   deleteParty,
+  uploadPartyImage,
 };

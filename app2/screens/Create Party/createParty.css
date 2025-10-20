@@ -9,6 +9,8 @@
   min-height: 100vh;
   background: url("../../assets/BackgroundImage.png") center/cover no-repeat;
   padding: 16px;
+  /* Avoid overlap with fixed bottom nav */
+  padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
 }
 
 .create-party-content {
@@ -171,6 +173,7 @@
 .form-actions {
   display: flex;
   justify-content: center;
+  margin-bottom: 24px; /* extra space so the Create button stays visible */
 }
 
 /* Create button with gradient like tickets-card */

@@ -374,7 +374,7 @@ export default function renderCreateParty(data = {}) {
         email: adminEmail, // Include admin email for authentication
       };
 
-      const createRes = await makeRequest("/newParty", "POST", payload);
+      const createRes = await makeRequest("/create-party", "POST", payload);
       console.log("Create party response:", createRes);
       
       if (!createRes || !createRes.success) {
@@ -393,15 +393,31 @@ export default function renderCreateParty(data = {}) {
       console.log('=== PARTY CREATED SUCCESSFULLY ===');
       console.log('Party ID:', partyId);
       console.log('Party data:', createRes.party);
-      alert("Party creada correctamente");
+
+      // New: surface partial-write issues (prices/descriptions)
+      const pricesError = createRes.prices_error;
+      const descriptionError = createRes.description_error;
+      if (pricesError || descriptionError) {
+        const msgParts = [];
+        if (pricesError) msgParts.push(`Error guardando precios: ${pricesError}`);
+        else msgParts.push('Precios guardados');
+        if (descriptionError) msgParts.push(`Error guardando descripción: ${descriptionError}`);
+        else msgParts.push('Descripción guardada');
+        alert(`Party creada. ${msgParts.join(' | ')}`);
+      } else {
+        alert("Party creada correctamente");
+      }
+
       navigateTo("/my-parties");
     } catch (err) {
       console.error(err);
       alert(err.message || "Error creando la fiesta");
     } finally {
       const submitBtn = document.getElementById("create-btn");
-      submitBtn.textContent = originalText;
-      submitBtn.disabled = false;
+      if (submitBtn) {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
     }
   });
 

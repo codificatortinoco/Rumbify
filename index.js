@@ -9,7 +9,7 @@ const adminRouter = require("./server/routes/admin.router");
 const codesRouter = require("./server/routes/codes.router");
 const { initSocketInstance } = require("./server/services/socket.service");
 
-const PORT = 5050;
+const PORT = Number(process.env.PORT) || 5050;
 
 const app = express();
 const httpServer = createServer(app);

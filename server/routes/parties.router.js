@@ -41,6 +41,8 @@ router.get("/parties/:id/guests/summary", requireAdmin, require("../controllers/
 
 // Create new party (Admin only) - temporarily disabled auth for testing
 router.post("/newParty", requireAdmin, createParty);
+// Alias route for consistency with frontend naming
+router.post("/create-party", requireAdmin, createParty);
 
 // Get admin statistics (Admin only)
 router.post("/admin/statistics", requireAdmin, getAdminStatistics);

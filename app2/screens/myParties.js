@@ -247,7 +247,7 @@ export default function renderMyParties(data = {}) {
       } else if (target === 'new') {
         navigateTo('/create-party');
       } else if (target === 'profile') {
-        navigateTo('/edit-profile');
+        navigateTo('/profile');
       }
     });
   });
@@ -256,7 +256,7 @@ export default function renderMyParties(data = {}) {
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) {
     profileBtn.addEventListener('click', () => {
-      navigateTo('/edit-profile');
+      navigateTo('/profile');
     });
   }
 }

@@ -93,7 +93,7 @@ class AuthManager {
 
   redirectBasedOnUserType() {
     if (this.isUserAdmin()) {
-      return '/admin-dashboard';
+      return '/my-parties';
     } else if (this.isUserMember()) {
       return '/screen1';
     } else {
@@ -169,7 +169,10 @@ function checkRouteAccess(route) {
     '/admin-dashboard',
     '/create-party',
     '/manage-party',
-    '/guests-summary'
+    '/guests-summary',
+    '/profile',
+    '/edit-profile',
+    '/my-parties'
   ];
 
   const memberRoutes = [
@@ -247,9 +250,9 @@ function handleUnauthorizedAccess(route) {
     return;
   }
   
-  // Si es una ruta de miembro y el usuario es admin, redirigir a su dashboard
+  // Si es una ruta de miembro y el usuario es admin, redirigir a my-parties
   if (memberRoutes.includes(route) && authManager.isUserAdmin()) {
-    window.location.href = '/app2/admin-dashboard';
+    window.location.href = '/app2/my-parties';
     return;
   }
   
@@ -261,7 +264,7 @@ function handleUnauthorizedAccess(route) {
   
   // NUNCA permitir que admin acceda a app1
   if (authManager.isUserAdmin()) {
-    window.location.href = '/app2/admin-dashboard';
+    window.location.href = '/app2/my-parties';
   } else if (authManager.isUserMember()) {
     window.location.href = '/app1/dashboard';
   } else {

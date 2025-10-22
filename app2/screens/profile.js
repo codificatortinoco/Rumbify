@@ -65,24 +65,14 @@ export default function renderProfile() {
       <!-- Settings Menu -->
       <div class="settings-section">
         <div class="settings-list">
-          <div class="settings-item" id="notificationsBtn">
-            <img src="assets/notifications.svg" alt="Notifications" class="settings-icon" />
-            <span class="settings-text">Notifications</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
-          </div>
-          <div class="settings-item" id="yourCodesBtn">
-            <img src="assets/copyIcon.svg" alt="Your codes" class="settings-icon" />
-            <span class="settings-text">Your codes</span>
+          <div class="settings-item" id="statisticsBtn">
+            <img src="assets/notifications.svg" alt="Statistics" class="settings-icon" />
+            <span class="settings-text">Statistics</span>
             <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
           </div>
           <div class="settings-item" id="editProfileBtn">
             <img src="assets/edit.svg" alt="Edit Profile" class="settings-icon" />
             <span class="settings-text">Edit profile</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
-          </div>
-          <div class="settings-item" id="changeUserBtn">
-            <img src="assets/person.svg" alt="Change User" class="settings-icon" />
-            <span class="settings-text">Change User</span>
             <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
           </div>
           <div class="settings-item" id="logoutBtn">
@@ -462,28 +452,18 @@ function setupProfileEventListeners() {
   // See more parties button
   document.getElementById("seeMorePartiesBtn").addEventListener("click", () => {
     console.log("See more parties clicked");
-    navigateTo("/admin-dashboard");
+    navigateTo("/my-parties");
   });
 
   // Settings menu items
-  document.getElementById("notificationsBtn").addEventListener("click", () => {
-    console.log("Notifications clicked");
-    // TODO: Navigate to notifications settings
-  });
-
-  document.getElementById("yourCodesBtn").addEventListener("click", () => {
-    console.log("Your codes clicked");
-    // TODO: Navigate to codes page
+  document.getElementById("statisticsBtn").addEventListener("click", () => {
+    console.log("Statistics clicked");
+    navigateTo("/admin-dashboard");
   });
 
   document.getElementById("editProfileBtn").addEventListener("click", () => {
     console.log("Edit profile clicked");
     navigateTo("/edit-profile");
-  });
-
-  document.getElementById("changeUserBtn").addEventListener("click", () => {
-    console.log("Change user clicked");
-    // TODO: Implement user switching
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -518,11 +498,12 @@ function setupBottomNavigation() {
       item.classList.add('active');
       const target = item.dataset.nav;
       if (target === 'parties') {
-        navigateTo('/admin-dashboard');
+        navigateTo('/my-parties');
       } else if (target === 'new') {
         navigateTo('/create-party');
       } else if (target === 'profile') {
-        // Already on profile page
+        // Already on profile page - do nothing
+        return;
       }
     });
   });

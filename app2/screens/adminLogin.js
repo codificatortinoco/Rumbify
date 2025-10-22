@@ -4,7 +4,7 @@ import { authManager } from "../auth.js";
 export default function renderAdminLogin(data = {}) {
   if (authManager.isAuthenticated()) {
     if (authManager.isUserAdmin()) {
-      window.location.href = '/app2/admin-dashboard';
+      window.location.href = '/app2/my-parties';
     } else if (authManager.isUserMember()) {
       window.location.href = '/app1/dashboard';
     }
@@ -107,7 +107,7 @@ export default function renderAdminLogin(data = {}) {
       
       if (response.success) {
         authManager.setAdminUser(response.user);
-        navigateTo("/admin-dashboard", { 
+        navigateTo("/my-parties", { 
           userType: "admin", 
           user: response.user 
         });

@@ -443,7 +443,7 @@ export default function renderCreateParty(data = {}) {
         } else if (target === 'new') {
           navigateTo('/create-party');
         } else if (target === 'profile') {
-          navigateTo('/edit-profile');
+          navigateTo('/profile');
         }
       });
     });

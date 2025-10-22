@@ -185,9 +185,9 @@ export default async function renderManageParty(routeData = {}) {
   bottomNav?.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
       const target = item.dataset.nav;
-      if (target === 'parties') navigateTo('/admin-dashboard');
+      if (target === 'parties') navigateTo('/my-parties');
       if (target === 'new') navigateTo('/create-party');
-      if (target === 'profile') navigateTo('/admin-dashboard');
+      if (target === 'profile') navigateTo('/profile');
     });
   });
 

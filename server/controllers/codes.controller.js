@@ -26,7 +26,7 @@ const testConnection = async (req, res) => {
     
     // Test codes table
     const { data: codesData, error: codesError } = await supabaseCli
-      .from('codes')
+      .from('Codes')
       .select('count')
       .limit(1);
     
@@ -106,7 +106,7 @@ const generateCodes = async (req, res) => {
     let codesTableMissing = false;
     let existingCodeSet = new Set();
     const { data: existingCodes, error: fetchError } = await supabaseCli
-      .from('codes')
+      .from('Codes')
       .select('code');
 
     if (fetchError) {
@@ -250,7 +250,7 @@ const generateCodes = async (req, res) => {
       }));
 
       const { data: insertedCodes, error } = await supabaseCli
-        .from('codes')
+        .from('Codes')
         .insert(codeRecords)
         .select('id, code, price_id, already_used');
 
@@ -316,7 +316,7 @@ const getPartyCodes = async (req, res) => {
     console.log('[getPartyCodes] Getting codes for party:', partyId);
     
     const { data: codes, error } = await supabaseCli
-      .from('codes')
+      .from('Codes')
       .select('*')
       .eq('party_id', partyId)
       .order('created_at', { ascending: false });
@@ -362,7 +362,7 @@ const validateCode = async (req, res) => {
     }
 
     const { data: codeRecord, error } = await supabaseCli
-      .from('codes')
+      .from('Codes')
       .select('*, parties(title, location, date)')
       .eq('code', code)
       .single();
@@ -415,7 +415,7 @@ const useCode = async (req, res) => {
     }
 
     const { data: updatedCode, error } = await supabaseCli
-      .from('codes')
+      .from('Codes')
       .update({ 
         already_used: true,
         user_id: user_id || null

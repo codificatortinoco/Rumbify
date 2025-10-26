@@ -743,8 +743,9 @@ const getUserPartyHistory = async (req, res) => {
       }
 
       // Add to history
-      partyHistory.push({
+      const historyItem = {
         id: party.id,
+        party_id: party.id, // Add party_id for navigation
         title: party.title,
         location: party.location,
         date: party.date,
@@ -757,7 +758,10 @@ const getUserPartyHistory = async (req, res) => {
         code_used: codeRecord.code,
         added_at: codeRecord.created_at,
         status: 'attended'
-      });
+      };
+      
+      console.log('[getUserPartyHistory] Adding to history:', historyItem);
+      partyHistory.push(historyItem);
     }
     
     console.log('[getUserPartyHistory] Found', partyHistory.length, 'parties in history');

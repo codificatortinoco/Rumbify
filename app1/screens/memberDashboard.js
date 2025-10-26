@@ -261,7 +261,7 @@ function renderUpcomingCarousel(events) {
     const attendeesDisplay = `${attendeesCount}/${maxAttendees}`;
     
     return `
-      <div class="upcoming-card">
+      <div class="upcoming-card" data-party-id="${event.id}">
         <div class="event-image">
           <img src="${event.image_url || event.image || 'https://images.unsplash.com/photo-1571266028243-e68f952df624?w=400&h=300&fit=crop'}" alt="${event.title}" />
         </div>
@@ -352,7 +352,21 @@ function setupUpcomingCarousel() {
 
 function setupActionButtons() {
   document.addEventListener('click', async (e) => {
+    // Handle party card clicks
+    if (e.target.closest('.upcoming-card') && !e.target.closest('.action-btn')) {
+      const card = e.target.closest('.upcoming-card');
+      const partyId = card.dataset.partyId;
+      
+      if (partyId) {
+        console.log('Navigating to party details:', partyId);
+        navigateTo(`/party-details/${partyId}`);
+      }
+    }
+    
+    // Handle action button clicks
     if (e.target.closest('.action-btn')) {
+      e.stopPropagation(); // Prevent card click
+      
       const button = e.target.closest('.action-btn');
       const eventId = button.dataset.eventId;
       const action = button.classList.contains('going') ? 'going' : 

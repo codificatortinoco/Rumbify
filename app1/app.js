@@ -4,6 +4,7 @@ import renderRegister from "./screens/register.js";
 import renderDashboard, { cleanupDashboard } from "./screens/dashboard.js";
 import renderMemberDashboard, { cleanupMemberDashboard } from "./screens/memberDashboard.js";
 import renderEventDetails from "./screens/eventDetails.js";
+import renderPartyDetails, { cleanupPartyDetails } from "./screens/partyDetails.js";
 import renderProfile from "./screens/profile.js";
 import renderEditProfile from "./screens/editProfile.js";
 import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.js";
@@ -13,6 +14,7 @@ const socket = io("/", { path: "/real-time" });
 function clearScripts() {
   cleanupDashboard();
   cleanupMemberDashboard();
+  cleanupPartyDetails();
   
   document.getElementById("app").innerHTML = "";
 }
@@ -33,6 +35,11 @@ function getInitialRoute() {
   // Check if user is logged in for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const protectedRoutes = ['/dashboard', '/member-dashboard', '/parties', '/profile', '/edit-profile', '/event-details'];
+  
+  // Check for party-details route with ID
+  if (cleanPath.startsWith('/party-details/') && !isLoggedIn) {
+    return { path: '/welcome', data: {} };
+  }
   
   if (protectedRoutes.includes(cleanPath) && !isLoggedIn) {
     return { path: '/welcome', data: {} };
@@ -101,25 +108,50 @@ function renderRoute(currentRoute) {
       renderEditProfile(currentRoute?.data);
       break;
     default:
+      // Handle dynamic routes
+      if (currentRoute.path.startsWith('/party-details/')) {
+        clearScripts();
+        const partyId = currentRoute.path.split('/')[2];
+        console.log('Rendering party details for ID:', partyId);
+        renderPartyDetails(partyId);
+        break;
+      }
+      
+      // Default fallback
       clearScripts();
       renderWelcome({});
   }
 }
 
 async function makeRequest(url, method, body) {
+  console.log('[makeRequest] Making request:', { url, method, body });
+  
   const BASE_URL = window.location.origin; // same-origin
   const endpoint = `${BASE_URL}${url}`;
-  let response = await fetch(endpoint, {
-    method: method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  
+  console.log('[makeRequest] Full endpoint:', endpoint);
+  
+  try {
+    let response = await fetch(endpoint, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-  response = await response.json();
+    console.log('[makeRequest] Raw response status:', response.status);
+    console.log('[makeRequest] Raw response ok:', response.ok);
 
-  return response;
+    response = await response.json();
+    
+    console.log('[makeRequest] Parsed response:', response);
+    return response;
+    
+  } catch (error) {
+    console.error('[makeRequest] Error in request:', error);
+    throw error;
+  }
 }
 
 function setLoggedInUser(user) {

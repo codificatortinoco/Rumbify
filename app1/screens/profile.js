@@ -238,25 +238,29 @@ async function loadUserHistory() {
     
     if (response && response.success && response.party_history) {
       console.log("Party history loaded:", response.party_history.length, "parties");
+      console.log("Party history data:", response.party_history);
       
       const historyList = document.getElementById("historyList");
       
       if (response.party_history.length === 0) {
         showNoHistoryMessage();
       } else {
-        historyList.innerHTML = response.party_history.map(item => `
-          <div class="history-item">
-            <img src="${item.image}" alt="${item.title}" class="history-image" />
-            <div class="history-content">
-              <h3 class="history-title">${item.title}</h3>
-              <p class="history-date">${item.date} • ${item.location}</p>
-              <p class="history-price">${item.price_name}: ${item.price}</p>
+        historyList.innerHTML = response.party_history.map(item => {
+          console.log("Creating history item for:", item.title, "party_id:", item.party_id);
+          return `
+            <div class="history-item" data-party-id="${item.party_id}" style="cursor: pointer;">
+              <img src="${item.image}" alt="${item.title}" class="history-image" />
+              <div class="history-content">
+                <h3 class="history-title">${item.title}</h3>
+                <p class="history-date">${item.date} • ${item.location}</p>
+                <p class="history-price">${item.price_name}: ${item.price}</p>
+              </div>
+              <div class="history-status">
+                <span class="status-icon">✓</span>
+              </div>
             </div>
-            <div class="history-status">
-              <span class="status-icon">✓</span>
-            </div>
-          </div>
-        `).join("");
+          `;
+        }).join("");
       }
       
       // Update attended count with real data
@@ -368,6 +372,19 @@ function setupProfileEventListeners() {
   document.querySelector(".camera-btn").addEventListener("click", () => {
     console.log("Change profile picture clicked");
     // TODO: Implement profile picture change
+  });
+
+  // History item clicks
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.history-item')) {
+      const historyItem = e.target.closest('.history-item');
+      const partyId = historyItem.dataset.partyId;
+      
+      if (partyId) {
+        console.log('Navigating to party details from history:', partyId);
+        navigateTo(`/party-details/${partyId}`);
+      }
+    }
   });
 }
 

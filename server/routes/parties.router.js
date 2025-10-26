@@ -13,6 +13,7 @@ const {
   deleteParty,
   uploadPartyImage,
   updateParty,
+  getPartyDescription,
 } = require("../controllers/parties.controller");
 const guestsController = require("../controllers/guests.controller");
 const { requireAdmin } = require("../middleware/auth.middleware");
@@ -26,6 +27,7 @@ router.get("/parties", getAllParties);
 router.get("/parties/search", searchParties);
 router.patch("/parties/:id/like", toggleLike);
 router.get("/parties/:id", getEventDetails);
+router.get("/parties/:partyId/description", getPartyDescription);
 
 // Admin-only routes
 router.patch("/parties/:id", requireAdmin, updateParty);

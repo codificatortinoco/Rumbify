@@ -294,7 +294,7 @@ const getEventDetails = async (req, res) => {
       console.error("Database error:", error);
       // Fallback to mock data
       const eventDetails = getMockEventDetails(id);
-      return res.json(eventDetails);
+      return res.json({ success: true, party: eventDetails });
     }
 
     if (data) {
@@ -305,6 +305,25 @@ const getEventDetails = async (req, res) => {
         .eq("party_id", data.id);
       if (pricesErr) {
         console.error("Error fetching event prices:", pricesErr);
+      }
+
+      // Fetch administrator info from users table
+      let administratorImage = null;
+      try {
+        const { data: adminUser, error: adminError } = await supabaseCli
+          .from("users")
+          .select("profile_image")
+          .eq("name", data.administrator)
+          .single();
+        
+        if (adminError) {
+          console.warn("Error fetching administrator info:", adminError);
+        } else {
+          administratorImage = adminUser?.profile_image;
+          console.log("[getEventDetails] Administrator image found:", administratorImage);
+        }
+      } catch (adminCatch) {
+        console.warn("Administrator query failed:", adminCatch);
       }
 
       // Fetch description for this party (single row optional)
@@ -327,17 +346,28 @@ const getEventDetails = async (req, res) => {
       const displayPrice = (prices && prices.length) ? prices[0]?.price : data.price;
       const parsed = parseDateAndHour(data.date);
       console.log("[getEventDetails] id:", data.id, "date:", data.date, "parsed:", parsed);
-      return res.json({ ...data, prices: prices || [], price: displayPrice, description: descriptionText, date_iso: parsed.iso, hour_24: parsed.hour });
+      return res.json({ 
+        success: true, 
+        party: { 
+          ...data, 
+          prices: prices || [], 
+          price: displayPrice, 
+          description: descriptionText, 
+          date_iso: parsed.iso, 
+          hour_24: parsed.hour,
+          administrator_image: administratorImage
+        } 
+      });
     }
 
     // If no data in database, return mock data
     const eventDetails = getMockEventDetails(id);
-    res.json(eventDetails);
+    res.json({ success: true, party: eventDetails });
   } catch (error) {
     console.error("Error fetching event details:", error);
     // Fallback to mock data
     const eventDetails = getMockEventDetails(req.params.id);
-    res.json(eventDetails);
+    res.json({ success: true, party: eventDetails });
   }
 };
 
@@ -1061,6 +1091,58 @@ const uploadPartyImage = async (req, res) => {
   }
 };
 
+// Get party description
+const getPartyDescription = async (req, res) => {
+  try {
+    const { partyId } = req.params;
+    
+    console.log('[getPartyDescription] Getting description for party:', partyId);
+    console.log('[getPartyDescription] Request params:', req.params);
+    
+    const { data: description, error } = await supabaseCli
+      .from('descriptions')
+      .select('*')
+      .eq('party_id', partyId)
+      .single();
+
+    console.log('[getPartyDescription] Supabase response:', { description, error });
+
+    if (error) {
+      console.error('[getPartyDescription] Error fetching description:', error);
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching party description",
+        error: error.message
+      });
+    }
+
+    if (!description) {
+      console.log('[getPartyDescription] No description found for party:', partyId);
+      return res.status(404).json({
+        success: false,
+        message: "Description not found for this party"
+      });
+    }
+
+    console.log('[getPartyDescription] Description found:', description);
+
+    res.json({
+      success: true,
+      description: description.description,
+      dress_code: description.dress_code || [],
+      additional_info: description.additional_info || ""
+    });
+
+  } catch (error) {
+    console.error('Error in getPartyDescription:', error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getHotTopicParties,
   getUpcomingParties,
@@ -1075,4 +1157,5 @@ module.exports = {
   deleteParty,
   uploadPartyImage,
   updateParty,
+  getPartyDescription
 };

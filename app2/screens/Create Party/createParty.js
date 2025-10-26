@@ -169,10 +169,29 @@ export default function renderCreateParty(data = {}) {
   const openFileDialog = () => imageFileInput && imageFileInput.click();
   const setPreview = (url) => {
     if (!imageCard) return;
-    imageCard.style.backgroundImage = `url('${url}')`;
-    imageCard.style.backgroundSize = 'cover';
-    imageCard.style.backgroundPosition = 'center';
-    imageCard.classList.add('has-image');
+    if (!url) {
+      imageCard.style.backgroundImage = '';
+      imageCard.classList.remove('has-image');
+      return;
+    }
+    try {
+      const probe = new Image();
+      probe.onload = () => {
+        imageCard.style.backgroundImage = `url('${url}')`;
+        imageCard.style.backgroundSize = 'cover';
+        imageCard.style.backgroundPosition = 'center';
+        imageCard.classList.add('has-image');
+      };
+      probe.onerror = () => {
+        // Keep upload icon visible if the URL cannot be loaded
+        imageCard.style.backgroundImage = '';
+        imageCard.classList.remove('has-image');
+      };
+      probe.src = url;
+    } catch (_) {
+      imageCard.style.backgroundImage = '';
+      imageCard.classList.remove('has-image');
+    }
   };
   // Helper to convert File -> dataURL (base64)
   const fileToDataURL = (file) => new Promise((resolve, reject) => {
@@ -185,14 +204,24 @@ export default function renderCreateParty(data = {}) {
   // Prefill helpers for edit mode
   const prefillFromParty = async (partyId) => {
     try {
-      const details = await makeRequest(`/parties/${partyId}`, 'GET');
+      const resp = await makeRequest(`/parties/${partyId}`, 'GET');
+      const details = resp?.party || resp;
       if (!details) return;
       // Title
       const titleEl = document.getElementById('party-title');
       if (titleEl && details.title) titleEl.value = details.title;
-      // Description (if available)
+      // Description: always try /description endpoint to improve reliability
       const descEl = document.getElementById('party-description');
-      if (descEl && details.description) descEl.value = details.description;
+      let descriptionText = details.description || '';
+      try {
+        const dResp = await makeRequest(`/parties/${partyId}/description`, 'GET');
+        if (dResp && typeof dResp === 'object' && typeof dResp.description === 'string' && dResp.description.trim().length) {
+          descriptionText = dResp.description;
+        }
+      } catch (e) {
+        console.warn('Description fetch failed:', e);
+      }
+      if (descEl) descEl.value = descriptionText || '';
       // Location -> best-effort split
       const addrEl = document.getElementById('party-address');
       const cityEl = document.getElementById('party-city');
@@ -285,15 +314,33 @@ export default function renderCreateParty(data = {}) {
       const selected = Array.from(document.querySelectorAll('input[name="party-tag"]:checked')).map(el => el.value);
       if (tagsToggle) tagsToggle.textContent = selected.length ? `Tags (${selected.length})` : 'Selecciona tags';
       if (tagsChips) tagsChips.innerHTML = selected.map(v => `<span class="chip">${v}</span>`).join('');
-      // Prices: prefill from details
+      // Prices: prefer details.prices; fallback to single display price; extra fallback via admin parties
       const prices = Array.isArray(details.prices) ? details.prices : [];
       pricesState.splice(0, pricesState.length);
       if (prices.length) {
         prices.forEach(p => {
           pricesState.push({ price_name: p.price_name || p.name || '', price: p.price || '' });
         });
+      } else if (details.price) {
+        pricesState.push({ price_name: 'General', price: details.price });
       } else {
         pricesState.push({ price_name: "", price: "" });
+        // Try admin parties endpoint as a last resort to fetch prices
+        try {
+          const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+          if (adminUser?.email) {
+            const ap = await makeRequest('/admin/parties', 'POST', { email: adminUser.email });
+            if (ap && ap.success && Array.isArray(ap.parties)) {
+              const found = ap.parties.find(p => p.id === partyId);
+              if (found && Array.isArray(found.prices) && found.prices.length) {
+                pricesState.splice(0, pricesState.length);
+                found.prices.forEach(pr => pricesState.push({ price_name: pr.price_name || pr.name || '', price: pr.price || '' }));
+              }
+            }
+          }
+        } catch (pfErr) {
+          console.warn('Prices fallback failed:', pfErr);
+        }
       }
       renderPriceItems();
       // Change CTA to Save

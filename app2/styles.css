@@ -652,6 +652,7 @@ html, body, input, textarea, button, select {
   padding: 0 0 100px 0;
   position: relative;
   overflow-x: hidden;
+  transition: opacity 150ms ease;
 }
 
 /* Profile Header */
@@ -1645,6 +1646,7 @@ input:checked + .toggle-slider:before {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
+  cursor: pointer;
 }
 
 .event-image {

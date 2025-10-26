@@ -92,6 +92,10 @@ function renderRoute(currentRoute) {
       clearScripts();
       renderAdminDashboard(currentRoute?.data);
       break;
+    case "/admin-stadistics":
+      clearScripts();
+      renderAdminDashboard(currentRoute?.data);
+      break;
     case "/create-party":
       clearScripts();
       renderCreateParty(currentRoute?.data);

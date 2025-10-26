@@ -332,7 +332,7 @@ function displayParties(parties) {
   }
 
   eventsList.innerHTML = parties.map(party => `
-    <div class="event-card">
+    <div class="event-card" role="button" tabindex="0" onclick="handleManageParty(${party.id})">
       <div class="event-image">
         <img src="${party.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop'}" alt="${party.title}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop';" />
       </div>
@@ -343,14 +343,13 @@ function displayParties(parties) {
         <p class="event-attendees">${party.attendees} attendees</p>
         <div class="event-actions">
           <button class="status-btn ${getStatusClass(party.status)}">${getStatusText(party.status)}</button>
-          <button class="manage-btn" onclick="handleManageParty(${party.id})">Manage</button>
         </div>
       </div>
       <div class="event-controls">
-        <button class="edit-btn" onclick="handleEditParty(${party.id})">
+        <button class="edit-btn" onclick="event.stopPropagation(); handleEditParty(${party.id})">
           <img src="assets/edit.svg" alt="Edit" />
         </button>
-        <button class="delete-btn" onclick="handleDeleteParty(${party.id})">
+        <button class="delete-btn" onclick="event.stopPropagation(); handleDeleteParty(${party.id})">
           <img src="assets/deleteButton.svg" alt="Delete" />
         </button>
       </div>

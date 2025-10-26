@@ -223,75 +223,67 @@ async function loadUserProfile() {
 
 async function loadUserHistory() {
   try {
-    // Try to get history from the profile data first
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const currentUser = getCurrentUser();
     
-    if (currentUser.history && Array.isArray(currentUser.history)) {
-      // Use history from Supabase if available
-      const historyList = document.getElementById("historyList");
-      historyList.innerHTML = currentUser.history.map(item => `
-        <div class="history-item">
-          <img src="${item.image}" alt="${item.title}" class="history-image" />
-          <div class="history-content">
-            <h3 class="history-title">${item.title}</h3>
-            <p class="history-date">${item.date} • ${item.status}</p>
-          </div>
-          <div class="history-status">
-            <span class="status-icon">✓</span>
-          </div>
-        </div>
-      `).join("");
-      
-      console.log("History loaded from Supabase:", currentUser.history);
+    if (!currentUser || !currentUser.id) {
+      console.warn("No current user found");
+      showNoHistoryMessage();
       return;
     }
+
+    console.log("Loading party history for user:", currentUser.id);
     
-    // Fallback to mock history data
-    console.warn("No history data from API, using mock data");
-    const mockHistory = [
-      {
-        id: 1,
-        title: "Pre-New Year Party",
-        date: "22/11/21",
-        status: "Attended",
-        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
-        status_icon: "✓"
-      },
-      {
-        id: 2,
-        title: "Lore's Pool Party",
-        date: "11/10/21",
-        status: "Attended",
-        image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=80&h=80&fit=crop",
-        status_icon: "✓"
-      },
-      {
-        id: 3,
-        title: "Chicago Night",
-        date: "5/9/21",
-        status: "Not Attended",
-        image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=80&h=80&fit=crop",
-        status_icon: "✓"
+    // Get party history from the API
+    const response = await makeRequest(`/users/${currentUser.id}/party-history`, "GET");
+    
+    if (response && response.success && response.party_history) {
+      console.log("Party history loaded:", response.party_history.length, "parties");
+      
+      const historyList = document.getElementById("historyList");
+      
+      if (response.party_history.length === 0) {
+        showNoHistoryMessage();
+      } else {
+        historyList.innerHTML = response.party_history.map(item => `
+          <div class="history-item">
+            <img src="${item.image}" alt="${item.title}" class="history-image" />
+            <div class="history-content">
+              <h3 class="history-title">${item.title}</h3>
+              <p class="history-date">${item.date} • ${item.location}</p>
+              <p class="history-price">${item.price_name}: ${item.price}</p>
+            </div>
+            <div class="history-status">
+              <span class="status-icon">✓</span>
+            </div>
+          </div>
+        `).join("");
       }
-    ];
-
-    const historyList = document.getElementById("historyList");
-    historyList.innerHTML = mockHistory.map(item => `
-      <div class="history-item">
-        <img src="${item.image}" alt="${item.title}" class="history-image" />
-        <div class="history-content">
-          <h3 class="history-title">${item.title}</h3>
-          <p class="history-date">${item.date} • ${item.status}</p>
-        </div>
-        <div class="history-status">
-          <span class="status-icon">${item.status_icon}</span>
-        </div>
-      </div>
-    `).join("");
-
+      
+      // Update attended count with real data
+      const attendedCountElement = document.getElementById("attendedCount");
+      if (attendedCountElement) {
+        attendedCountElement.textContent = response.count || 0;
+      }
+      
+    } else {
+      console.warn("No history data from API");
+      showNoHistoryMessage();
+    }
+    
   } catch (error) {
-    console.error("Error loading user history:", error);
+    console.error("Error loading party history:", error);
+    showNoHistoryMessage();
   }
+}
+
+function showNoHistoryMessage() {
+  const historyList = document.getElementById("historyList");
+  historyList.innerHTML = `
+    <div class="no-history">
+      <p>No tienes fiestas en tu historial aún</p>
+      <p class="no-history-subtitle">Usa códigos de fiestas para agregarlas a tu historial</p>
+    </div>
+  `;
 }
 
 function loadUserInterests(interests) {

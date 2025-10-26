@@ -691,6 +691,92 @@ const testSupabaseConnection = async (req, res) => {
   }
 };
 
+// Get user's party history using Codes table
+const getUserPartyHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('[getUserPartyHistory] Getting party history for user:', id);
+    
+    // Get user's used codes
+    const supabaseCli = require("../services/supabase.service");
+    const { data: userCodes, error: codesError } = await supabaseCli
+      .from('Codes')
+      .select('id, code, party_id, price_id, created_at')
+      .eq('user_id', id)
+      .eq('already_used', true)
+      .order('created_at', { ascending: false });
+
+    if (codesError) {
+      console.error('[getUserPartyHistory] Error fetching codes:', codesError);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Error fetching party history" 
+      });
+    }
+
+    // Get party and price information for each code
+    const partyHistory = [];
+    for (const codeRecord of userCodes) {
+      // Get party info
+      const { data: party, error: partyError } = await supabaseCli
+        .from('parties')
+        .select('*')
+        .eq('id', codeRecord.party_id)
+        .single();
+
+      if (partyError) {
+        console.error('[getUserPartyHistory] Error fetching party:', partyError);
+        continue; // Skip this code if party not found
+      }
+
+      // Get price info
+      const { data: price, error: priceError } = await supabaseCli
+        .from('prices')
+        .select('*')
+        .eq('id', codeRecord.price_id)
+        .single();
+
+      if (priceError) {
+        console.error('[getUserPartyHistory] Error fetching price:', priceError);
+        continue; // Skip this code if price not found
+      }
+
+      // Add to history
+      partyHistory.push({
+        id: party.id,
+        title: party.title,
+        location: party.location,
+        date: party.date,
+        administrator: party.administrator,
+        image: party.image,
+        tags: party.tags,
+        category: party.category,
+        price_name: price.price_name,
+        price: price.price,
+        code_used: codeRecord.code,
+        added_at: codeRecord.created_at,
+        status: 'attended'
+      });
+    }
+    
+    console.log('[getUserPartyHistory] Found', partyHistory.length, 'parties in history');
+
+    res.json({
+      success: true,
+      party_history: partyHistory,
+      count: partyHistory.length
+    });
+
+  } catch (error) {
+    console.error('Error in getUserPartyHistory:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error" 
+    });
+  }
+};
+
 module.exports = {
   getUsers,
   createUser,
@@ -702,5 +788,6 @@ module.exports = {
   getUserProfile,
   loginUser,
   testSupabaseConnection,
-  uploadProfileImage
+  uploadProfileImage,
+  getUserPartyHistory
 };

@@ -11,7 +11,8 @@ const {
   getUserProfile,
   loginUser,
   testSupabaseConnection,
-  uploadProfileImage
+  uploadProfileImage,
+  getUserPartyHistory
 } = require("../controllers/users.controller");
 const { requireMember, requireAdmin } = require("../middleware/auth.middleware");
 const router = express.Router();
@@ -45,6 +46,9 @@ router.put("/users/:id", updateUserProfile);
 router.delete("/users/:id", deleteUser);
 
 router.get("/users/:id/profile", getUserProfile);
+
+// Get user's party history
+router.get("/users/:id/party-history", getUserPartyHistory);
 
 // Upload profile image endpoints
 router.post("/users/:id/profile-image", requireMember, upload.single('profile_image'), uploadProfileImage);

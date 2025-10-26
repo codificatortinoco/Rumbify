@@ -484,10 +484,177 @@ function generateUniqueCode() {
   return randomPart + timestamp.substring(timestamp.length - 4);
 }
 
+/**
+ * Verify code and add party to user's history
+ */
+const verifyAndAddParty = async (req, res) => {
+  try {
+    const { code, user_id } = req.body;
+    
+    console.log('[verifyAndAddParty] Starting verification process...');
+    console.log('[verifyAndAddParty] Code:', code);
+    console.log('[verifyAndAddParty] User ID:', user_id);
+    
+    if (!code || !user_id) {
+      console.log('[verifyAndAddParty] Missing required fields');
+      return res.status(400).json({
+        success: false,
+        message: "Code and user_id are required"
+      });
+    }
+
+    // First, verify the code exists and is not used
+    const { data: codeRecord, error: codeError } = await supabaseCli
+      .from('Codes')
+      .select('*')
+      .eq('code', code)
+      .single();
+
+    if (codeError || !codeRecord) {
+      console.log('[verifyAndAddParty] Code not found:', code);
+      return res.status(404).json({
+        success: false,
+        message: "Invalid code"
+      });
+    }
+
+    if (codeRecord.already_used) {
+      console.log('[verifyAndAddParty] Code already used:', code);
+      return res.status(400).json({
+        success: false,
+        message: "Code has already been used"
+      });
+    }
+
+    // Get party information
+    const { data: party, error: partyError } = await supabaseCli
+      .from('parties')
+      .select('*')
+      .eq('id', codeRecord.party_id)
+      .single();
+
+    if (partyError || !party) {
+      console.error('[verifyAndAddParty] Party not found:', partyError);
+      return res.status(404).json({
+        success: false,
+        message: "Party not found"
+      });
+    }
+
+    // Get price information
+    const { data: price, error: priceError } = await supabaseCli
+      .from('prices')
+      .select('*')
+      .eq('id', codeRecord.price_id)
+      .single();
+
+    if (priceError || !price) {
+      console.error('[verifyAndAddParty] Price not found:', priceError);
+      return res.status(404).json({
+        success: false,
+        message: "Price information not found"
+      });
+    }
+
+    // Verify user exists
+    const { data: user, error: userError } = await supabaseCli
+      .from('users')
+      .select('id, name')
+      .eq('id', user_id)
+      .single();
+
+    if (userError || !user) {
+      console.log('[verifyAndAddParty] User not found:', user_id);
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Check if user already has this party in their history (BEFORE marking code as used)
+    console.log('[verifyAndAddParty] Checking if user already has this party...');
+    console.log('[verifyAndAddParty] User ID:', user_id);
+    console.log('[verifyAndAddParty] Party ID:', codeRecord.party_id);
+    
+    const { data: existingUserParty, error: checkError } = await supabaseCli
+      .from('Codes')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('party_id', codeRecord.party_id)
+      .eq('already_used', true)
+      .limit(1);
+
+    if (checkError) {
+      console.error('[verifyAndAddParty] Error checking existing party:', checkError);
+      return res.status(500).json({
+        success: false,
+        message: "Error checking party history"
+      });
+    }
+
+    console.log('[verifyAndAddParty] Existing party check result:', existingUserParty);
+
+    if (existingUserParty && existingUserParty.length > 0) {
+      console.log('[verifyAndAddParty] User already has this party in history');
+      return res.status(400).json({
+        success: false,
+        message: "You have already added this party to your history"
+      });
+    }
+
+    // Mark code as used
+    const { data: updatedCode, error: updateError } = await supabaseCli
+      .from('Codes')
+      .update({ 
+        already_used: true,
+        user_id: user_id
+      })
+      .eq('code', code)
+      .eq('already_used', false)
+      .select()
+      .single();
+
+    if (updateError || !updatedCode) {
+      console.error('[verifyAndAddParty] Error marking code as used:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: "Error processing code"
+      });
+    }
+
+    console.log('[verifyAndAddParty] Successfully added party to user history');
+
+    return res.json({
+      success: true,
+      message: "Party added to your history successfully!",
+      party: {
+        id: codeRecord.party_id,
+        title: party.title,
+        location: party.location,
+        date: party.date,
+        administrator: party.administrator,
+        image: party.image,
+        tags: party.tags,
+        category: party.category,
+        price_name: price.price_name,
+        price: price.price
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in verifyAndAddParty:', error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 module.exports = {
   testConnection,
   generateCodes,
   getPartyCodes,
   validateCode,
-  useCode
+  useCode,
+  verifyAndAddParty
 };

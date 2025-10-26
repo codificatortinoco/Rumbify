@@ -382,8 +382,7 @@ function setupAddPartyButton() {
   const addPartyBtn = document.getElementById("addPartyBtn");
   if (addPartyBtn) {
     addPartyBtn.addEventListener("click", () => {
-      // Redirect to app2 create party page
-      window.location.assign("/app2/create-party");
+      showAddPartyModal();
     });
   }
 }
@@ -423,11 +422,200 @@ function setupHeaderProfileButton() {
   }
 }
 
+// Modal functions
+function showAddPartyModal() {
+  const modalHTML = `
+    <div id="addPartyModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Add Party</h2>
+          <button class="modal-close" id="closeModalBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-instruction">Enter your code</p>
+          <div class="input-container">
+            <input 
+              type="text" 
+              id="partyCodeInput" 
+              placeholder="Party's code" 
+              maxlength="8"
+              autocomplete="off"
+            />
+          </div>
+          <button class="add-party-submit-btn" id="submitCodeBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm2 2h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z"/>
+            </svg>
+            Add Party
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  // Setup modal event listeners
+  setupModalEventListeners();
+  
+  // Focus on input
+  setTimeout(() => {
+    const input = document.getElementById('partyCodeInput');
+    if (input) input.focus();
+  }, 100);
+}
+
+function setupModalEventListeners() {
+  const modal = document.getElementById('addPartyModal');
+  const closeBtn = document.getElementById('closeModalBtn');
+  const submitBtn = document.getElementById('submitCodeBtn');
+  const input = document.getElementById('partyCodeInput');
+  
+  // Close modal events
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+  
+  // Submit code
+  submitBtn.addEventListener('click', handleCodeSubmission);
+  
+  // Enter key to submit
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      handleCodeSubmission();
+    }
+  });
+  
+  // Format input (uppercase, alphanumeric only)
+  input.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  });
+}
+
+function closeModal() {
+  const modal = document.getElementById('addPartyModal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+async function handleCodeSubmission() {
+  const input = document.getElementById('partyCodeInput');
+  const submitBtn = document.getElementById('submitCodeBtn');
+  const code = input.value.trim();
+  
+  if (!code) {
+    showModalError('Please enter a code');
+    return;
+  }
+  
+  if (code.length < 4) {
+    showModalError('Code must be at least 4 characters');
+    return;
+  }
+  
+  // Disable button and show loading
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `
+    <div class="loading-spinner-small"></div>
+    Verifying...
+  `;
+  
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      throw new Error('User not logged in');
+    }
+    
+    // Verify code and get party info
+    const response = await makeRequest('/codes/verify-and-add', 'POST', {
+      code: code,
+      user_id: currentUser.id
+    });
+    
+    if (response.success) {
+      showModalSuccess('Party added successfully!');
+      
+      // Close modal after delay
+      setTimeout(() => {
+        closeModal();
+        // Refresh the dashboard to show updated data
+        loadUpcomingForYou();
+      }, 1500);
+    } else {
+      showModalError(response.message || 'Invalid code');
+    }
+    
+  } catch (error) {
+    console.error('Error verifying code:', error);
+    showModalError(error.message || 'Error verifying code. Please try again.');
+  } finally {
+    // Re-enable button
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm2 2h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z"/>
+      </svg>
+      Add Party
+    `;
+  }
+}
+
+function showModalError(message) {
+  const modalBody = document.querySelector('.modal-body');
+  let errorDiv = modalBody.querySelector('.modal-error');
+  
+  if (!errorDiv) {
+    errorDiv = document.createElement('div');
+    errorDiv.className = 'modal-error';
+    modalBody.appendChild(errorDiv);
+  }
+  
+  errorDiv.textContent = message;
+  errorDiv.style.display = 'block';
+  
+  // Remove error after 3 seconds
+  setTimeout(() => {
+    errorDiv.style.display = 'none';
+  }, 3000);
+}
+
+function showModalSuccess(message) {
+  const modalBody = document.querySelector('.modal-body');
+  let successDiv = modalBody.querySelector('.modal-success');
+  
+  if (!successDiv) {
+    successDiv = document.createElement('div');
+    successDiv.className = 'modal-success';
+    modalBody.appendChild(successDiv);
+  }
+  
+  successDiv.textContent = message;
+  successDiv.style.display = 'block';
+  
+  // Remove success message after 2 seconds
+  setTimeout(() => {
+    successDiv.style.display = 'none';
+  }, 2000);
+}
+
 export function cleanupMemberDashboard() {
   memberDashboardController.isActive = false;
   memberDashboardController.isLoading = false;
   if (memberDashboardController.abortController) {
     memberDashboardController.abortController.abort();
+  }
+  
+  // Clean up modal if it exists
+  const modal = document.getElementById('addPartyModal');
+  if (modal) {
+    modal.remove();
   }
 }
 

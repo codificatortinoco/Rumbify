@@ -14,8 +14,6 @@ By default the server runs on port 5050.
 
 ### Localhost Links
 - **Root (redirects to app1)**: `http://localhost:5050/`
-- **App 1**: `http://localhost:5050/app1`
-- **App 2**: `http://localhost:5050/app2`
 
 ### Notes
 - The start script uses `nodemon` and reads environment variables from a `.env` file if present.

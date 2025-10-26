@@ -6,9 +6,17 @@ const supabase = require("../services/supabase.service");
  */
 const requireAdmin = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    // Permitir email por body (POST), query (GET) o header (GET)
+    const bodyEmail = req.body?.email;
+    const queryEmail = req.query?.email;
+    const headerEmail = req.headers["x-admin-email"];
+    const email = bodyEmail || queryEmail || headerEmail;
+    
+    console.log("[requireAdmin] Request body:", req.body);
+    console.log("[requireAdmin] Email from request:", email);
     
     if (!email) {
+      console.log("[requireAdmin] No email provided");
       return res.status(400).json({
         success: false,
         message: "Email is required for authentication"
@@ -16,13 +24,17 @@ const requireAdmin = async (req, res, next) => {
     }
 
     // Buscar usuario en la base de datos
+    console.log("[requireAdmin] Looking up user with email:", String(email).toLowerCase().trim());
     const { data: user, error } = await supabase
       .from("users")
       .select("id, name, email, is_admin")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", String(email).toLowerCase().trim())
       .single();
 
+    console.log("[requireAdmin] User lookup result:", { user, error });
+
     if (error || !user) {
+      console.log("[requireAdmin] User not found or error:", error);
       return res.status(401).json({
         success: false,
         message: "User not found"
@@ -31,12 +43,14 @@ const requireAdmin = async (req, res, next) => {
 
     // Verificar que el usuario es administrador
     if (!user.is_admin) {
+      console.log("[requireAdmin] User is not admin:", user);
       return res.status(403).json({
         success: false,
         message: "Access denied. Administrator privileges required."
       });
     }
 
+    console.log("[requireAdmin] Admin user authenticated:", user.email);
     // Agregar información del usuario a la request para uso posterior
     req.user = {
       id: user.id,

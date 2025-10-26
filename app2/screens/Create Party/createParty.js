@@ -158,6 +158,13 @@ export default function renderCreateParty(data = {}) {
     imageCard.style.backgroundPosition = 'center';
     imageCard.classList.add('has-image');
   };
+  // Helper to convert File -> dataURL (base64)
+  const fileToDataURL = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
   if (imageCard && imageFileInput) {
     imageCard.addEventListener('click', openFileDialog);
@@ -176,28 +183,28 @@ export default function renderCreateParty(data = {}) {
       const localUrl = URL.createObjectURL(file);
       setPreview(localUrl);
 
-      // Try upload to Supabase Storage if available
+      // Upload via backend to persist and get a public URL
       try {
-        const { supabaseCli } = await import('../../services/supabase.service.js');
-        const bucket = 'party-images';
-        const filePath = `party_${Date.now()}_${file.name}`.replace(/\s+/g, '_');
-        const { data, error } = await supabaseCli.storage.from(bucket).upload(filePath, file, { upsert: true, contentType: file.type });
-        if (error) throw error;
-        const { data: pub } = await supabaseCli.storage.from(bucket).getPublicUrl(filePath);
-        if (pub && pub.publicUrl) {
-          imageHidden.value = pub.publicUrl;
+        const dataUrl = await fileToDataURL(file);
+        const uploadRes = await makeRequest('/parties/upload-image', 'POST', {
+          dataUrl,
+          fileName: file.name,
+          contentType: file.type,
+        });
+        if (uploadRes && uploadRes.success && uploadRes.publicUrl) {
+          imageHidden.value = uploadRes.publicUrl;
         } else {
-          imageHidden.value = localUrl;
+          console.warn('Upload responded without publicUrl, using placeholder');
+          imageHidden.value = 'https://placehold.co/600x350?text=Party';
         }
       } catch (err) {
-        // Fallback: keep local object URL
-        imageHidden.value = localUrl;
+        // Fallback: usar placeholder en vez de Base64/blob para evitar roturas posteriores
         console.warn('Image upload fallback:', err);
+        imageHidden.value = 'https://placehold.co/600x350?text=Party';
       }
     });
   }
-
-  // Setup tags multiselect behavior
+  // Remove duplicate setPreview defined later
   const tagsMulti = document.getElementById("party-tags-multiselect");
   const tagsToggle = document.getElementById("party-tags-toggle");
   const tagsMenu = document.getElementById("party-tags-menu");
@@ -301,6 +308,16 @@ export default function renderCreateParty(data = {}) {
     submitBtn.disabled = true;
 
     try {
+      // Get admin user email for authentication first
+      const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+      const adminEmail = adminUser.email;
+      
+      if (!adminEmail) {
+        alert("No admin user found. Please log in again.");
+        navigateTo("/admin-login");
+        return;
+      }
+
       const title = document.getElementById("party-title").value.trim();
       const address = document.getElementById("party-address").value.trim();
       const city = document.getElementById("party-city").value.trim();
@@ -309,17 +326,14 @@ export default function renderCreateParty(data = {}) {
       const dateVal = document.getElementById("party-date").value; // yyyy-mm-dd
       const hourVal = document.getElementById("party-hour").value; // HH:mm
       const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
-      const administrator = document.getElementById("party-administrator").value.trim();
+      // Use admin name as administrator instead of form input
+      const administrator = adminUser.name;
       const number = document.getElementById("party-number").value.trim();
       const image = document.getElementById("party-image").value.trim();
       const description = document.getElementById("party-description")?.value.trim() || "";
       const attendees = `0/${maxAtt}`;
 
-      // Obtener el email del usuario autenticado
-      const adminUser = localStorage.getItem('adminUser');
-      const userEmail = adminUser ? JSON.parse(adminUser).email : null;
-
-      if (!title || !address || !city || !country || !dateVal || !hourVal || !administrator) {
+      if (!title || !address || !city || !country || !dateVal || !hourVal) {
         alert("Por favor, completa todos los campos obligatorios.");
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -373,34 +387,54 @@ export default function renderCreateParty(data = {}) {
         image,
         tags,
         description,
-        prices: collectedPrices, // Incluir precios en el payload principal
-        email: userEmail, // Incluir email para autenticación
+        prices: collectedPrices, // Include prices in the main payload
+        email: adminEmail, // Include admin email for authentication
       };
 
-      console.log("Sending payload to /newParty:", payload);
-      const createRes = await makeRequest("/newParty", "POST", payload);
-      console.log("Response from /newParty:", createRes);
+      const createRes = await makeRequest("/create-party", "POST", payload);
+      console.log("Create party response:", createRes);
       
-      if (!createRes || createRes.error) {
-        throw new Error(createRes?.error || createRes?.message || "Error creating party");
+      if (!createRes || !createRes.success) {
+        throw new Error(createRes?.message || createRes?.error || "Error creating party");
       }
 
-      // Los precios ya se insertaron junto con la fiesta
-      const partyId = createRes.data?.id || createRes.party?.id || createRes.id;
+      const partyId = createRes.party?.id || createRes.data?.id || createRes.id;
       if (!partyId) {
-        console.error("Full response:", createRes);
+        console.error("No party id found in response:", createRes);
         throw new Error("No party id returned");
       }
 
-      alert("Party creada correctamente");
-      navigateTo("/admin-dashboard");
+      // Prices are already handled in the createParty controller
+      console.log("Party created successfully with ID:", partyId);
+      
+      console.log('=== PARTY CREATED SUCCESSFULLY ===');
+      console.log('Party ID:', partyId);
+      console.log('Party data:', createRes.party);
+
+      // New: surface partial-write issues (prices/descriptions)
+      const pricesError = createRes.prices_error;
+      const descriptionError = createRes.description_error;
+      if (pricesError || descriptionError) {
+        const msgParts = [];
+        if (pricesError) msgParts.push(`Error guardando precios: ${pricesError}`);
+        else msgParts.push('Precios guardados');
+        if (descriptionError) msgParts.push(`Error guardando descripción: ${descriptionError}`);
+        else msgParts.push('Descripción guardada');
+        alert(`Party creada. ${msgParts.join(' | ')}`);
+      } else {
+        alert("Party creada correctamente");
+      }
+
+      navigateTo("/my-parties");
     } catch (err) {
       console.error(err);
       alert(err.message || "Error creando la fiesta");
     } finally {
       const submitBtn = document.getElementById("create-btn");
-      submitBtn.textContent = originalText;
-      submitBtn.disabled = false;
+      if (submitBtn) {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
     }
   });
 
@@ -415,11 +449,11 @@ export default function renderCreateParty(data = {}) {
         item.classList.add('active');
         const target = item.dataset.nav;
         if (target === 'parties') {
-          navigateTo('/admin-dashboard');
+          navigateTo('/my-parties');
         } else if (target === 'new') {
           navigateTo('/create-party');
         } else if (target === 'profile') {
-          navigateTo('/admin-dashboard');
+          navigateTo('/profile');
         }
       });
     });

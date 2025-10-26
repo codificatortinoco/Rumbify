@@ -7,36 +7,39 @@ const {
   toggleLike,
   getEventDetails,
   createParty,
+  getAdminStatistics,
+  getAdminParties,
+  getAdminMetrics,
+  deleteParty,
+  uploadPartyImage,
 } = require("../controllers/parties.controller");
+const guestsController = require("../controllers/guests.controller");
 const { requireAdmin } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
-// Get hot topic parties
+// Public/Member routes
 router.get("/parties/hot-topic", getHotTopicParties);
-
-// Get upcoming parties
 router.get("/parties/upcoming", getUpcomingParties);
-
-// Get all parties
 router.get("/parties", getAllParties);
-
-// Search parties
 router.get("/parties/search", searchParties);
-
-// Toggle like status
 router.patch("/parties/:id/like", toggleLike);
-
-// Get event details
 router.get("/parties/:id", getEventDetails);
 
-// Get guest list for a party (Admin only)
-router.get("/parties/:id/guests", requireAdmin, require("../controllers/guests.controller").getPartyGuests);
+// Admin-only routes
+router.delete("/parties/:id", requireAdmin, deleteParty);
+router.post("/parties/upload-image", requireAdmin, uploadPartyImage);
 
-// New: Guests summary endpoint (Admin only)
-router.get("/parties/:id/guests/summary", requireAdmin, require("../controllers/guests.controller").getGuestsSummary);
+// Guests endpoints (Admin only)
+router.get("/parties/:id/guests", requireAdmin, guestsController.getPartyGuests);
+router.get("/parties/:id/guests/summary", requireAdmin, guestsController.getGuestsSummary);
+router.patch("/parties/:id/guests/:guestId/status", requireAdmin, guestsController.updateGuestStatus);
 
-// Create new party (Admin only)
+// Admin management endpoints
 router.post("/newParty", requireAdmin, createParty);
+router.post("/create-party", requireAdmin, createParty);
+router.post("/admin/statistics", requireAdmin, getAdminStatistics);
+router.post("/admin/parties", requireAdmin, getAdminParties);
+router.post("/admin/metrics", requireAdmin, getAdminMetrics);
 
 module.exports = router;

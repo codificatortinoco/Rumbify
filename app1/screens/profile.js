@@ -382,6 +382,8 @@ function setupProfileEventListeners() {
 function handleLogout() {
   // Use the global logout function
   logout();
+  // Redirect to welcome after clearing session
+  navigateTo("/welcome");
 }
 
 function setupBottomNavigation() {
@@ -401,11 +403,12 @@ function setupBottomNavigation() {
       switch (target) {
         case "parties":
         case "My Parties":
-          navigateTo("/parties");
+-         navigateTo("/parties");
++         navigateTo("/dashboard");
           break;
         case "home":
         case "Home":
-          navigateTo("/home");
+          navigateTo("/member-dashboard");
           break;
         case "profile":
         case "Profile":

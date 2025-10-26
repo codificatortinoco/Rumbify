@@ -401,7 +401,8 @@ function setupBottomNavigation() {
       const target = item.dataset.nav;
       switch (target) {
         case "Parties":
-          navigateTo("/parties");
+-         navigateTo("/parties");
++         navigateTo("/dashboard");
           break;
         case "Home":
           break;

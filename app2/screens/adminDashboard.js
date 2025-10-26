@@ -1,4 +1,4 @@
-import { navigateTo } from "../app.js";
+import { navigateTo, makeRequest } from "../app.js";
 import { authManager } from "../auth.js";
 
 export default function renderAdminDashboard(data = {}) {
@@ -53,35 +53,20 @@ export default function renderAdminDashboard(data = {}) {
           <div class="admin-stats-grid">
             <div class="stat-card">
               <h3>Total Events</h3>
-              <p class="stat-number">24</p>
+              <p class="stat-number" id="totalEvents">0</p>
             </div>
             <div class="stat-card">
               <h3>Active Users</h3>
-              <p class="stat-number">1,247</p>
+              <p class="stat-number" id="activeUsers">0</p>
             </div>
             <div class="stat-card">
               <h3>Pending Approvals</h3>
-              <p class="stat-number">8</p>
+              <p class="stat-number" id="pendingApprovals">0</p>
             </div>
             <div class="stat-card">
               <h3>Revenue</h3>
-              <p class="stat-number">$12,450</p>
+              <p class="stat-number" id="revenue">$0</p>
             </div>
-          </div>
-
-          <div class="admin-actions">
-            <button class="admin-action-btn" onclick="handleManageEvents()">
-              Manage Events
-            </button>
-            <button class="admin-action-btn" onclick="handleManageUsers()">
-              Manage Users
-            </button>
-            <button class="admin-action-btn" onclick="handleAnalytics()">
-              View Analytics
-            </button>
-            <button class="admin-action-btn" onclick="handleSettings()">
-              Settings
-            </button>
           </div>
         </div>
         <nav class="bottom-nav">
@@ -104,32 +89,47 @@ export default function renderAdminDashboard(data = {}) {
 
   // Make functions globally available for onclick handlers
   window.handleLogout = handleLogout;
-  window.handleManageEvents = handleManageEvents;
-  window.handleManageUsers = handleManageUsers;
-  window.handleAnalytics = handleAnalytics;
-  window.handleSettings = handleSettings;
+
+  // Load statistics only (parties are accessed via My Parties navigation)
+  loadUserStatistics();
+  
+  // Add test function for debugging admin statistics
+  window.testAdminStats = function() {
+    const createdParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    console.log('=== ADMIN STATS TEST ===');
+    console.log('Created parties in localStorage:', createdParties);
+    console.log('Parties count:', createdParties.length);
+    
+    let totalAttendees = 0;
+    let totalRevenue = 0;
+    
+    createdParties.forEach(party => {
+      const [current, max] = party.attendees.split('/');
+      totalAttendees += parseInt(current) || 0;
+      const maxAttendees = parseInt(max) || 0;
+      totalRevenue += maxAttendees * 50; // Estimate $50 per ticket
+    });
+    
+    console.log('Total attendees:', totalAttendees);
+    console.log('Estimated revenue:', totalRevenue);
+    
+    // Update the display
+    document.getElementById('totalEvents').textContent = createdParties.length;
+    document.getElementById('activeUsers').textContent = totalAttendees || '0';
+    document.getElementById('pendingApprovals').textContent = createdParties.length || '0';
+    document.getElementById('revenue').textContent = totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : '$0';
+    
+    console.log('Admin stats updated!');
+    console.log('=== END TEST ===');
+  };
+  
+  console.log('Admin test function available: window.testAdminStats()');
 
   function handleLogout() {
     authManager.clearAuth();
     navigateTo("/admin-login");
   }
 
-  function handleManageEvents() {
-    const selectedPartyId = localStorage.getItem('selectedPartyId');
-    navigateTo("/manage-party", { partyId: selectedPartyId || null });
-  }
-
-  function handleManageUsers() {
-    console.log('Manage Users clicked');
-  }
-
-  function handleAnalytics() {
-    console.log('Analytics clicked');
-  }
-
-  function handleSettings() {
-    console.log('Settings clicked');
-  }
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) {
     profileBtn.addEventListener('click', () => {
@@ -147,7 +147,7 @@ export default function renderAdminDashboard(data = {}) {
       item.classList.add('active');
       const target = item.dataset.nav;
       if (target === 'parties') {
-        navigateTo('/admin-dashboard');
+        navigateTo('/my-parties');
       } else if (target === 'new') {
         navigateTo('/create-party');
       } else if (target === 'profile') {
@@ -156,3 +156,106 @@ export default function renderAdminDashboard(data = {}) {
     });
   });
 }
+
+async function loadAdminStatistics() {
+  // This function is now only used as a fallback
+  // The main statistics are loaded from party data in loadUserParties()
+  console.log('loadAdminStatistics called - this should only run as fallback');
+  
+  // Set default values
+  document.getElementById('totalEvents').textContent = '0';
+  document.getElementById('activeUsers').textContent = '0';
+  document.getElementById('pendingApprovals').textContent = '0';
+  document.getElementById('revenue').textContent = '$0';
+}
+
+async function loadUserStatistics() {
+  try {
+    console.log('Loading user statistics from Supabase...');
+    
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    const adminEmail = adminUser.email;
+    
+    console.log('Admin user from localStorage:', adminUser);
+    console.log('Admin email:', adminEmail);
+    
+    if (!adminEmail) {
+      console.warn('No admin email found for authentication');
+      // Set default values
+      document.getElementById('totalEvents').textContent = '0';
+      document.getElementById('activeUsers').textContent = '0';
+      document.getElementById('pendingApprovals').textContent = '0';
+      document.getElementById('revenue').textContent = '$0';
+      return;
+    }
+
+    console.log('Making API request to /admin/parties with email:', adminEmail);
+    const response = await makeRequest('/admin/parties', 'POST', { email: adminEmail });
+    console.log('Parties response:', response);
+    
+    if (response.success && response.parties) {
+      console.log('Successfully loaded parties:', response.parties.length);
+      
+      // Update statistics with actual party data
+      updateStatisticsFromParties(response.parties);
+    } else {
+      console.warn('Failed to load parties from API:', response.message || 'Unknown error');
+      // Load fallback statistics if no parties found
+      loadAdminStatistics();
+    }
+  } catch (error) {
+    console.error('Error loading user statistics:', error);
+    // Load fallback statistics if error occurs
+    loadAdminStatistics();
+  }
+}
+
+
+function updateStatisticsFromParties(parties) {
+  // Calculate statistics from the user's parties
+  const totalEvents = parties.length;
+  let totalAttendees = 0;
+  let totalRevenue = 0;
+  
+  parties.forEach(party => {
+    if (party.attendees) {
+      const [current, max] = party.attendees.split('/');
+      totalAttendees += parseInt(current) || 0;
+      const maxAttendees = parseInt(max) || 0;
+      totalRevenue += maxAttendees * 50; // Estimate $50 per ticket
+    }
+  });
+  
+  // Update the statistics display
+  document.getElementById('totalEvents').textContent = totalEvents;
+  document.getElementById('activeUsers').textContent = totalAttendees;
+  document.getElementById('pendingApprovals').textContent = totalEvents; // Use total events as pending
+  document.getElementById('revenue').textContent = totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : '$0';
+}
+
+function getStatusClass(status) {
+  switch (status) {
+    case 'active':
+      return 'active';
+    case 'inactive':
+      return 'inactive';
+    case 'finished':
+      return 'finished';
+    default:
+      return 'active';
+  }
+}
+
+function getStatusText(status) {
+  switch (status) {
+    case 'active':
+      return 'Active';
+    case 'inactive':
+      return 'Inactive';
+    case 'finished':
+      return 'Finished';
+    default:
+      return 'Active';
+  }
+}
+

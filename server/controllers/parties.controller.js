@@ -404,6 +404,9 @@ const createParty = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
+    // For now, skip authentication check if Supabase is not available
+    console.log("[createParty] Skipping authentication for testing");
+
     const safeAttendees = attendees || "0/0";
     // Geocode: resolve user-entered location to formatted address
     let resolvedLocation = location;
@@ -430,16 +433,22 @@ const createParty = async (req, res) => {
       };
       console.log("[createParty] Insert payload:", payload);
 
-      // Create party first
-      const { data: created, error: insertErr } = await supabaseCli
+      // Create party in database
+      const result = await supabaseCli
         .from("parties")
         .insert([payload])
         .select();
-
-      if (insertErr) {
-        console.error("Database insert error:", insertErr);
-        return res.status(500).json({ success: false, message: "Failed to create party", error: insertErr });
+      
+      if (result.error) {
+        console.error("Database insert error:", result.error);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to create party in database", 
+          error: result.error 
+        });
       }
+
+      const created = result.data;
 
       const party = created?.[0];
 
@@ -502,6 +511,352 @@ const createParty = async (req, res) => {
     }
   };
 
+const getAdminStatistics = async (req, res) => {
+  try {
+    // Get total events count
+    const { count: totalEvents, error: eventsError } = await supabaseCli
+      .from("parties")
+      .select("*", { count: "exact", head: true });
+
+    if (eventsError) {
+      console.error("Error fetching total events:", eventsError);
+      return res.status(500).json({ success: false, message: "Error fetching statistics" });
+    }
+
+    // Get active users count
+    const { count: activeUsers, error: usersError } = await supabaseCli
+      .from("users")
+      .select("*", { count: "exact", head: true });
+
+    if (usersError) {
+      console.error("Error fetching active users:", usersError);
+      return res.status(500).json({ success: false, message: "Error fetching statistics" });
+    }
+
+    // Get pending approvals (events that need approval - for now, we'll use upcoming events as pending)
+    const { count: pendingApprovals, error: pendingError } = await supabaseCli
+      .from("parties")
+      .select("*", { count: "exact", head: true })
+      .eq("category", "upcoming");
+
+    if (pendingError) {
+      console.error("Error fetching pending approvals:", pendingError);
+      return res.status(500).json({ success: false, message: "Error fetching statistics" });
+    }
+
+    // Calculate revenue (sum of all prices - this is a simplified calculation)
+    const { data: pricesData, error: pricesError } = await supabaseCli
+      .from("prices")
+      .select("price");
+
+    let revenue = 0;
+    if (!pricesError && pricesData) {
+      // Extract numeric values from price strings and sum them
+      revenue = pricesData.reduce((sum, priceObj) => {
+        const priceStr = priceObj.price.replace(/[^0-9]/g, ''); // Remove non-numeric characters
+        const priceNum = parseInt(priceStr, 10) || 0;
+        return sum + priceNum;
+      }, 0);
+    }
+
+    // Format revenue as currency
+    const formattedRevenue = `$${revenue.toLocaleString()}`;
+
+    const statistics = {
+      totalEvents: totalEvents || 0,
+      activeUsers: activeUsers || 0,
+      pendingApprovals: pendingApprovals || 0,
+      revenue: formattedRevenue
+    };
+
+    res.json({ success: true, statistics });
+  } catch (error) {
+    console.error("Error fetching admin statistics:", error);
+    res.status(500).json({ success: false, message: "Error fetching statistics" });
+  }
+};
+
+const getAdminParties = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    console.log("[getAdminParties] Request body:", req.body);
+    console.log("[getAdminParties] Email from request:", email);
+    
+    if (!email) {
+      console.log("[getAdminParties] No email provided");
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    // First, get the admin user to find their name
+    console.log("[getAdminParties] Looking up admin user by email:", email);
+    const { data: adminUser, error: userError } = await supabaseCli
+      .from("users")
+      .select("id, name, email, is_admin")
+      .eq("email", email.toLowerCase().trim())
+      .single();
+
+    console.log("[getAdminParties] Admin user lookup result:", { adminUser, userError });
+
+    if (userError || !adminUser) {
+      console.log("[getAdminParties] Admin user not found:", userError);
+      return res.status(401).json({ success: false, message: "Admin user not found" });
+    }
+
+    if (!adminUser.is_admin) {
+      console.log("[getAdminParties] User is not admin:", adminUser);
+      return res.status(403).json({ success: false, message: "Access denied. Administrator privileges required." });
+    }
+
+    // Get parties created by this admin using their NAME as administrator
+    console.log("[getAdminParties] Querying parties for administrator name:", adminUser.name);
+    console.log("[getAdminParties] Admin user details:", {
+      id: adminUser.id,
+      name: adminUser.name,
+      email: adminUser.email,
+      is_admin: adminUser.is_admin
+    });
+    
+    const { data: parties, error } = await supabaseCli
+      .from("parties")
+      .select("*")
+      .eq("administrator", adminUser.name)
+      .order("created_at", { ascending: false });
+
+    console.log("[getAdminParties] Supabase query result:", { parties, error });
+    console.log("[getAdminParties] Query used: administrator =", adminUser.name);
+
+    if (error) {
+      console.error("Error fetching admin parties:", error);
+      return res.status(500).json({ success: false, message: "Error fetching parties" });
+    }
+
+    console.log("[getAdminParties] Found parties:", parties?.length || 0);
+
+    // Add status based on category and other factors
+    const partiesWithStatus = parties.map(party => ({
+      ...party,
+      status: (party.category === 'hot-topic' || party.category === 'upcoming') ? 'active' : 'inactive'
+    }));
+
+    console.log("[getAdminParties] Returning parties with status:", partiesWithStatus.length);
+    res.json({ success: true, parties: partiesWithStatus });
+  } catch (error) {
+    console.error("Error in getAdminParties:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const getAdminMetrics = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    // First, get the admin user to find their name
+    const { data: adminUser, error: userError } = await supabaseCli
+      .from("users")
+      .select("id, name, email, is_admin")
+      .eq("email", email.toLowerCase().trim())
+      .single();
+
+    if (userError || !adminUser) {
+      return res.status(401).json({ success: false, message: "Admin user not found" });
+    }
+
+    if (!adminUser.is_admin) {
+      return res.status(403).json({ success: false, message: "Access denied. Administrator privileges required." });
+    }
+
+    // Get parties created by this admin using their NAME as administrator
+    const { data: parties, error } = await supabaseCli
+      .from("parties")
+      .select("attendees, prices(price)")
+      .eq("administrator", adminUser.name);
+
+    if (error) {
+      console.error("Error fetching admin metrics:", error);
+      return res.status(500).json({ success: false, message: "Error fetching metrics" });
+    }
+
+    // Calculate total attendees
+    let totalAttendees = 0;
+    parties.forEach(party => {
+      const [current, max] = party.attendees.split('/').map(Number);
+      totalAttendees += current || 0;
+    });
+
+    // Calculate total revenue
+    let totalRevenue = 0;
+    parties.forEach(party => {
+      if (party.prices && party.prices.length > 0) {
+        party.prices.forEach(price => {
+          const priceStr = price.price.replace(/[^0-9]/g, '');
+          const priceNum = parseInt(priceStr, 10) || 0;
+          totalRevenue += priceNum;
+        });
+      }
+    });
+
+    const metrics = {
+      totalAttendees: totalAttendees.toLocaleString(),
+      totalRevenue: `$${totalRevenue.toLocaleString()}`
+    };
+
+    res.json({ success: true, metrics });
+  } catch (error) {
+    console.error("Error in getAdminMetrics:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// Delete a party and related data (codes, storage image)
+const deleteParty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partyId = Number(id);
+    if (!partyId || Number.isNaN(partyId)) {
+      return res.status(400).json({ success: false, message: "Invalid party id" });
+    }
+
+    // Ensure party exists and capture image URL
+    const { data: party, error: partyFetchErr } = await supabaseCli
+      .from("parties")
+      .select("id, image")
+      .eq("id", partyId)
+      .single();
+
+    if (partyFetchErr) {
+      console.error("Error finding party:", partyFetchErr);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+    if (!party) {
+      return res.status(404).json({ success: false, message: "Party not found" });
+    }
+
+    // Best effort: remove entry codes
+    try {
+      await supabaseCli.from("codes").delete().eq("party_id", partyId);
+    } catch (codesErr) {
+      console.warn("Codes deletion failed or table missing:", codesErr?.message || codesErr);
+    }
+
+    // Best effort: remove prices
+    try {
+      await supabaseCli.from("prices").delete().eq("party_id", partyId);
+    } catch (pricesErr) {
+      console.warn("Prices deletion failed or table missing:", pricesErr?.message || pricesErr);
+    }
+
+    // Best effort: remove descriptions
+    try {
+      await supabaseCli.from("descriptions").delete().eq("party_id", partyId);
+    } catch (descErr) {
+      console.warn("Descriptions deletion failed or table missing:", descErr?.message || descErr);
+    }
+
+    // Best effort: delete cover image if stored in Supabase Storage
+    try {
+      const imageUrl = party.image;
+      const publicPrefix = "/storage/v1/object/public/";
+      if (imageUrl && typeof imageUrl === "string" && imageUrl.includes(publicPrefix)) {
+        const path = imageUrl.split(publicPrefix)[1]; // e.g. "party-images/filename.jpg"
+        const bucket = path?.split("/")[0];
+        const objectPath = path?.substring(bucket.length + 1);
+        if (bucket && objectPath) {
+          const { error: removeErr } = await supabaseCli.storage.from(bucket).remove([objectPath]);
+          if (removeErr) {
+            console.warn("Storage remove error:", removeErr.message || removeErr);
+          }
+        }
+      }
+    } catch (imgErr) {
+      console.warn("Image cleanup skipped:", imgErr?.message || imgErr);
+    }
+
+    // Delete party (explicit after dependents)
+    const { data: deleted, error: delErr } = await supabaseCli
+      .from("parties")
+      .delete()
+      .eq("id", partyId)
+      .select();
+
+    if (delErr) {
+      console.error("Party deletion error:", delErr);
+      return res.status(500).json({ success: false, message: "Failed to delete party", error: delErr?.message || delErr });
+    }
+
+    return res.json({ success: true, party: deleted?.[0] || { id: partyId } });
+  } catch (error) {
+    console.error("Unexpected deleteParty error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// Upload party image via backend using Supabase service role
+const uploadPartyImage = async (req, res) => {
+  try {
+    const { dataUrl, fileName = `party_${Date.now()}.jpg`, contentType } = req.body || {};
+    if (!dataUrl || typeof dataUrl !== "string") {
+      return res.status(400).json({ success: false, message: "dataUrl requerido" });
+    }
+    const match = dataUrl.match(/^data:(.*?);base64,(.*)$/);
+    if (!match) {
+      return res.status(400).json({ success: false, message: "Formato dataUrl inválido" });
+    }
+    const mime = contentType || match[1] || "image/jpeg";
+    const base64 = match[2];
+    const buffer = Buffer.from(base64, "base64");
+
+    const bucket = "party-images";
+    const sanitizedName = String(fileName).replace(/\s+/g, "_");
+    const filePath = `parties/${Date.now()}_${sanitizedName}`;
+
+    // Attempt upload, auto-create bucket if missing
+    let uploadError = null;
+    let uploaded = null;
+    try {
+      const upRes = await supabaseCli.storage
+        .from(bucket)
+        .upload(filePath, buffer, { upsert: true, contentType: mime });
+      uploaded = upRes.data;
+      uploadError = upRes.error || null;
+    } catch (e) {
+      uploadError = e;
+    }
+
+    if (uploadError) {
+      const msg = uploadError?.message || String(uploadError);
+      console.warn("Upload failed, trying to create bucket:", msg);
+      // Try to create bucket (requires service role)
+      try {
+        await supabaseCli.storage.createBucket(bucket, { public: true });
+        const retry = await supabaseCli.storage
+          .from(bucket)
+          .upload(filePath, buffer, { upsert: true, contentType: mime });
+        uploaded = retry.data;
+        uploadError = retry.error || null;
+      } catch (createErr) {
+        console.error("Bucket creation/upload retry failed:", createErr?.message || createErr);
+        return res.status(500).json({ success: false, message: "Fallo al subir imagen", error: msg });
+      }
+    }
+
+    const { data: pub } = await supabaseCli.storage.from(bucket).getPublicUrl(filePath);
+    const publicUrl = pub?.publicUrl;
+    if (!publicUrl) {
+      return res.status(500).json({ success: false, message: "No se pudo obtener URL pública" });
+    }
+
+    return res.status(200).json({ success: true, publicUrl, path: filePath, bucket });
+  } catch (err) {
+    console.error("Unexpected uploadPartyImage error:", err);
+    return res.status(500).json({ success: false, message: "Error interno al subir imagen" });
+  }
+};
+
 module.exports = {
   getHotTopicParties,
   getUpcomingParties,
@@ -510,4 +865,9 @@ module.exports = {
   toggleLike,
   getEventDetails,
   createParty,
+  getAdminStatistics,
+  getAdminParties,
+  getAdminMetrics,
+  deleteParty,
+  uploadPartyImage,
 };

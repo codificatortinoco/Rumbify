@@ -65,24 +65,14 @@ export default function renderProfile() {
       <!-- Settings Menu -->
       <div class="settings-section">
         <div class="settings-list">
-          <div class="settings-item" id="notificationsBtn">
-            <img src="assets/notifications.svg" alt="Notifications" class="settings-icon" />
-            <span class="settings-text">Notifications</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
-          </div>
-          <div class="settings-item" id="yourCodesBtn">
-            <img src="assets/copyIcon.svg" alt="Your codes" class="settings-icon" />
-            <span class="settings-text">Your codes</span>
+          <div class="settings-item" id="statisticsBtn">
+            <img src="assets/notifications.svg" alt="Statistics" class="settings-icon" />
+            <span class="settings-text">Statistics</span>
             <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
           </div>
           <div class="settings-item" id="editProfileBtn">
             <img src="assets/edit.svg" alt="Edit Profile" class="settings-icon" />
             <span class="settings-text">Edit profile</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
-          </div>
-          <div class="settings-item" id="changeUserBtn">
-            <img src="assets/person.svg" alt="Change User" class="settings-icon" />
-            <span class="settings-text">Change User</span>
             <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
           </div>
           <div class="settings-item" id="logoutBtn">
@@ -94,17 +84,17 @@ export default function renderProfile() {
 
       <!-- Bottom Navigation -->
       <nav class="bottom-nav">
-        <div class="nav-item" data-nav="dashboard">
-          <span class="nav-icon icon-dashboard"></span>
-          <span>Dashboard</span>
+        <div class="nav-item" id="nav-parties" data-nav="parties">
+          <span class="nav-icon icon-party" aria-hidden="true"></span>
+          <span class="nav-label">My Parties</span>
         </div>
-        <div class="nav-item" data-nav="parties">
-          <span class="nav-icon icon-party"></span>
-          <span>Parties</span>
+        <div class="nav-item" id="nav-new" data-nav="new">
+          <span class="nav-icon icon-plus" aria-hidden="true"></span>
+          <span class="nav-label">New Party</span>
         </div>
-        <div class="nav-item active" data-nav="profile">
-          <span class="nav-icon icon-user"></span>
-          <span>Profile</span>
+        <div class="nav-item active" id="nav-profile" data-nav="profile">
+          <span class="nav-icon icon-user" aria-hidden="true"></span>
+          <span class="nav-label">Profile</span>
         </div>
       </nav>
     </div>
@@ -112,6 +102,30 @@ export default function renderProfile() {
 
   // Initialize profile functionality
   initializeProfile();
+  
+  // Add test function for debugging profile statistics
+  window.testProfileStats = function() {
+    const createdParties = JSON.parse(localStorage.getItem('createdParties') || '[]');
+    console.log('=== PROFILE STATS TEST ===');
+    console.log('Created parties in localStorage:', createdParties);
+    console.log('Parties count:', createdParties.length);
+    
+    let totalAttendees = 0;
+    createdParties.forEach(party => {
+      const [current] = party.attendees.split('/');
+      totalAttendees += parseInt(current) || 0;
+    });
+    console.log('Total attendees:', totalAttendees);
+    
+    // Update the display
+    document.getElementById("attendedCount").textContent = createdParties.length;
+    document.getElementById("favoritesCount").textContent = totalAttendees.toLocaleString();
+    
+    console.log('Profile stats updated!');
+    console.log('=== END TEST ===');
+  };
+  
+  console.log('Profile test function available: window.testProfileStats()');
 }
 
 async function initializeProfile() {
@@ -126,6 +140,42 @@ async function initializeProfile() {
   
   // Setup bottom navigation
   setupBottomNavigation();
+  
+  // Add test function for debugging
+  window.testProfileParties = async function() {
+    console.log('=== TESTING PROFILE PARTIES ===');
+    
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    console.log('1. Admin user:', adminUser);
+    console.log('2. Admin name:', adminUser.name);
+    console.log('3. Admin email:', adminUser.email);
+    
+    try {
+      console.log('4. Testing /admin/parties endpoint...');
+      const response = await makeRequest('/admin/parties', 'POST', { email: adminUser.email });
+      console.log('5. API Response:', response);
+      
+      if (response.success && response.parties) {
+        console.log('6. Number of parties returned:', response.parties.length);
+        console.log('7. First few parties:', response.parties.slice(0, 3));
+        
+        // Check administrator field
+        response.parties.forEach((party, index) => {
+          console.log(`8. Party ${index + 1}:`, {
+            title: party.title,
+            administrator: party.administrator,
+            matches: party.administrator === adminUser.name
+          });
+        });
+      }
+    } catch (error) {
+      console.error('9. Error:', error);
+    }
+    
+    console.log('=== END TEST ===');
+  };
+  
+  console.log('Profile test function available: window.testProfileParties()');
 }
 
 async function loadUserProfile() {
@@ -133,12 +183,14 @@ async function loadUserProfile() {
     // Get current logged-in admin user data
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
     
+        console.log('Loading profile statistics from Supabase...');
+    
     if (adminUser && Object.keys(adminUser).length > 0) {
       // Use logged-in admin user data
       document.getElementById("profileName").textContent = adminUser.name || "Admin";
       document.getElementById("profileEmail").textContent = adminUser.email || "admin@example.com";
-      document.getElementById("attendedCount").textContent = adminUser.parties_count || 13;
-      document.getElementById("favoritesCount").textContent = adminUser.attendees_count || "3.2k";
+      document.getElementById("attendedCount").textContent = adminUser.parties_count || 0;
+      document.getElementById("favoritesCount").textContent = adminUser.attendees_count || "0";
       
       // Update user type badge
       const userTypeBadge = document.getElementById("userTypeBadge");
@@ -160,6 +212,9 @@ async function loadUserProfile() {
       // Load user interests
       loadUserInterests(adminUser.interests || []);
       
+      // Load correct metrics for this admin
+      await loadProfileMetrics(adminUser.email);
+      
       console.log("Profile loaded from logged-in admin user:", adminUser);
       return;
     }
@@ -173,8 +228,8 @@ async function loadUserProfile() {
       // Update profile information with real data
       document.getElementById("profileName").textContent = response.name || "Admin";
       document.getElementById("profileEmail").textContent = response.email || "admin@example.com";
-      document.getElementById("attendedCount").textContent = response.parties_count || 13;
-      document.getElementById("favoritesCount").textContent = response.attendees_count || "3.2k";
+      document.getElementById("attendedCount").textContent = partiesCount || response.parties_count || 13;
+      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : (response.attendees_count || "3.2k");
       
       // Update user type badge
       const userTypeBadge = document.getElementById("userTypeBadge");
@@ -216,11 +271,11 @@ async function loadUserProfile() {
         is_admin: true
       };
 
-      // Update profile information
+      // Update profile information with calculated data
       document.getElementById("profileName").textContent = mockUser.name;
       document.getElementById("profileEmail").textContent = mockUser.email;
-      document.getElementById("attendedCount").textContent = mockUser.parties_count;
-      document.getElementById("favoritesCount").textContent = mockUser.attendees_count;
+      document.getElementById("attendedCount").textContent = partiesCount || mockUser.parties_count;
+      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : mockUser.attendees_count;
       
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");
@@ -243,39 +298,62 @@ async function loadUserProfile() {
 
 async function loadUserParties() {
   try {
-    // Mock parties data for admin
-    const mockParties = [
-      {
-        id: 1,
-        title: "Pre-New Year Party",
-        date: "22/11/21",
-        status: "In progress",
-        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
+    console.log('Loading user parties from Supabase...');
+    
+    // Get current admin user email for authentication
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    const adminEmail = adminUser.email;
+
+    console.log('Profile - Admin user from localStorage:', adminUser);
+    console.log('Profile - Admin email:', adminEmail);
+
+    if (!adminEmail) {
+      console.warn('No admin email found for authentication');
+      document.getElementById("partiesList").innerHTML = '<div class="no-parties">No parties found</div>';
+      return;
+    }
+
+    // Fetch parties from API (this now uses name-based filtering)
+    console.log('Profile - Making API request to /admin/parties with email:', adminEmail);
+    const response = await makeRequest('/admin/parties', 'POST', { email: adminEmail });
+    console.log('Profile - Parties response:', response);
+
+    let partiesToShow = [];
+
+    if (response.success && response.parties && response.parties.length > 0) {
+      console.log('Profile - Successfully loaded parties:', response.parties.length);
+      
+      // FRONTEND FILTERING: Filter parties by administrator name as fallback
+      const adminName = adminUser.name;
+      console.log('Profile - Filtering parties by admin name:', adminName);
+      
+      const filteredParties = response.parties.filter(party => {
+        const matches = party.administrator === adminName;
+        console.log(`Profile - Party "${party.title}" administrator: "${party.administrator}" matches: ${matches}`);
+        return matches;
+      });
+      
+      console.log('Profile - Filtered parties count:', filteredParties.length);
+      
+      // Convert filtered parties to the format expected by profile screen
+      partiesToShow = filteredParties.slice(0, 3).map(party => ({
+        id: party.id,
+        title: party.title,
+        date: party.date.split(' • ')[0], // Just the date part
+        status: party.status === 'active' ? 'In progress' : party.status === 'inactive' ? 'Inactive' : 'Finished',
+        image: party.image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
         buttonText: "Manage",
         buttonClass: "manage-btn"
-      },
-      {
-        id: 2,
-        title: "Lore's Pool Party",
-        date: "11/10/21",
-        status: "Inactive",
-        image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=80&h=80&fit=crop",
-        buttonText: "Statistics",
-        buttonClass: "stats-btn"
-      },
-      {
-        id: 3,
-        title: "Chicago Night",
-        date: "5/9/21",
-        status: "Finished",
-        image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=80&h=80&fit=crop",
-        buttonText: "Statistics",
-        buttonClass: "stats-btn"
-      }
-    ];
+      }));
+    } else {
+      console.warn('Profile - No parties found in API response');
+      partiesToShow = [];
+    }
+
+    console.log('Profile - Parties to show:', partiesToShow.length);
 
     const partiesList = document.getElementById("partiesList");
-    partiesList.innerHTML = mockParties.map(party => `
+    partiesList.innerHTML = partiesToShow.map(party => `
       <div class="party-item">
         <img src="${party.image}" alt="${party.title}" class="party-image" />
         <div class="party-content">
@@ -290,6 +368,26 @@ async function loadUserParties() {
 
   } catch (error) {
     console.error("Error loading user parties:", error);
+    document.getElementById("partiesList").innerHTML = '<div class="no-parties">Error loading parties</div>';
+  }
+}
+
+async function loadProfileMetrics(adminEmail) {
+  try {
+    console.log('Profile - Loading metrics for admin:', adminEmail);
+    const response = await makeRequest('/admin/metrics', 'POST', { email: adminEmail });
+    console.log('Profile - Metrics response:', response);
+    
+    if (response.success && response.metrics) {
+      const metrics = response.metrics;
+      document.getElementById("attendedCount").textContent = metrics.totalAttendees || "0";
+      document.getElementById("favoritesCount").textContent = metrics.totalRevenue || "$0";
+      console.log('Profile - Updated metrics:', metrics);
+    } else {
+      console.warn('Profile - Failed to load metrics:', response.message);
+    }
+  } catch (error) {
+    console.error('Profile - Error loading metrics:', error);
   }
 }
 
@@ -354,28 +452,18 @@ function setupProfileEventListeners() {
   // See more parties button
   document.getElementById("seeMorePartiesBtn").addEventListener("click", () => {
     console.log("See more parties clicked");
-    navigateTo("/admin-dashboard");
+    navigateTo("/my-parties");
   });
 
   // Settings menu items
-  document.getElementById("notificationsBtn").addEventListener("click", () => {
-    console.log("Notifications clicked");
-    // TODO: Navigate to notifications settings
-  });
-
-  document.getElementById("yourCodesBtn").addEventListener("click", () => {
-    console.log("Your codes clicked");
-    // TODO: Navigate to codes page
+  document.getElementById("statisticsBtn").addEventListener("click", () => {
+    console.log("Statistics clicked");
+    navigateTo("/admin-dashboard");
   });
 
   document.getElementById("editProfileBtn").addEventListener("click", () => {
     console.log("Edit profile clicked");
     navigateTo("/edit-profile");
-  });
-
-  document.getElementById("changeUserBtn").addEventListener("click", () => {
-    console.log("Change user clicked");
-    // TODO: Implement user switching
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -400,29 +488,22 @@ function handleLogout() {
 }
 
 function setupBottomNavigation() {
-  const navItems = document.querySelectorAll(".bottom-nav .nav-item");
+  const bottomNav = document.querySelector('.bottom-nav');
+  const navItems = bottomNav ? Array.from(bottomNav.querySelectorAll('.nav-item')) : [];
   
-  navItems.forEach(item => {
-    item.style.touchAction = "manipulation";
-    item.addEventListener("click", () => {
-      // Remove active class from all items
-      navItems.forEach(nav => nav.classList.remove("active"));
-      
-      // Add active class to clicked item
-      item.classList.add("active");
-      
-      // Handle navigation
+  navItems.forEach((item) => {
+    item.style.touchAction = 'manipulation';
+    item.addEventListener('click', () => {
+      navItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
       const target = item.dataset.nav;
-      switch (target) {
-        case "dashboard":
-          navigateTo("/admin-dashboard");
-          break;
-        case "parties":
-          navigateTo("/admin-dashboard");
-          break;
-        case "profile":
-          // Already on profile page
-          break;
+      if (target === 'parties') {
+        navigateTo('/my-parties');
+      } else if (target === 'new') {
+        navigateTo('/create-party');
+      } else if (target === 'profile') {
+        // Already on profile page - do nothing
+        return;
       }
     });
   });

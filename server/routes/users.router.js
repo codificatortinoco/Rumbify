@@ -6,7 +6,8 @@ const {
   updateUserProfile,
   deleteUser,
   getUserProfile,
-  loginUser
+  loginUser,
+  testSupabaseConnection
 } = require("../controllers/users.controller");
 const { requireMember } = require("../middleware/auth.middleware");
 const router = express.Router();
@@ -24,5 +25,8 @@ router.put("/users/:id", updateUserProfile);
 router.delete("/users/:id", deleteUser);
 
 router.get("/users/:id/profile", getUserProfile);
+
+// Test Supabase connection endpoint
+router.get("/test-supabase", testSupabaseConnection);
 
 module.exports = router;

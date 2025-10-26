@@ -7,7 +7,6 @@ export default function renderEditProfile() {
   const app = document.getElementById("app");
   app.innerHTML = `
     <div id="edit-profile-screen">
-      <!-- Header -->
       <div class="edit-profile-header">
         <button class="back-btn" id="backBtn">
           <img src="assets/arrow.svg" alt="Back" class="back-icon" />
@@ -66,7 +65,7 @@ export default function renderEditProfile() {
         </div>
 
         <div class="form-group">
-          <label for="bioInput" class="form-label">Bio (Optional)</label>
+          <label for="bioInput" class="form-label">Bio (Optional)</label> 
           <textarea 
             id="bioInput" 
             class="form-textarea" 

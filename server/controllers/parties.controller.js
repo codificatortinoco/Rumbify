@@ -306,8 +306,28 @@ const getEventDetails = async (req, res) => {
       if (pricesErr) {
         console.error("Error fetching event prices:", pricesErr);
       }
+
+      // Fetch description for this party (single row optional)
+      let descriptionText = "";
+      try {
+        const { data: descRow, error: descErr } = await supabaseCli
+          .from("descriptions")
+          .select("description")
+          .eq("party_id", data.id)
+          .single();
+        if (descErr) {
+          console.warn("Description fetch error:", descErr);
+        } else {
+          descriptionText = descRow?.description || "";
+        }
+      } catch (descCatch) {
+        console.warn("Description query failed:", descCatch);
+      }
+
       const displayPrice = (prices && prices.length) ? prices[0]?.price : data.price;
-      return res.json({ ...data, prices: prices || [], price: displayPrice });
+      const parsed = parseDateAndHour(data.date);
+      console.log("[getEventDetails] id:", data.id, "date:", data.date, "parsed:", parsed);
+      return res.json({ ...data, prices: prices || [], price: displayPrice, description: descriptionText, date_iso: parsed.iso, hour_24: parsed.hour });
     }
 
     // If no data in database, return mock data
@@ -358,6 +378,44 @@ function daysUntil(isoDate) {
   }
 }
 
+function parseDateAndHour(raw) {
+  try {
+    if (!raw) return { iso: null, hour: null };
+    const s = String(raw);
+    let iso = null;
+    let hour = null;
+    // dd/mm/yy or dd/mm/yyyy
+    const m1 = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if (m1) {
+      const d = m1[1].padStart(2, '0');
+      const m = m1[2].padStart(2, '0');
+      let y = m1[3];
+      if (y.length === 2) y = `20${y}`;
+      iso = `${y}-${m}-${d}`;
+    }
+    // yyyy-mm-dd
+    if (!iso) {
+      const m2 = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m2) {
+        const y = m2[1];
+        const m = m2[2].padStart(2, '0');
+        const d = m2[3].padStart(2, '0');
+        iso = `${y}-${m}-${d}`;
+      }
+    }
+    // time HH:mm or h:mm K
+    const t = s.match(/(\d{1,2}:\d{2})/);
+    if (t) {
+      const [h, mm] = t[1].split(':');
+      const hh = String(h).padStart(2, '0');
+      hour = `${hh}:${mm}`;
+    }
+    return { iso, hour };
+  } catch {
+    return { iso: null, hour: null };
+  }
+}
+
 function formatDisplayDate(isoDate, hour) {
   try {
     const dt = new Date(isoDate);
@@ -394,6 +452,7 @@ const createParty = async (req, res) => {
       date,      // esperado como yyyy-mm-dd
       hour,      // HH:mm
       administrator,
+      number,    // contacto telefónico
       image,
       tags,
       prices, // Array de { price_name, price }
@@ -428,6 +487,7 @@ const createParty = async (req, res) => {
         date: displayDate,
         administrator,
         image: image || "",
+        number: number ? String(number).replace(/\D+/g, "") : null,
         tags: Array.isArray(tags) ? tags : [],
         category,
       };
@@ -510,6 +570,150 @@ const createParty = async (req, res) => {
       return res.status(500).json({ success: false, message: "Unexpected error" });
     }
   };
+
+const updateParty = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partyId = Number(id);
+    if (!partyId || Number.isNaN(partyId)) {
+      return res.status(400).json({ success: false, message: "Invalid party id" });
+    }
+
+    const {
+      title,
+      attendees,
+      location,
+      date,
+      hour,
+      administrator,
+      number,
+      image,
+      tags,
+      prices,
+      description,
+    } = req.body || {};
+
+    const safeAttendees = attendees || "0/0";
+    let resolvedLocation = location;
+    try {
+      if (location) {
+        const geo = await geocodeAddress(location);
+        if (geo.ok && geo.formatted) {
+          resolvedLocation = geo.formatted;
+        }
+      }
+    } catch {}
+
+    const category = date ? computeCategoryAuto(safeAttendees, date) : undefined;
+    const displayDate = date ? formatDisplayDate(date, hour) : undefined;
+
+    const payload = {};
+    if (title !== undefined) payload.title = title;
+    if (safeAttendees !== undefined) payload.attendees = safeAttendees;
+    if (resolvedLocation !== undefined) payload.location = resolvedLocation;
+    if (displayDate !== undefined) payload.date = displayDate;
+    if (administrator !== undefined) payload.administrator = administrator;
+    if (number !== undefined) payload.number = number ? String(number).replace(/\D+/g, "") : null;
+    if (image !== undefined) payload.image = image;
+    if (tags !== undefined) payload.tags = Array.isArray(tags) ? tags : [];
+    if (category !== undefined) payload.category = category;
+
+    const { data: updatedRows, error: upErr } = await supabaseCli
+      .from("parties")
+      .update(payload)
+      .eq("id", partyId)
+      .select();
+
+    if (upErr) {
+      console.error("Database update error:", upErr);
+      return res.status(500).json({ success: false, message: "Failed to update party in database", error: upErr });
+    }
+
+    const party = updatedRows?.[0];
+
+    // Handle description update/insert/delete
+    let descriptionRecord = null;
+    let descriptionError = null;
+    try {
+      if (description !== undefined) {
+        const descText = String(description || "").trim();
+        const { data: existingDesc, error: existErr } = await supabaseCli
+          .from("descriptions")
+          .select("id")
+          .eq("party_id", partyId);
+        if (existErr) {
+          descriptionError = existErr;
+        } else {
+          const hasExisting = Array.isArray(existingDesc) && existingDesc.length > 0;
+          if (hasExisting && descText.length) {
+            const { data: updDesc, error: updErr } = await supabaseCli
+              .from("descriptions")
+              .update({ description: descText })
+              .eq("party_id", partyId)
+              .select();
+            if (updErr) descriptionError = updErr; else descriptionRecord = updDesc?.[0] || null;
+          } else if (!hasExisting && descText.length) {
+            const { data: insDesc, error: insErr } = await supabaseCli
+              .from("descriptions")
+              .insert([{ party_id: partyId, description: descText }])
+              .select();
+            if (insErr) descriptionError = insErr; else descriptionRecord = insDesc?.[0] || null;
+          } else if (hasExisting && !descText.length) {
+            try { await supabaseCli.from("descriptions").delete().eq("party_id", partyId); } catch (delErr) { console.warn("Description delete error:", delErr); }
+          }
+        }
+      }
+    } catch (descCatch) {
+      descriptionError = descCatch;
+    }
+
+    // Replace prices if provided
+    let insertedPrices = [];
+    let pricesInsertError = null;
+    try {
+      if (Array.isArray(prices)) {
+        try { await supabaseCli.from("prices").delete().eq("party_id", partyId); } catch (delErr) { console.warn("Prices delete error:", delErr); }
+        const normalizedPrices = prices
+          .filter(p => (p?.price_name || p?.name) && p?.price)
+          .map(p => ({
+            price_name: String(p.price_name || p.name).trim(),
+            price: String(p.price).trim(),
+            party_id: partyId,
+          }));
+        if (normalizedPrices.length) {
+          const { data: prData, error: prErr } = await supabaseCli
+            .from("prices")
+            .insert(normalizedPrices)
+            .select();
+          if (prErr) {
+            pricesInsertError = prErr;
+          } else {
+            insertedPrices = prData || [];
+          }
+        }
+      }
+    } catch (prCatch) {
+      pricesInsertError = prCatch;
+    }
+
+    const displayPriceFinal = insertedPrices.length ? insertedPrices[0]?.price : party?.price;
+
+    if (pricesInsertError || descriptionError) {
+      return res.status(200).json({
+        success: true,
+        party: { ...party, prices: insertedPrices, price: displayPriceFinal },
+        prices_error: pricesInsertError?.message || pricesInsertError,
+        description_error: descriptionError?.message || descriptionError,
+        description_record: descriptionRecord,
+      });
+    }
+
+    return res.status(200).json({ success: true, party: { ...party, prices: insertedPrices, price: displayPriceFinal }, description_record: descriptionRecord });
+  } catch (error) {
+    console.error("Error updating party:", error);
+    return res.status(500).json({ success: false, message: "Unexpected error" });
+  }
+};
 
 const getAdminStatistics = async (req, res) => {
   try {
@@ -870,4 +1074,5 @@ module.exports = {
   getAdminMetrics,
   deleteParty,
   uploadPartyImage,
+  updateParty,
 };

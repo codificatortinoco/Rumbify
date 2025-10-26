@@ -20,7 +20,25 @@ function clearScripts() {
 function getInitialRoute() {
   const path = window.location.pathname;
   const cleanPath = path.replace('/app2', '') || '/admin-login';
-  return { path: cleanPath, data: {} };
+  const params = new URLSearchParams(window.location.search);
+  const data = {};
+  // Recuperar contexto de edición para create-party desde query/localStorage
+  if (cleanPath === '/create-party') {
+    const qsId = params.get('id') || params.get('partyId');
+    const qsEdit = params.get('edit');
+    if (qsId) data.partyId = Number(qsId);
+    if (qsEdit) data.edit = (qsEdit === '1' || qsEdit === 'true');
+    if (!data.partyId) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('createPartyEditContext') || '{}');
+        if (stored && stored.partyId) {
+          data.partyId = Number(stored.partyId);
+          data.edit = true;
+        }
+      } catch (_) {}
+    }
+  }
+  return { path: cleanPath, data };
 }
 
 let route = getInitialRoute();
@@ -38,7 +56,20 @@ window.addEventListener('popstate', (event) => {
 
 function navigateTo(path, data = {}) {
   const newRoute = { path, data };
-  window.history.pushState(newRoute, "", `/app2${path}`);
+  let url = `/app2${path}`;
+  // Para create-party en modo edición, persistir en query y localStorage
+  if (path === '/create-party' && (data.edit || data.mode === 'edit') && data.partyId) {
+    const params = new URLSearchParams();
+    params.set('edit', '1');
+    params.set('id', String(data.partyId));
+    url += `?${params.toString()}`;
+    try {
+      localStorage.setItem('createPartyEditContext', JSON.stringify({ partyId: Number(data.partyId) }));
+    } catch (_) {}
+  } else {
+    try { localStorage.removeItem('createPartyEditContext'); } catch (_) {}
+  }
+  window.history.pushState(newRoute, "", url);
   renderRoute(newRoute);
 }
 

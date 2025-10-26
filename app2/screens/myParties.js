@@ -174,8 +174,8 @@ export default function renderMyParties(data = {}) {
 
   function handleEditParty(partyId) {
     console.log('Editing party:', partyId);
-    // For now, redirect to manage party screen
-    navigateTo("/manage-party", { partyId: partyId });
+    // Redirect to Create Party in edit mode, passing the partyId
+    navigateTo("/create-party", { partyId: partyId, edit: true });
   }
 
   function handleDeleteParty(partyId) {

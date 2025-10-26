@@ -12,6 +12,7 @@ const {
   getAdminMetrics,
   deleteParty,
   uploadPartyImage,
+  updateParty,
 } = require("../controllers/parties.controller");
 const guestsController = require("../controllers/guests.controller");
 const { requireAdmin } = require("../middleware/auth.middleware");
@@ -27,6 +28,7 @@ router.patch("/parties/:id/like", toggleLike);
 router.get("/parties/:id", getEventDetails);
 
 // Admin-only routes
+router.patch("/parties/:id", requireAdmin, updateParty);
 router.delete("/parties/:id", requireAdmin, deleteParty);
 router.post("/parties/upload-image", requireAdmin, uploadPartyImage);
 

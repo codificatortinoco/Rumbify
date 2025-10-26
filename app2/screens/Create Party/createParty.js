@@ -340,14 +340,14 @@ export default function renderCreateParty(data = {}) {
         return;
       }
       
-      if (!userEmail) {
+      if (!adminEmail) {
         alert("Error: No se encontró información de usuario autenticado. Por favor, inicia sesión nuevamente.");
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
         return;
       }
       
-      console.log("User email for authentication:", userEmail);
+      console.log("Admin email for authentication:", adminEmail);
       if (!maxAtt || maxAtt < 1) {
         alert("Maximum attendees must be at least 1.");
         submitBtn.textContent = originalText;

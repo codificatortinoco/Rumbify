@@ -435,6 +435,65 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Upload profile image
+const uploadProfileImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided"
+      });
+    }
+    
+    const supabaseCli = require("../services/supabase.service");
+    
+    // Convert buffer to base64
+    const base64Image = req.file.buffer.toString('base64');
+    const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+    
+    // Update user profile with new image
+    const { data: updatedUser, error: updateError } = await supabaseCli
+      .from("users")
+      .update({ 
+        profile_image: dataUrl,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error("Error updating profile image:", updateError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update profile image"
+      });
+    }
+    
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Profile image updated successfully",
+      profile_image: updatedUser.profile_image
+    });
+    
+  } catch (error) {
+    console.error("Error in uploadProfileImage:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 // Test Supabase connection
 const testSupabaseConnection = async (req, res) => {
   try {
@@ -481,5 +540,6 @@ module.exports = {
   deleteUser,
   getUserProfile,
   loginUser,
-  testSupabaseConnection
+  testSupabaseConnection,
+  uploadProfileImage
 };

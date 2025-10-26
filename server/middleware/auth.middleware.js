@@ -75,9 +75,17 @@ const requireAdmin = async (req, res, next) => {
  */
 const requireMember = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    // Permitir email por body (POST), query (GET) o header (GET)
+    const bodyEmail = req.body?.email;
+    const queryEmail = req.query?.email;
+    const headerEmail = req.headers["x-user-email"];
+    const email = bodyEmail || queryEmail || headerEmail;
+    
+    console.log("[requireMember] Request body:", req.body);
+    console.log("[requireMember] Email from request:", email);
     
     if (!email) {
+      console.log("[requireMember] No email provided");
       return res.status(400).json({
         success: false,
         message: "Email is required for authentication"
@@ -85,13 +93,17 @@ const requireMember = async (req, res, next) => {
     }
 
     // Buscar usuario en la base de datos
+    console.log("[requireMember] Looking up user with email:", String(email).toLowerCase().trim());
     const { data: user, error } = await supabase
       .from("users")
       .select("id, name, email, is_admin")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", String(email).toLowerCase().trim())
       .single();
 
+    console.log("[requireMember] User lookup result:", { user, error });
+
     if (error || !user) {
+      console.log("[requireMember] User not found or error:", error);
       return res.status(401).json({
         success: false,
         message: "User not found"
@@ -100,12 +112,14 @@ const requireMember = async (req, res, next) => {
 
     // Verificar que el usuario NO es administrador
     if (user.is_admin) {
+      console.log("[requireMember] User is admin:", user);
       return res.status(403).json({
         success: false,
         message: "Access denied. This endpoint is only for regular members."
       });
     }
 
+    console.log("[requireMember] Member user authenticated:", user.email);
     // Agregar información del usuario a la request para uso posterior
     req.user = {
       id: user.id,

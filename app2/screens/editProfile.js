@@ -549,7 +549,7 @@ function handleChangeProfilePicture() {
   fileInput.accept = "image/*";
   fileInput.style.display = "none";
   
-  fileInput.addEventListener("change", (e) => {
+  fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (file) {
       // Validate file size (max 5MB)
@@ -564,16 +564,30 @@ function handleChangeProfilePicture() {
         return;
       }
       
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const profilePicture = document.getElementById("profilePicture");
-        profilePicture.src = e.target.result;
+      // Show loading state
+      const profilePicture = document.getElementById("profilePicture");
+      const originalSrc = profilePicture.src;
+      profilePicture.style.opacity = "0.5";
+      
+      try {
+        // Create preview first
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          profilePicture.src = e.target.result;
+          profilePicture.style.opacity = "1";
+        };
+        reader.readAsDataURL(file);
         
-        // TODO: Upload to server and update user profile
-        console.log("Profile picture changed:", file.name);
-      };
-      reader.readAsDataURL(file);
+        // Upload to server
+        await uploadProfileImage(file);
+        
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        // Revert to original image on error
+        profilePicture.src = originalSrc;
+        profilePicture.style.opacity = "1";
+        alert("Failed to upload image. Please try again.");
+      }
     }
   });
   
@@ -581,6 +595,47 @@ function handleChangeProfilePicture() {
   document.body.appendChild(fileInput);
   fileInput.click();
   document.body.removeChild(fileInput);
+}
+
+async function uploadProfileImage(file) {
+  const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+  if (!adminUser || Object.keys(adminUser).length === 0) {
+    throw new Error("User not found");
+  }
+  
+  // Create FormData for file upload
+  const formData = new FormData();
+  formData.append('profile_image', file);
+  
+  // Upload image to server with admin email in header
+  const response = await fetch(`/users/${adminUser.id}/admin/profile-image`, {
+    method: 'POST',
+    headers: {
+      'x-admin-email': adminUser.email
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Failed to upload image');
+  }
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    // Update local storage with new profile image
+    const updatedUser = { ...adminUser, profile_image: result.profile_image };
+    localStorage.setItem('adminUser', JSON.stringify(updatedUser));
+    
+    // Update the profile picture in the UI
+    const profilePicture = document.getElementById("profilePicture");
+    profilePicture.src = result.profile_image;
+    
+    console.log("Profile image updated successfully");
+  } else {
+    throw new Error(result.message || 'Failed to update profile image');
+  }
 }
 
 function handleDeleteAccount() {

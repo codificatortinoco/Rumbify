@@ -316,6 +316,165 @@ const deleteUser = async (req, res) => {
   res.send(response);
 };
 
+// New endpoint for deleting admin account with all related data
+const deleteAdminAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required to delete account"
+      });
+    }
+
+    const supabaseCli = require("../services/supabase.service");
+
+    // First, verify the user exists and get their data
+    const { data: user, error: userError } = await supabaseCli
+      .from("users")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Verify password
+    if (user.password !== password) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password"
+      });
+    }
+
+    // If user is admin, delete all their parties first
+    if (user.is_admin) {
+      console.log(`Deleting parties for admin user: ${user.name}`);
+      
+      // Delete all parties created by this admin
+      const { error: partiesError } = await supabaseCli
+        .from("parties")
+        .delete()
+        .eq("administrator", user.name);
+
+      if (partiesError) {
+        console.error("Error deleting parties:", partiesError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to delete associated parties"
+        });
+      }
+
+      console.log(`Deleted parties for admin: ${user.name}`);
+    }
+
+    // Delete the user account
+    const { data: deletedUser, error: deleteError } = await supabaseCli
+      .from("users")
+      .delete()
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (deleteError) {
+      console.error("Error deleting user:", deleteError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete account"
+      });
+    }
+
+    console.log(`Successfully deleted admin account: ${user.name}`);
+
+    res.json({
+      success: true,
+      message: "Account and all associated data have been permanently deleted"
+    });
+
+  } catch (error) {
+    console.error("Error in deleteAdminAccount:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+// New endpoint for deleting member account
+const deleteMemberAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required to delete account"
+      });
+    }
+
+    const supabaseCli = require("../services/supabase.service");
+
+    // First, verify the user exists and get their data
+    const { data: user, error: userError } = await supabaseCli
+      .from("users")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Verify password
+    if (user.password !== password) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password"
+      });
+    }
+
+    // Delete the user account
+    const { data: deletedUser, error: deleteError } = await supabaseCli
+      .from("users")
+      .delete()
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (deleteError) {
+      console.error("Error deleting user:", deleteError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete account"
+      });
+    }
+
+    console.log(`Successfully deleted member account: ${user.name}`);
+
+    res.json({
+      success: true,
+      message: "Account and all associated data have been permanently deleted"
+    });
+
+  } catch (error) {
+    console.error("Error in deleteMemberAccount:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 // New endpoint for getting user profile with stats
 const getUserProfile = async (req, res) => {
   try {
@@ -538,6 +697,8 @@ module.exports = {
   updateUser,
   updateUserProfile,
   deleteUser,
+  deleteAdminAccount,
+  deleteMemberAccount,
   getUserProfile,
   loginUser,
   testSupabaseConnection,

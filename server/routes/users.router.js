@@ -6,6 +6,8 @@ const {
   updateUser,
   updateUserProfile,
   deleteUser,
+  deleteAdminAccount,
+  deleteMemberAccount,
   getUserProfile,
   loginUser,
   testSupabaseConnection,
@@ -47,6 +49,12 @@ router.get("/users/:id/profile", getUserProfile);
 // Upload profile image endpoints
 router.post("/users/:id/profile-image", requireMember, upload.single('profile_image'), uploadProfileImage);
 router.post("/users/:id/admin/profile-image", requireAdmin, upload.single('profile_image'), uploadProfileImage);
+
+// Delete admin account endpoint
+router.delete("/users/:id/admin/delete-account", requireAdmin, deleteAdminAccount);
+
+// Delete member account endpoint
+router.delete("/users/:id/delete-account", requireMember, deleteMemberAccount);
 
 // Test Supabase connection endpoint
 router.get("/test-supabase", testSupabaseConnection);

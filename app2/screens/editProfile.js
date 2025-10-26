@@ -638,20 +638,88 @@ async function uploadProfileImage(file) {
   }
 }
 
-function handleDeleteAccount() {
+async function handleDeleteAccount() {
+  // First confirmation
   const confirmed = confirm(
-    "Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently removed."
+    "¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer y todos tus datos serán eliminados permanentemente."
   );
   
-  if (confirmed) {
-    const doubleConfirmed = confirm(
-      "This is your final warning. Your account and all associated data will be permanently deleted. Are you absolutely sure?"
-    );
-    
-    if (doubleConfirmed) {
-      // TODO: Implement account deletion
-      console.log("Account deletion requested");
-      alert("Account deletion feature will be implemented soon.");
+  if (!confirmed) return;
+  
+  // Second confirmation
+  const doubleConfirmed = confirm(
+    "Esta es tu advertencia final. Tu cuenta y todos los datos asociados serán eliminados permanentemente. ¿Estás absolutamente seguro?"
+  );
+  
+  if (!doubleConfirmed) return;
+  
+  // Ask for password confirmation
+  const password = prompt(
+    "Para confirmar la eliminación de tu cuenta, por favor ingresa tu contraseña:"
+  );
+  
+  if (!password) {
+    alert("La contraseña es requerida para eliminar la cuenta.");
+    return;
+  }
+  
+  // Final confirmation
+  const finalConfirmed = confirm(
+    "ÚLTIMA CONFIRMACIÓN: Tu cuenta y todas las fiestas que hayas creado serán eliminadas permanentemente. ¿Estás seguro de que quieres continuar?"
+  );
+  
+  if (!finalConfirmed) return;
+  
+  try {
+    // Get current admin user
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    if (!adminUser || Object.keys(adminUser).length === 0) {
+      alert("Error: No se encontró información de usuario. Por favor, inicia sesión nuevamente.");
+      return;
     }
+    
+    // Show loading state
+    const deleteBtn = document.getElementById("deleteAccountBtn");
+    const originalText = deleteBtn.textContent;
+    deleteBtn.textContent = "Eliminando cuenta...";
+    deleteBtn.disabled = true;
+    
+    // Call API to delete account
+    const response = await fetch(`/users/${adminUser.id}/admin/delete-account`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-email': adminUser.email
+      },
+      body: JSON.stringify({ password })
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok && result.success) {
+      // Clear all authentication data
+      localStorage.removeItem('adminUser');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('user');
+      localStorage.removeItem('loggedInUser');
+      localStorage.removeItem('isLoggedIn');
+      
+      // Show success message
+      alert("Tu cuenta ha sido eliminada exitosamente. Serás redirigido al inicio de sesión.");
+      
+      // Force redirect to admin login page
+      window.location.href = '/app2/admin-login';
+    } else {
+      throw new Error(result.message || 'Error al eliminar la cuenta');
+    }
+    
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    alert(`Error al eliminar la cuenta: ${error.message}`);
+    
+    // Reset button state
+    const deleteBtn = document.getElementById("deleteAccountBtn");
+    deleteBtn.textContent = "Delete Account";
+    deleteBtn.disabled = false;
   }
 }

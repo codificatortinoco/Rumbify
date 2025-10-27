@@ -1075,29 +1075,63 @@ const getAdminMetrics = async (req, res) => {
 
     console.log("[getAdminMetrics] Total attendees calculated:", totalAttendees);
 
-    // Calculate total revenue by getting prices for all party IDs
+    // Calculate total revenue based on actual used codes and their prices
     let totalRevenue = 0;
     if (parties && Array.isArray(parties) && parties.length > 0) {
       const partyIds = parties.map(p => p.id);
-      console.log("[getAdminMetrics] Fetching prices for party IDs:", partyIds);
+      console.log("[getAdminMetrics] Fetching used codes for party IDs:", partyIds);
       
-      const { data: allPrices, error: pricesError } = await supabaseCli
-        .from("prices")
-        .select("party_id, price")
-        .in("party_id", partyIds);
+      // Get all used codes for this admin's parties
+      const { data: usedCodes, error: codesError } = await supabaseCli
+        .from("Codes")
+        .select("price_id")
+        .in("party_id", partyIds)
+        .eq("already_used", true);
 
-      console.log("[getAdminMetrics] Prices query result:", { allPrices, pricesError });
+      console.log("[getAdminMetrics] Used codes query result:", { usedCodes, codesError });
 
-      if (!pricesError && allPrices && Array.isArray(allPrices)) {
-        allPrices.forEach(priceObj => {
-          if (priceObj && priceObj.price && typeof priceObj.price === 'string') {
-            const priceStr = priceObj.price.replace(/[^0-9]/g, '');
-            const priceNum = parseInt(priceStr, 10) || 0;
-            totalRevenue += priceNum;
+      if (!codesError && usedCodes && Array.isArray(usedCodes) && usedCodes.length > 0) {
+        // Get unique price IDs from used codes
+        const priceIds = [...new Set(usedCodes.map(code => code.price_id).filter(Boolean))];
+        console.log("[getAdminMetrics] Unique price IDs from used codes:", priceIds);
+        
+        if (priceIds.length > 0) {
+          // Get prices for used codes
+          const { data: usedPrices, error: pricesError } = await supabaseCli
+            .from("prices")
+            .select("id, price")
+            .in("id", priceIds);
+
+          console.log("[getAdminMetrics] Used prices query result:", { usedPrices, pricesError });
+
+          if (!pricesError && usedPrices && Array.isArray(usedPrices)) {
+            // Count how many times each price was used
+            const priceUsageCount = {};
+            usedCodes.forEach(code => {
+              const priceId = code.price_id;
+              priceUsageCount[priceId] = (priceUsageCount[priceId] || 0) + 1;
+            });
+
+            console.log("[getAdminMetrics] Price usage count:", priceUsageCount);
+
+            // Calculate revenue: sum of (price × usage_count) for each used price
+            usedPrices.forEach(priceObj => {
+              if (priceObj && priceObj.price && typeof priceObj.price === 'string') {
+                const priceStr = priceObj.price.replace(/[^0-9]/g, '');
+                const priceNum = parseInt(priceStr, 10) || 0;
+                const usageCount = priceUsageCount[priceObj.id] || 0;
+                const revenueForThisPrice = priceNum * usageCount;
+                totalRevenue += revenueForThisPrice;
+                
+                console.log(`[getAdminMetrics] Price ${priceObj.id}: $${priceNum} × ${usageCount} = $${revenueForThisPrice}`);
+              }
+            });
+          } else {
+            console.warn("[getAdminMetrics] Error fetching used prices:", pricesError);
           }
-        });
+        }
       } else {
-        console.warn("[getAdminMetrics] Error fetching prices or no prices found:", pricesError);
+        console.log("[getAdminMetrics] No used codes found for admin's parties");
       }
     }
 

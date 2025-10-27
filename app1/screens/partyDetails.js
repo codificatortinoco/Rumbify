@@ -55,14 +55,6 @@ export default function renderPartyDetails(partyId) {
           </div>
         </div>
 
-        <!-- Dress Code Section -->
-        <div class="dress-code-section">
-          <h3 class="section-title">Dress code</h3>
-          <ul class="dress-code-list" id="dressCodeList">
-            <!-- Dress code will be loaded dynamically -->
-          </ul>
-        </div>
-
         <!-- Address Section -->
         <div class="address-section">
           <h3 class="section-title">Address</h3>
@@ -214,11 +206,6 @@ async function loadPartyDetails(partyId) {
       addressEl.textContent = party.location;
     }
     
-    // Load dress code (mock for now)
-    console.log('[loadPartyDetails] Loading dress code...');
-    loadDressCode(party.tags || []);
-    console.log('[loadPartyDetails] ✅ Dress code loaded');
-    
     // Load party description
     console.log('[loadPartyDetails] Loading party description...');
     await loadPartyDescription(partyId);
@@ -269,40 +256,6 @@ async function loadPartyDescription(partyId) {
       `;
     }
   }
-}
-
-function loadDressCode(tags) {
-  const dressCodeList = document.getElementById("dressCodeList");
-  
-  if (!dressCodeList) {
-    console.error('[loadDressCode] dressCodeList element not found in DOM');
-    return;
-  }
-  
-  // Mock dress code based on tags
-  let dressCodeItems = [];
-  
-  if (tags.includes("Elegant")) {
-    dressCodeItems.push("Formal attire");
-    dressCodeItems.push("No casual wear");
-  }
-  
-  if (tags.includes("Neon")) {
-    dressCodeItems.push("Neon colors");
-  }
-  
-  if (tags.includes("Summer")) {
-    dressCodeItems.push("Light clothing");
-  }
-  
-  // Default dress code if no specific tags
-  if (dressCodeItems.length === 0) {
-    dressCodeItems = ["Smart casual", "No shorts", "No sandals"];
-  }
-  
-  dressCodeList.innerHTML = dressCodeItems.map(item => `
-    <li>${item}</li>
-  `).join("");
 }
 
 function setupPartyDetailsEventListeners() {

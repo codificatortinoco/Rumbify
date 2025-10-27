@@ -555,18 +555,49 @@ function setupActionButtons() {
       }
       
       if (partyId) {
-        console.log('Navigating to event details:', partyId);
+        console.log('Checking if user is registered to party:', partyId);
         try {
-          // Get event details from the API
-          const response = await makeRequest(`/parties/${partyId}`, 'GET');
-          if (response && response.success && response.party) {
-            console.log('Event data received:', response.party);
-            navigateTo("/event-details", response.party);
+          const currentUser = getCurrentUser();
+          if (!currentUser || !currentUser.id) {
+            console.warn('No current user found');
+            return;
+          }
+          
+          // Check if user is registered to this party
+          const historyResponse = await makeRequest(`/users/${currentUser.id}/party-history`, "GET");
+          
+          if (historyResponse && historyResponse.success && historyResponse.party_history) {
+            const isRegistered = historyResponse.party_history.some(party => 
+              (party.party_id || party.id) == partyId
+            );
+            
+            console.log('User is registered:', isRegistered);
+            
+            if (isRegistered) {
+              // User is registered, navigate to party-details (for QR code)
+              console.log('Navigating to party-details:', partyId);
+              navigateTo(`/party-details/${partyId}`);
+            } else {
+              // User is not registered, navigate to event-details (for information)
+              console.log('Navigating to event-details:', partyId);
+              const response = await makeRequest(`/parties/${partyId}`, 'GET');
+              if (response && response.success && response.party) {
+                console.log('Event data received:', response.party);
+                navigateTo("/event-details", response.party);
+              } else {
+                console.error('No event data received or invalid response:', response);
+              }
+            }
           } else {
-            console.error('No event data received or invalid response:', response);
+            // Fallback: navigate to event-details
+            console.log('Fallback: Navigating to event-details:', partyId);
+            const response = await makeRequest(`/parties/${partyId}`, 'GET');
+            if (response && response.success && response.party) {
+              navigateTo("/event-details", response.party);
+            }
           }
         } catch (error) {
-          console.error('Error fetching event details:', error);
+          console.error('Error checking registration or fetching event details:', error);
         }
       }
     }

@@ -1,0 +1,339 @@
+/* Styles specific to Manage Party screen */
+.top-section { padding: 8px 16px; }
+.top-label { color: #bbb; font-size: 12px; margin-bottom: 6px; }
+.page-header { display: flex; align-items: center; gap: 12px; background: linear-gradient(90deg, #5b2cac, #6a35d3); color: #fff; padding: 10px 12px; border-radius: 8px; }
+.page-title { margin: 0; font-size: 16px; font-weight: 600; }
+.back-btn { background: transparent; border: none; padding: 0; display: flex; align-items: center; }
+.back-btn img { width: 20px; height: 20px; }
+
+/* Cards & content */
+.manage-party .status-card { margin: 12px 16px; padding: 12px; background: rgba(255,255,255,0.06); border-radius: 10px; }
+.status-header { display:flex; align-items:center; justify-content:space-between; }
+.live-dot { color: #2ecc71; font-weight: 700; }
+.live-dot.ended { color: #e74c3c; }
+.live-dot:not(.live):not(.ended) { color: #999; }
+.status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px; }
+.status-item { text-align: center; }
+.status-number { font-size: 18px; font-weight: 700; }
+.status-label { font-size: 12px; color: #bbb; }
+
+/* Party Status Indicator */
+.party-status-indicator {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  border: 1px solid #2ecc71;
+}
+
+.status-badge.inactive {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+}
+
+.guest-list { margin: 12px 16px; }
+.guest-list-header { display:flex; align-items:center; justify-content:space-between; }
+.see-more { background:#6a35d3; color:#fff; border:none; padding:6px 10px; border-radius:6px; }
+.guest-items { list-style:none; padding:0; margin-top:8px; }
+.guest-item { display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.guest-avatar { width:32px; height:32px; border-radius:50%; }
+.guest-name { font-weight:600; }
+.guest-status { margin-left:auto; font-weight:700; }
+.guest-status.valid { color:#2ecc71; }
+.guest-status.invalid { color:#e74c3c; }
+
+/* Entry Codes Section */
+.entry-codes-section {
+  margin: 12px 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+}
+
+.entry-codes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.entry-codes-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.create-codes-btn {
+  background: #6a35d3;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.create-codes-btn:hover {
+  background: #5b2cac;
+}
+
+.codes-info p {
+  margin: 0;
+  font-size: 12px;
+  color: #bbb;
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #2c1810, #3d2817);
+  margin: 5% auto;
+  padding: 0;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #bbb;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #fff;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #6a35d3;
+}
+
+.form-group select option {
+  background: #2c1810;
+  color: #fff;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.cancel-btn,
+.create-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn {
+  background: rgba(255,255,255,0.1);
+  color: #bbb;
+}
+
+.cancel-btn:hover {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+.create-btn {
+  background: #6a35d3;
+  color: #fff;
+}
+
+.create-btn:hover {
+  background: #5b2cac;
+}
+
+.create-btn:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+/* Codes Display Styles */
+.codes-container {
+  color: #fff;
+}
+
+.codes-info {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+
+.codes-info p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.codes-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.code-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.code-text {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6a35d3;
+  letter-spacing: 1px;
+}
+
+.copy-code-btn {
+  background: #6a35d3;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-code-btn:hover {
+  background: #5b2cac;
+}
+
+.codes-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.copy-all-btn,
+.download-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-all-btn {
+  background: #2ecc71;
+  color: #fff;
+}
+
+.copy-all-btn:hover {
+  background: #27ae60;
+}
+
+.download-btn {
+  background: #3498db;
+  color: #fff;
+}
+
+.download-btn:hover {
+  background: #2980b9;
+}
+
+/* Nota: NO redefinimos .bottom-nav aquí para evitar conflictos con el estilo global compartido en app2/styles.css */

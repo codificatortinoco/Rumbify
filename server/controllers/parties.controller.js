@@ -54,6 +54,58 @@ const mockParties = [
     tags: ["Electronic", "Neon"],
     liked: true,
     category: "upcoming"
+  },
+  {
+    id: 5,
+    title: "Electric Storm",
+    attendees: "75/100", // 75% attendance - qualifies as hot-topic
+    location: "Calle 50#25-30",
+    date: "10/8/21 • 21:00-04:00",
+    administrator: "Storm DJ",
+    price: "$70.000",
+    image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=200&fit=crop",
+    tags: ["Electronic", "Storm"],
+    liked: true,
+    category: "hot-topic"
+  },
+  {
+    id: 6,
+    title: "Retro Night",
+    attendees: "90/120", // 75% attendance - qualifies as hot-topic
+    location: "Calle 70#15-20",
+    date: "8/7/21 • 20:30-03:00",
+    administrator: "Retro Master",
+    price: "$60.000",
+    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=200&fit=crop",
+    tags: ["Retro", "80s"],
+    liked: false,
+    category: "hot-topic"
+  },
+  {
+    id: 7,
+    title: "Beach Party",
+    attendees: "65/100", // 65% attendance - qualifies as hot-topic
+    location: "Playa de Bocagrande",
+    date: "5/6/21 • 19:00-02:00",
+    administrator: "Beach DJ",
+    price: "$50.000",
+    image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=200&fit=crop",
+    tags: ["Beach", "Summer"],
+    liked: true,
+    category: "hot-topic"
+  },
+  {
+    id: 8,
+    title: "Jazz Lounge",
+    attendees: "30/50", // 60% attendance - qualifies as hot-topic
+    location: "Calle 85#20-15",
+    date: "3/5/21 • 22:00-01:00",
+    administrator: "Jazz Master",
+    price: "$85.000",
+    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=200&fit=crop",
+    tags: ["Jazz", "Lounge"],
+    liked: false,
+    category: "hot-topic"
   }
 ];
 
@@ -94,32 +146,77 @@ async function attachPricesToParties(parties) {
 
 const getHotTopicParties = async (req, res) => {
   try {
-    // Try to get from database first
-    const { data, error } = await supabaseCli
+    // Get all parties from database first
+    const { data: allParties, error } = await supabaseCli
       .from("parties")
       .select("*")
-      .eq("category", "hot-topic")
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Database error:", error);
-      // Fallback to mock data
-      const hotTopicParties = mockParties.filter(party => party.category === "hot-topic");
+      // Fallback to mock data with dynamic categorization
+      const hotTopicParties = mockParties.filter(party => {
+        // Include parties explicitly marked as hot-topic
+        if (party.category === "hot-topic") {
+          return true;
+        }
+        
+        // Also include parties that would be categorized as hot-topic based on attendance/date
+        const computedCategory = computeCategoryAuto(party.attendees, party.date);
+        return computedCategory === "hot-topic";
+      });
+      console.log(`[getHotTopicParties] Using mock data: Found ${hotTopicParties.length} hot-topic parties`);
       return res.json(hotTopicParties);
     }
 
-    if (data && data.length > 0) {
-      const enriched = await attachPricesToParties(data);
-      return res.json(enriched);
+    if (allParties && allParties.length > 0) {
+      // Filter parties that should be hot-topic based on dynamic categorization
+      const hotTopicParties = allParties.filter(party => {
+        // Include parties explicitly marked as hot-topic
+        if (party.category === "hot-topic") {
+          return true;
+        }
+        
+        // Also include parties that would be categorized as hot-topic based on attendance/date
+        const computedCategory = computeCategoryAuto(party.attendees, party.date);
+        return computedCategory === "hot-topic";
+      });
+
+      console.log(`[getHotTopicParties] Found ${hotTopicParties.length} hot-topic parties out of ${allParties.length} total parties`);
+      
+      if (hotTopicParties.length > 0) {
+        const enriched = await attachPricesToParties(hotTopicParties);
+        return res.json(enriched);
+      }
     }
 
-    // If no data in database, return mock data
-    const hotTopicParties = mockParties.filter(party => party.category === "hot-topic");
+    // If no data in database, return mock data with dynamic categorization
+    const hotTopicParties = mockParties.filter(party => {
+      // Include parties explicitly marked as hot-topic
+      if (party.category === "hot-topic") {
+        return true;
+      }
+      
+      // Also include parties that would be categorized as hot-topic based on attendance/date
+      const computedCategory = computeCategoryAuto(party.attendees, party.date);
+      return computedCategory === "hot-topic";
+    });
+    console.log(`[getHotTopicParties] No database data, using mock: Found ${hotTopicParties.length} hot-topic parties`);
     res.json(hotTopicParties);
   } catch (error) {
     console.error("Error fetching hot topic parties:", error);
-    // Fallback to mock data
-    const hotTopicParties = mockParties.filter(party => party.category === "hot-topic");
+    // Fallback to mock data with dynamic categorization
+    const hotTopicParties = mockParties.filter(party => {
+      // Include parties explicitly marked as hot-topic
+      if (party.category === "hot-topic") {
+        return true;
+      }
+      
+      // Also include parties that would be categorized as hot-topic based on attendance/date
+      const computedCategory = computeCategoryAuto(party.attendees, party.date);
+      return computedCategory === "hot-topic";
+    });
+    console.log(`[getHotTopicParties] Error occurred, using mock: Found ${hotTopicParties.length} hot-topic parties`);
     res.json(hotTopicParties);
   }
 };

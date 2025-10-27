@@ -333,13 +333,13 @@ function setupUpcomingCarousel() {
     showSlide(0);
   }
 
-  // Auto-advance carousel
-  if (slides.length > 1) {
-    setInterval(() => {
-      currentSlide = (currentSlide + 1) % slides.length;
-      showSlide(currentSlide);
-    }, 5000);
-  }
+  // Auto-advance carousel - DISABLED
+  // if (slides.length > 1) {
+  //   setInterval(() => {
+  //     currentSlide = (currentSlide + 1) % slides.length;
+  //     showSlide(currentSlide);
+  //   }, 5000);
+  // }
 
   // Dot navigation
   dotElements.forEach((dot, index) => {

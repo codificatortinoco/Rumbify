@@ -184,7 +184,7 @@ body {
 
 /* Sections */
 .hot-topic-section, .upcoming-section {
-  padding: 0 20px 20px;
+  padding: 0 40px 20px;
 }
 
 .section-title {
@@ -211,10 +211,22 @@ body {
 /* Carousel */
 .hot-topic-carousel {
   display: flex;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 20px;
   margin-bottom: 15px;
   transition: transform 0.3s ease;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  width: 100%;
+}
+
+.hot-topic-carousel::-webkit-scrollbar {
+  display: none;
 }
 
 .carousel-dots {
@@ -237,10 +249,13 @@ body {
 /* Cards */
 .hot-topic-card {
   min-width: 100%;
+  width: 100%;
   background: white;
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  scroll-snap-align: start;
+  flex-shrink: 0;
 }
 
 .upcoming-card {
@@ -255,7 +270,7 @@ body {
 
 .card-image {
   position: relative;
-  height: 200px;
+  height: 140px;
   overflow: hidden;
 }
 
@@ -295,7 +310,7 @@ body {
 
 .like-btn.liked { color: #ff4757; }
 
-.card-content { padding: 20px; }
+.card-content { padding: 15px; }
 .upcoming-card .card-content { flex: 1; padding: 0; }
 
 .card-header {

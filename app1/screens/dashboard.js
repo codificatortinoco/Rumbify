@@ -116,8 +116,6 @@ function initializeDashboard() {
   setupSearch();
   setupFilters();
   
-  setupCarousel();
-  
   setupLikeButtons();
   
   setupEventDetailsNavigation();
@@ -523,13 +521,23 @@ function renderHotTopicEvents(events) {
   if (!events || !Array.isArray(events)) {
     carousel.innerHTML = "";
     dots.innerHTML = "";
+    carouselController.isInitialized = false;
     return;
   }
   
-  carousel.innerHTML = events.map(event => createHotTopicCard(event)).join("");
-  dots.innerHTML = events.map((_, index) => 
+  // Pick 5 random parties from hot topic events
+  const shuffled = events.sort(() => 0.5 - Math.random());
+  const selectedEvents = shuffled.slice(0, Math.min(5, events.length));
+  
+  carousel.innerHTML = selectedEvents.map(event => createHotTopicCard(event)).join("");
+  dots.innerHTML = selectedEvents.map((_, index) => 
     `<div class="dot ${index === 0 ? 'active' : ''}" data-index="${index}"></div>`
   ).join("");
+  
+  // Setup carousel functionality after content is rendered
+  setTimeout(() => {
+    setupCarousel();
+  }, 100);
 }
 
 function renderUpcomingEvents(events) {
@@ -732,33 +740,275 @@ function filterEventsLocally(searchTerm, tags = [], category = "") {
   });
 }
 
+let carouselController = {
+  currentIndex: 0,
+  intervalId: null,
+  isInitialized: false,
+  isDragging: false,
+  startX: 0,
+  currentX: 0,
+  threshold: 50, // Minimum distance for swipe
+  carouselElement: null,
+  eventHandlers: {
+    touchStart: null,
+    touchMove: null,
+    touchEnd: null,
+    mouseDown: null,
+    mouseMove: null,
+    mouseUp: null,
+    mouseLeave: null,
+    selectStart: null,
+    scroll: null
+  }
+};
+
 function setupCarousel() {
+  // This function will be called after data is loaded
   const carousel = document.getElementById("hotTopicCarousel");
   const dots = document.querySelectorAll(".dot");
-  let currentIndex = 0;
+  
+  if (!carousel || dots.length === 0) {
+    console.warn("Carousel elements not found or no dots available");
+    return;
+  }
+
+  // Clear any existing interval
+  if (carouselController.intervalId) {
+    clearInterval(carouselController.intervalId);
+  }
+
+  carouselController.currentIndex = 0;
+  carouselController.isInitialized = true;
+  carouselController.carouselElement = carousel;
 
   // Setup dot navigation
   dots.forEach((dot, index) => {
-    dot.addEventListener("click", () => {
-      currentIndex = index;
-      updateCarousel();
-    });
+    // Remove any existing event listeners
+    dot.replaceWith(dot.cloneNode(true));
   });
 
+  // Re-query dots after cloning
+  const freshDots = document.querySelectorAll(".dot");
+
   function updateCarousel() {
-    const cardWidth = carousel.querySelector(".hot-topic-card").offsetWidth;
-    carousel.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+    if (!carouselController.isInitialized) return;
     
-    dots.forEach((dot, index) => {
-      dot.classList.toggle("active", index === currentIndex);
+    const cards = carousel.querySelectorAll(".hot-topic-card");
+    if (cards.length === 0) return;
+    
+    // Get card width, with fallback to container width if card width is 0
+    let cardWidth = cards[0].offsetWidth;
+    if (cardWidth === 0) {
+      cardWidth = carousel.offsetWidth;
+    }
+    
+    // Ensure currentIndex is within bounds
+    carouselController.currentIndex = Math.max(0, Math.min(carouselController.currentIndex, cards.length - 1));
+    
+    // Update dot indicators
+    freshDots.forEach((dot, index) => {
+      dot.classList.toggle("active", index === carouselController.currentIndex);
     });
   }
 
-  // Auto-advance carousel
-  setInterval(() => {
-    currentIndex = (currentIndex + 1) % dots.length;
-    updateCarousel();
-  }, 5000);
+  // Touch/Swipe functionality
+  carouselController.eventHandlers.touchStart = function(e) {
+    carouselController.isDragging = true;
+    carouselController.startX = e.touches[0].clientX;
+    carouselController.currentX = carouselController.startX;
+    
+    // Pause auto-advance while dragging
+    if (carouselController.intervalId) {
+      clearInterval(carouselController.intervalId);
+    }
+    
+    carousel.style.transition = 'none';
+  };
+
+  carouselController.eventHandlers.touchMove = function(e) {
+    if (!carouselController.isDragging) return;
+    
+    carouselController.currentX = e.touches[0].clientX;
+    const deltaX = carouselController.currentX - carouselController.startX;
+    
+    const cards = carousel.querySelectorAll(".hot-topic-card");
+    if (cards.length === 0) return;
+    
+    let cardWidth = cards[0].offsetWidth;
+    if (cardWidth === 0) {
+      cardWidth = carousel.offsetWidth;
+    }
+    
+    const baseTransform = carouselController.currentIndex * cardWidth;
+    carousel.scrollLeft = baseTransform - deltaX;
+  };
+
+  carouselController.eventHandlers.touchEnd = function(e) {
+    if (!carouselController.isDragging) return;
+    
+    carouselController.isDragging = false;
+    carousel.style.transition = '';
+    
+    const deltaX = carouselController.currentX - carouselController.startX;
+    const cards = carousel.querySelectorAll(".hot-topic-card");
+    
+    if (cards.length === 0) return;
+    
+    const cardWidth = cards[0].offsetWidth || carousel.offsetWidth;
+    
+    // Determine if we should change slides based on swipe
+    if (Math.abs(deltaX) > carouselController.threshold) {
+      if (deltaX > 0 && carouselController.currentIndex > 0) {
+        // Swipe right - go to previous slide
+        carouselController.currentIndex--;
+      } else if (deltaX < 0 && carouselController.currentIndex < cards.length - 1) {
+        // Swipe left - go to next slide
+        carouselController.currentIndex++;
+      }
+      
+      // Scroll to the new position
+      carousel.scrollTo({
+        left: carouselController.currentIndex * cardWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Mouse drag functionality (for desktop)
+  carouselController.eventHandlers.mouseDown = function(e) {
+    carouselController.isDragging = true;
+    carouselController.startX = e.clientX;
+    carouselController.currentX = carouselController.startX;
+    
+    // Pause auto-advance while dragging
+    if (carouselController.intervalId) {
+      clearInterval(carouselController.intervalId);
+    }
+    
+    carousel.style.transition = 'none';
+    e.preventDefault();
+  };
+
+  carouselController.eventHandlers.mouseMove = function(e) {
+    if (!carouselController.isDragging) return;
+    
+    carouselController.currentX = e.clientX;
+    const deltaX = carouselController.currentX - carouselController.startX;
+    
+    const cards = carousel.querySelectorAll(".hot-topic-card");
+    if (cards.length === 0) return;
+    
+    let cardWidth = cards[0].offsetWidth;
+    if (cardWidth === 0) {
+      cardWidth = carousel.offsetWidth;
+    }
+    
+    const baseTransform = carouselController.currentIndex * cardWidth;
+    carousel.scrollLeft = baseTransform - deltaX;
+  };
+
+  carouselController.eventHandlers.mouseUp = function(e) {
+    if (!carouselController.isDragging) return;
+    
+    carouselController.isDragging = false;
+    carousel.style.transition = '';
+    
+    const deltaX = carouselController.currentX - carouselController.startX;
+    const cards = carousel.querySelectorAll(".hot-topic-card");
+    
+    if (cards.length === 0) return;
+    
+    const cardWidth = cards[0].offsetWidth || carousel.offsetWidth;
+    
+    // Determine if we should change slides based on drag
+    if (Math.abs(deltaX) > carouselController.threshold) {
+      if (deltaX > 0 && carouselController.currentIndex > 0) {
+        // Drag right - go to previous slide
+        carouselController.currentIndex--;
+      } else if (deltaX < 0 && carouselController.currentIndex < cards.length - 1) {
+        // Drag left - go to next slide
+        carouselController.currentIndex++;
+      }
+      
+      // Scroll to the new position
+      carousel.scrollTo({
+        left: carouselController.currentIndex * cardWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  carouselController.eventHandlers.mouseLeave = carouselController.eventHandlers.mouseUp; // Same as mouseUp
+  carouselController.eventHandlers.selectStart = function(e) {
+    if (carouselController.isDragging) {
+      e.preventDefault();
+    }
+  };
+
+  // Handle scroll events for horizontal scrolling
+  carouselController.eventHandlers.scroll = function(e) {
+    if (carouselController.isDragging) return; // Don't interfere with drag/swipe
+    
+    const cards = carousel.querySelectorAll(".hot-topic-card");
+    if (cards.length === 0) return;
+    
+    const cardWidth = cards[0].offsetWidth || carousel.offsetWidth;
+    const scrollLeft = carousel.scrollLeft;
+    const newIndex = Math.round(scrollLeft / cardWidth);
+    
+    if (newIndex !== carouselController.currentIndex && newIndex >= 0 && newIndex < cards.length) {
+      carouselController.currentIndex = newIndex;
+      
+      // Update dots
+      const freshDots = document.querySelectorAll(".dot");
+      freshDots.forEach((dot, index) => {
+        dot.classList.toggle("active", index === carouselController.currentIndex);
+      });
+    }
+  };
+  
+  // Handle manual dot clicks with native scroll
+  freshDots.forEach((dot, index) => {
+    dot.addEventListener("click", () => {
+      const cards = carousel.querySelectorAll(".hot-topic-card");
+      if (cards.length === 0) return;
+      
+      const cardWidth = cards[0].offsetWidth || carousel.offsetWidth;
+      carouselController.currentIndex = index;
+      carousel.scrollTo({
+        left: index * cardWidth,
+        behavior: 'smooth'
+      });
+    });
+  });
+
+  // Add event listeners for touch events
+  carousel.addEventListener('touchstart', carouselController.eventHandlers.touchStart, { passive: false });
+  carousel.addEventListener('touchmove', carouselController.eventHandlers.touchMove, { passive: false });
+  carousel.addEventListener('touchend', carouselController.eventHandlers.touchEnd, { passive: false });
+
+  // Add event listeners for mouse events (desktop)
+  carousel.addEventListener('mousedown', carouselController.eventHandlers.mouseDown);
+  carousel.addEventListener('mousemove', carouselController.eventHandlers.mouseMove);
+  carousel.addEventListener('mouseup', carouselController.eventHandlers.mouseUp);
+  carousel.addEventListener('mouseleave', carouselController.eventHandlers.mouseLeave); // Handle mouse leaving the carousel
+
+  // Prevent text selection while dragging
+  carousel.addEventListener('selectstart', carouselController.eventHandlers.selectStart);
+
+  // Add scroll event listener for horizontal scrolling
+  carousel.addEventListener('scroll', carouselController.eventHandlers.scroll);
+
+  // Auto-advance carousel - DISABLED
+  // if (freshDots.length > 1) {
+  //   carouselController.intervalId = setInterval(() => {
+  //     carouselController.currentIndex = (carouselController.currentIndex + 1) % freshDots.length;
+  //     updateCarousel();
+  //   }, 5000);
+  // }
+
+  // Initialize the carousel position
+  updateCarousel();
 }
 
 function setupLikeButtons() {
@@ -877,4 +1127,28 @@ export function cleanupDashboard() {
   if (dashboardController.abortController) {
     dashboardController.abortController.abort();
   }
+  
+  // Clean up carousel
+  if (carouselController.intervalId) {
+    clearInterval(carouselController.intervalId);
+    carouselController.intervalId = null;
+  }
+  
+  // Remove event listeners from carousel
+  if (carouselController.carouselElement && carouselController.eventHandlers.touchStart) {
+    const carousel = carouselController.carouselElement;
+    carousel.removeEventListener('touchstart', carouselController.eventHandlers.touchStart);
+    carousel.removeEventListener('touchmove', carouselController.eventHandlers.touchMove);
+    carousel.removeEventListener('touchend', carouselController.eventHandlers.touchEnd);
+    carousel.removeEventListener('mousedown', carouselController.eventHandlers.mouseDown);
+    carousel.removeEventListener('mousemove', carouselController.eventHandlers.mouseMove);
+    carousel.removeEventListener('mouseup', carouselController.eventHandlers.mouseUp);
+    carousel.removeEventListener('mouseleave', carouselController.eventHandlers.mouseLeave);
+    carousel.removeEventListener('selectstart', carouselController.eventHandlers.selectStart);
+    carousel.removeEventListener('scroll', carouselController.eventHandlers.scroll);
+  }
+  
+  carouselController.isInitialized = false;
+  carouselController.isDragging = false;
+  carouselController.carouselElement = null;
 }

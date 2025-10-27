@@ -18,6 +18,7 @@ export default function renderEventDetails(eventData) {
     location: eventData?.location || "Location TBD",
     date: eventData?.date || "TBD",
     administrator: eventData?.administrator || "Organizer",
+    administrator_image: eventData?.administrator_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
     image: eventData?.image || "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=200&fit=crop",
     tags: Array.isArray(eventData?.tags) && eventData.tags.length > 0 ? eventData.tags : ["General"],
     prices: Array.isArray(eventData?.prices) && eventData.prices.length > 0 ? eventData.prices : [],
@@ -55,7 +56,7 @@ export default function renderEventDetails(eventData) {
         
         <div class="organizer-info">
           <div class="organizer-avatar">
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" 
+            <img src="${safeEventData.administrator_image}" 
                  alt="Organizer"
                  onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face';" />
           </div>
@@ -98,42 +99,11 @@ export default function renderEventDetails(eventData) {
         <p class="event-description">We do not need to be in the 31st of December to party as God intended.</p>
       </div>
 
-      <!-- Event Info -->
-      <div class="event-info">
-        <div class="info-section">
-          <h3 class="info-title">Inclusions</h3>
-          <ul class="info-list">
-            <li>Drink of courtesy</li>
-            <li>After midnight kiss dinamic</li>
-          </ul>
-        </div>
-
-        <div class="info-section">
-          <h3 class="info-title">Dress code</h3>
-          <ul class="info-list">
-            <li>Neon Colors</li>
-            <li>No formal attire required</li>
-            <li>Comfortable dancing shoes</li>
-          </ul>
-        </div>
-      </div>
-
       <!-- Opening Hours -->
-      <div class="opening-hours">
+      <div class="opening-hours" id="openingHours">
         <h3 class="opening-title">Opening Hour</h3>
-        <div class="time-display">
-          <div class="time-box">
-            <span class="time-number">9</span>
-            <span class="time-label">Hour</span>
-          </div>
-          <span class="time-separator">:</span>
-          <div class="time-box">
-            <span class="time-number">30</span>
-            <span class="time-label">Minute</span>
-          </div>
-          <div class="time-box">
-            <span class="time-number">PM</span>
-          </div>
+        <div class="time-display" id="timeDisplay">
+          <!-- Will be populated by JavaScript -->
         </div>
       </div>
 
@@ -141,7 +111,7 @@ export default function renderEventDetails(eventData) {
       <div class="calendar-section">
         <div class="calendar">
           <div class="calendar-header">
-            <h3>November 2021</h3>
+            <h3 id="calendarMonth"></h3>
           </div>
           <div class="calendar-grid">
             <div class="calendar-weekdays">
@@ -194,8 +164,11 @@ function initializeEventDetails(eventData) {
   // Setup back button
   setupBackButton();
   
+  // Setup opening hour
+  setupOpeningHour(eventData);
+  
   // Setup calendar
-  setupCalendar();
+  setupCalendar(eventData);
   
   // Setup bottom navigation
   setupBottomNavigation();
@@ -208,28 +181,110 @@ function setupBackButton() {
   });
 }
 
-function setupCalendar() {
-  const calendarDays = document.getElementById("calendarDays");
-  
-  // Generate calendar days for November 2021
-  const days = [];
-  
-  // Add empty cells for days before the 1st (November 1st was a Monday)
-  for (let i = 0; i < 1; i++) {
-    days.push('<div class="calendar-day empty"></div>');
+function setupOpeningHour(eventData) {
+  try {
+    // Parse the opening hour from the date string (format: "DD/MM/YY • HH:mm" or "DD/MM/YY • HH:mm-HH:mm")
+    const dateStr = eventData?.date || "";
+    const timeMatch = dateStr.match(/\d{1,2}:\d{2}/);
+    
+    if (timeMatch) {
+      const time = timeMatch[0];
+      const [hours, minutes] = time.split(':');
+      const hourNum = parseInt(hours, 10);
+      const minuteNum = parseInt(minutes, 10);
+      
+      const isPM = hourNum >= 12;
+      let displayHour = hourNum;
+      let period = "AM";
+      
+      if (isPM) {
+        displayHour = hourNum === 12 ? 12 : hourNum - 12;
+        period = "PM";
+      } else if (hourNum === 0) {
+        displayHour = 12;
+      }
+      
+      const timeDisplay = document.getElementById("timeDisplay");
+      if (timeDisplay) {
+        timeDisplay.innerHTML = `
+          <div class="time-box">
+            <span class="time-number">${displayHour}</span>
+            <span class="time-label">Hour</span>
+          </div>
+          <span class="time-separator">:</span>
+          <div class="time-box">
+            <span class="time-number">${minuteNum.toString().padStart(2, '0')}</span>
+            <span class="time-label">Minute</span>
+          </div>
+          <div class="time-box">
+            <span class="time-number">${period}</span>
+          </div>
+        `;
+      }
+    }
+  } catch (error) {
+    console.error("Error setting up opening hour:", error);
   }
-  
-  // Add days 1-30
-  for (let day = 1; day <= 30; day++) {
-    const isEventDay = day === 22; // Highlight the 22nd as the event day
-    days.push(`
-      <div class="calendar-day ${isEventDay ? 'event-day' : ''}">
-        ${day}
-      </div>
-    `);
+}
+
+function setupCalendar(eventData) {
+  try {
+    // Parse the date from eventData.date (format: "DD/MM/YY" or "DD/MM/YY • HH:mm")
+    const dateStr = eventData?.date || "";
+    const datePart = dateStr.split(' • ')[0] || "";
+    const [day, month, year] = datePart.split('/');
+    
+    if (!day || !month || !year) {
+      console.warn("Invalid date format:", datePart);
+      return;
+    }
+    
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    const eventDate = new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+    
+    // Get month and year for calendar header
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+                       "July", "August", "September", "October", "November", "December"];
+    const monthName = monthNames[parseInt(month, 10) - 1];
+    const yearDisplay = fullYear;
+    
+    // Update calendar header
+    const calendarHeader = document.getElementById("calendarMonth");
+    if (calendarHeader) {
+      calendarHeader.textContent = `${monthName} ${yearDisplay}`;
+    }
+    
+    // Generate calendar days
+    const calendarDays = document.getElementById("calendarDays");
+    if (!calendarDays) return;
+    
+    // Get first day of the month and number of days
+    const firstDay = new Date(fullYear, parseInt(month, 10) - 1, 1);
+    const lastDay = new Date(fullYear, parseInt(month, 10), 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay(); // 0 (Sunday) to 6 (Saturday)
+    
+    const days = [];
+    
+    // Add empty cells for days before the 1st
+    for (let i = 0; i < startingDay; i++) {
+      days.push('<div class="calendar-day empty"></div>');
+    }
+    
+    // Add days of the month
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const isEventDay = dayNum === parseInt(day, 10);
+      days.push(`
+        <div class="calendar-day ${isEventDay ? 'event-day' : ''}">
+          ${dayNum}
+        </div>
+      `);
+    }
+    
+    calendarDays.innerHTML = days.join("");
+  } catch (error) {
+    console.error("Error setting up calendar:", error);
   }
-  
-  calendarDays.innerHTML = days.join("");
 }
 
 function setupBottomNavigation() {

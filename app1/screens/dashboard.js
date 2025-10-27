@@ -553,7 +553,11 @@ function renderUpcomingEvents(events) {
     return;
   }
   
-  container.innerHTML = events.map(event => createUpcomingCard(event)).join("");
+  // Pick 5 random parties from upcoming events
+  const shuffled = events.sort(() => 0.5 - Math.random());
+  const selectedEvents = shuffled.slice(0, Math.min(5, events.length));
+  
+  container.innerHTML = selectedEvents.map(event => createUpcomingCard(event)).join("");
 }
 
 function createHotTopicCard(event) {

@@ -622,6 +622,26 @@ const verifyAndAddParty = async (req, res) => {
       });
     }
 
+    // Increment party attendees count
+    console.log('[verifyAndAddParty] Incrementing party attendees count...');
+    const [currentStr, maxStr] = (party.attendees || '0/0').split('/');
+    const current = parseInt(currentStr, 10) || 0;
+    const max = parseInt(maxStr, 10) || 100;
+    const newCurrent = Math.min(current + 1, max); // Don't exceed max
+    const newAttendees = `${newCurrent}/${max}`;
+    
+    const { error: partyUpdateError } = await supabaseCli
+      .from('parties')
+      .update({ attendees: newAttendees })
+      .eq('id', codeRecord.party_id);
+
+    if (partyUpdateError) {
+      console.error('[verifyAndAddParty] Error updating party attendees:', partyUpdateError);
+      // Don't fail the request if update fails, just log it
+    } else {
+      console.log('[verifyAndAddParty] Successfully incremented party attendees to:', newAttendees);
+    }
+
     console.log('[verifyAndAddParty] Successfully added party to user history');
 
     return res.json({

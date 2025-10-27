@@ -156,12 +156,18 @@ async function loadPartyDetails(partyId) {
     console.log('[loadPartyDetails] === UPDATING UI ELEMENTS ===');
     
     // Update party title
-    console.log('[loadPartyDetails] Updating party title:', party.title);
-    document.getElementById("partyTitle").textContent = party.title;
+    const partyTitleEl = document.getElementById("partyTitle");
+    if (partyTitleEl) {
+      console.log('[loadPartyDetails] Updating party title:', party.title);
+      partyTitleEl.textContent = party.title;
+    }
     
     // Update administrator info
-    console.log('[loadPartyDetails] Updating administrator name:', party.administrator);
-    document.getElementById("administratorName").textContent = party.administrator;
+    const adminNameEl = document.getElementById("administratorName");
+    if (adminNameEl) {
+      console.log('[loadPartyDetails] Updating administrator name:', party.administrator);
+      adminNameEl.textContent = party.administrator;
+    }
     
     // Debug administrator image
     console.log('[loadPartyDetails] Administrator image field:', party.administrator_image);
@@ -174,29 +180,39 @@ async function loadPartyDetails(partyId) {
     console.log('[loadPartyDetails] Using administrator image:', adminImage);
     
     const adminImageElement = document.getElementById("administratorImage");
-    adminImageElement.src = adminImage;
-    
-    // Handle image load error
-    adminImageElement.onerror = function() {
-      console.log('[loadPartyDetails] Administrator image failed to load, using fallback');
-      this.src = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face';
-    };
+    if (adminImageElement) {
+      adminImageElement.src = adminImage;
+      
+      // Handle image load error
+      adminImageElement.onerror = function() {
+        console.log('[loadPartyDetails] Administrator image failed to load, using fallback');
+        this.src = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face';
+      };
+    }
     
     // Update party tags
     const tagsContainer = document.getElementById("partyTags");
-    if (party.tags && party.tags.length > 0) {
-      tagsContainer.innerHTML = party.tags.map(tag => `
-        <span class="tag">${tag}</span>
-      `).join("");
-    } else {
-      tagsContainer.innerHTML = '<span class="tag">General</span>';
+    if (tagsContainer) {
+      if (party.tags && party.tags.length > 0) {
+        tagsContainer.innerHTML = party.tags.map(tag => `
+          <span class="tag">${tag}</span>
+        `).join("");
+      } else {
+        tagsContainer.innerHTML = '<span class="tag">General</span>';
+      }
     }
     
     // Update QR time
-    document.getElementById("qrTime").textContent = party.date;
+    const qrTimeEl = document.getElementById("qrTime");
+    if (qrTimeEl) {
+      qrTimeEl.textContent = party.date;
+    }
     
     // Update address
-    document.getElementById("partyAddress").textContent = party.location;
+    const addressEl = document.getElementById("partyAddress");
+    if (addressEl) {
+      addressEl.textContent = party.location;
+    }
     
     // Load dress code (mock for now)
     console.log('[loadPartyDetails] Loading dress code...');
@@ -226,28 +242,42 @@ async function loadPartyDescription(partyId) {
     
     console.log('[loadPartyDescription] Description response:', descriptionResponse);
     
+    const partyDescriptionElement = document.getElementById("partyDescription");
+    if (!partyDescriptionElement) {
+      console.error('[loadPartyDescription] partyDescription element not found in DOM');
+      return;
+    }
+    
     if (descriptionResponse && descriptionResponse.success && descriptionResponse.description) {
       console.log('[loadPartyDescription] Description found:', descriptionResponse.description);
-      document.getElementById("partyDescription").innerHTML = `
+      partyDescriptionElement.innerHTML = `
         <p>${descriptionResponse.description}</p>
       `;
     } else {
       console.log('[loadPartyDescription] No description available');
-      document.getElementById("partyDescription").innerHTML = `
+      partyDescriptionElement.innerHTML = `
         <p>No description available for this party.</p>
       `;
     }
     
   } catch (error) {
     console.error('[loadPartyDescription] Error loading party description:', error);
-    document.getElementById("partyDescription").innerHTML = `
-      <p>No description available for this party.</p>
-    `;
+    const partyDescriptionElement = document.getElementById("partyDescription");
+    if (partyDescriptionElement) {
+      partyDescriptionElement.innerHTML = `
+        <p>No description available for this party.</p>
+      `;
+    }
   }
 }
 
 function loadDressCode(tags) {
   const dressCodeList = document.getElementById("dressCodeList");
+  
+  if (!dressCodeList) {
+    console.error('[loadDressCode] dressCodeList element not found in DOM');
+    return;
+  }
   
   // Mock dress code based on tags
   let dressCodeItems = [];
@@ -291,9 +321,17 @@ function showError(message) {
     <div class="error-screen">
       <h2>Error</h2>
       <p>${message}</p>
-      <button onclick="navigateTo('/member-dashboard')" class="retry-btn">Go Back</button>
+      <button class="retry-btn" id="errorBackBtn">Go Back</button>
     </div>
   `;
+  
+  // Add event listener for the back button
+  const backBtn = document.getElementById("errorBackBtn");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      navigateTo("/member-dashboard");
+    });
+  }
 }
 
 export function cleanupPartyDetails() {

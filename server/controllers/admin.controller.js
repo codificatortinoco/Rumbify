@@ -49,6 +49,8 @@ const adminLogin = async (req, res) => {
         role: "admin",
         is_admin: adminData.is_admin,
         profile_image: adminData.profile_image,
+        bio: adminData.biography || adminData.bio || null,
+        interests: adminData.interests || [],
         created_at: adminData.created_at
       }
     };

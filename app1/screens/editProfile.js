@@ -439,6 +439,7 @@ async function handleSaveProfile() {
     const name = document.getElementById("nameInput").value.trim();
     const email = document.getElementById("emailInput").value.trim();
     const bio = document.getElementById("bioInput").value.trim();
+    // Note: profile_visible and attendance_visible are being sent but the database columns might not exist
     const profileVisible = document.getElementById("profileVisibility").checked;
     const attendanceVisible = document.getElementById("attendanceVisibility").checked;
     const currentPassword = document.getElementById("currentPasswordInput").value;
@@ -448,14 +449,12 @@ async function handleSaveProfile() {
     const selectedInterests = Array.from(document.querySelectorAll(".selected-interest-chip"))
       .map(chip => chip.dataset.interest);
     
-    // Prepare update data
+    // Prepare update data - removed profile_visible and attendance_visible as they don't exist in database
     const updateData = {
       name,
       email,
       bio,
-      interests: selectedInterests,
-      profile_visible: profileVisible,
-      attendance_visible: attendanceVisible
+      interests: selectedInterests
     };
     
     // Add password data if provided
@@ -491,13 +490,11 @@ async function handleSaveProfile() {
       }
     } catch (apiError) {
       console.error("API error:", apiError);
+      console.error("Error details:", apiError.message, apiError);
       
-      // Fallback: Update local storage only
-      const updatedUser = { ...currentUser, ...updateData };
-      setLoggedInUser(updatedUser);
-      
-      alert("Profile updated locally. Some changes may not be saved to the server.");
-      navigateTo("/profile");
+      // Show the actual error to help debug
+      alert(`Failed to update profile: ${apiError.message || 'Unknown error'}. Please check the console for details.`);
+      throw apiError; // Re-throw to be caught by outer catch
     }
     
   } catch (error) {

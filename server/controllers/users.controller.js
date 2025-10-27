@@ -143,7 +143,7 @@ const updateUser = async (req, res) => {
 const updateUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, bio, interests, profile_visible, attendance_visible, profile_image, currentPassword, newPassword } = req.body;
+    const { name, email, bio, interests, phone, profile_visible, attendance_visible, profile_image, currentPassword, newPassword } = req.body;
     
     // Validate required fields
     if (!name || !email) {
@@ -253,12 +253,17 @@ const updateUserProfile = async (req, res) => {
     };
 
     // Add optional fields if provided
-    if (bio !== undefined) updateData.bio = bio.trim();
-    if (interests !== undefined) updateData.interests = interests;
-    if (profile_visible !== undefined) updateData.profile_visible = profile_visible;
-    if (attendance_visible !== undefined) updateData.attendance_visible = attendance_visible;
+    if (bio !== undefined && bio !== null && bio.trim() !== '') updateData.biography = bio.trim();
+    if (interests !== undefined && interests !== null && Array.isArray(interests)) updateData.interests = interests;
+    if (phone !== undefined && phone !== null && phone.trim() !== '') updateData.phone = phone.trim();
+    // Note: profile_visible and attendance_visible columns may not exist in your Supabase database
+    // Only include them if they exist. Commenting out for now.
+    // if (profile_visible !== undefined) updateData.profile_visible = profile_visible;
+    // if (attendance_visible !== undefined) updateData.attendance_visible = attendance_visible;
     if (profile_image !== undefined) updateData.profile_image = profile_image;
     if (newPassword !== undefined) updateData.password = newPassword;
+
+    console.log('Attempting to update user with data:', JSON.stringify(updateData, null, 2));
 
     // Update user in Supabase
     const { data: updatedUser, error: updateError } = await supabaseCli
@@ -270,9 +275,11 @@ const updateUserProfile = async (req, res) => {
 
     if (updateError) {
       console.error("Error updating user:", updateError);
+      console.error("Update data attempted:", updateData);
       return res.status(500).json({ 
         success: false, 
-        message: "Failed to update user profile" 
+        message: "Failed to update user profile",
+        error: updateError.message 
       });
     }
 
@@ -283,7 +290,7 @@ const updateUserProfile = async (req, res) => {
       });
     }
 
-    // Return updated user data
+    // Return updated user data - map biography back to bio
     res.json({
       success: true,
       message: "Profile updated successfully",
@@ -291,7 +298,8 @@ const updateUserProfile = async (req, res) => {
         id: updatedUser.id,
         name: updatedUser.name,
         email: updatedUser.email,
-        bio: updatedUser.bio,
+        bio: updatedUser.biography || updatedUser.bio || null,
+        phone: updatedUser.phone || null,
         profile_image: updatedUser.profile_image,
         interests: updatedUser.interests || [],
         profile_visible: updatedUser.profile_visible,
@@ -529,6 +537,7 @@ const getUserProfile = async (req, res) => {
 
     const profileData = {
       ...user,
+      bio: user.biography || user.bio || null,
       attended_count: attendedCount,
       favorites_count: favoritesCount,
       interests: interests,
@@ -581,7 +590,8 @@ const loginUser = async (req, res) => {
         is_admin: user.is_admin || false,
         attended_count: 0, // These would be calculated from actual data
         favorites_count: 0,
-        interests: user.interests || []
+        interests: user.interests || [],
+        bio: user.biography || user.bio || null
       }
     });
 

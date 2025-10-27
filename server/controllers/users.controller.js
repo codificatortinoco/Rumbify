@@ -742,42 +742,145 @@ const getUserPartyHistory = async (req, res) => {
         continue; // Skip this code if price not found
       }
 
-      // Add to history
-      const historyItem = {
+      partyHistory.push({
         id: party.id,
-        party_id: party.id, // Add party_id for navigation
         title: party.title,
-        location: party.location,
         date: party.date,
-        administrator: party.administrator,
+        status: 'Attended', // For now, mark attended for used codes
         image: party.image,
-        tags: party.tags,
-        category: party.category,
         price_name: price.price_name,
         price: price.price,
-        code_used: codeRecord.code,
-        added_at: codeRecord.created_at,
-        status: 'attended'
-      };
-      
-      console.log('[getUserPartyHistory] Adding to history:', historyItem);
-      partyHistory.push(historyItem);
+        used_at: codeRecord.created_at
+      });
     }
-    
-    console.log('[getUserPartyHistory] Found', partyHistory.length, 'parties in history');
 
-    res.json({
-      success: true,
-      party_history: partyHistory,
-      count: partyHistory.length
-    });
-
+    res.json({ success: true, history: partyHistory });
   } catch (error) {
-    console.error('Error in getUserPartyHistory:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Internal server error" 
-    });
+    console.error('[getUserPartyHistory] Error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ---------------- Favorites (User-Party) ----------------
+// Get user's favorites parties
+const getUserFavorites = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supabaseCli = require("../services/supabase.service");
+    
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    // Fetch favorite records for user
+    const { data: favorites, error: favError } = await supabaseCli
+      .from('favorites')
+      .select('party_id')
+      .eq('user_id', id);
+
+    if (favError) {
+      console.error('[getUserFavorites] Error fetching favorites:', favError);
+      return res.status(500).json({ success: false, message: 'Error fetching favorites' });
+    }
+
+    if (!favorites || favorites.length === 0) {
+      return res.json({ success: true, favorites: [] });
+    }
+
+    const partyIds = favorites.map(f => f.party_id);
+
+    // Fetch parties by IDs in one query
+    const { data: parties, error: partiesError } = await supabaseCli
+      .from('parties')
+      .select('*')
+      .in('id', partyIds);
+
+    if (partiesError) {
+      console.error('[getUserFavorites] Error fetching parties:', partiesError);
+      return res.status(500).json({ success: false, message: 'Error fetching favorite parties' });
+    }
+
+    res.json({ success: true, favorites: parties || [] });
+  } catch (error) {
+    console.error('[getUserFavorites] Error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Add a party to user's favorites
+const addUserFavorite = async (req, res) => {
+  try {
+    const { id } = req.params; // user_id
+    const { party_id } = req.body;
+    const supabaseCli = require("../services/supabase.service");
+
+    if (!id || !party_id) {
+      return res.status(400).json({ success: false, message: 'user_id and party_id are required' });
+    }
+
+    const userIdNum = Number(id);
+    const partyIdNum = Number(party_id);
+
+    // Check if favorite already exists to avoid duplicates (works without unique index)
+    const { data: existing, error: existError } = await supabaseCli
+      .from('favorites')
+      .select('id')
+      .eq('user_id', userIdNum)
+      .eq('party_id', partyIdNum)
+      .limit(1);
+
+    if (existError) {
+      console.error('[addUserFavorite] Error checking existing favorite:', existError);
+      return res.status(500).json({ success: false, message: 'Error checking favorite' });
+    }
+
+    if (existing && existing.length > 0) {
+      return res.json({ success: true, message: 'Favorite already exists', data: existing[0] });
+    }
+
+    // Insert new favorite
+    const { data, error } = await supabaseCli
+      .from('favorites')
+      .insert({ user_id: userIdNum, party_id: partyIdNum })
+      .select();
+
+    if (error) {
+      console.error('[addUserFavorite] Error adding favorite:', error);
+      return res.status(500).json({ success: false, message: 'Error adding favorite' });
+    }
+
+    res.json({ success: true, message: 'Favorite added', data });
+  } catch (error) {
+    console.error('[addUserFavorite] Error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Remove a party from user's favorites
+const removeUserFavorite = async (req, res) => {
+  try {
+    const { id, partyId } = req.params; // user_id, partyId
+    const supabaseCli = require("../services/supabase.service");
+
+    if (!id || !partyId) {
+      return res.status(400).json({ success: false, message: 'user_id and partyId are required' });
+    }
+
+    const { error } = await supabaseCli
+      .from('favorites')
+      .delete()
+      .eq('user_id', Number(id))
+      .eq('party_id', Number(partyId));
+
+    if (error) {
+      console.error('[removeUserFavorite] Error removing favorite:', error);
+      return res.status(500).json({ success: false, message: 'Error removing favorite' });
+    }
+
+    res.json({ success: true, message: 'Favorite removed' });
+  } catch (error) {
+    console.error('[removeUserFavorite] Error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -793,5 +896,9 @@ module.exports = {
   loginUser,
   testSupabaseConnection,
   uploadProfileImage,
-  getUserPartyHistory
+  getUserPartyHistory,
+  // Favorites
+  getUserFavorites,
+  addUserFavorite,
+  removeUserFavorite
 };

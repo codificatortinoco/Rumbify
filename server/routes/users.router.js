@@ -12,7 +12,11 @@ const {
   loginUser,
   testSupabaseConnection,
   uploadProfileImage,
-  getUserPartyHistory
+  getUserPartyHistory,
+  // Favorites
+  getUserFavorites,
+  addUserFavorite,
+  removeUserFavorite
 } = require("../controllers/users.controller");
 const { requireMember, requireAdmin } = require("../middleware/auth.middleware");
 const router = express.Router();
@@ -49,6 +53,11 @@ router.get("/users/:id/profile", getUserProfile);
 
 // Get user's party history
 router.get("/users/:id/party-history", getUserPartyHistory);
+
+// Favorites endpoints
+router.get("/users/:id/favorites", requireMember, getUserFavorites);
+router.post("/users/:id/favorites", requireMember, addUserFavorite);
+router.delete("/users/:id/favorites/:partyId", requireMember, removeUserFavorite);
 
 // Upload profile image endpoints
 router.post("/users/:id/profile-image", requireMember, upload.single('profile_image'), uploadProfileImage);

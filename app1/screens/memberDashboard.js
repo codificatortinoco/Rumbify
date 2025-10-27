@@ -5,7 +5,9 @@ const CONFIG = {
   USE_MOCK_DATA: false,
   API_ENDPOINTS: {
     UPCOMING_FOR_YOU: "/parties",
-    LIKE: "/parties"
+    USER_FAVORITES: (userId) => `/users/${userId}/favorites`,
+    ADD_FAVORITE: (userId) => `/users/${userId}/favorites`,
+    REMOVE_FAVORITE: (userId, partyId) => `/users/${userId}/favorites/${partyId}`
   }
 };
 
@@ -14,6 +16,9 @@ let memberDashboardController = {
   abortController: null,
   isLoading: false
 };
+
+let favoritesSet = new Set();
+let upcomingCache = [];
 
 export default function renderMemberDashboard() {
   const currentUser = getCurrentUser();
@@ -74,9 +79,10 @@ export default function renderMemberDashboard() {
           <h2 class="section-title">Favorites</h2>
           <a href="#" class="see-more-link" id="seeMoreFavorites">See more</a>
         </div>
-        <div class="no-favorites">
+        <div class="no-favorites" id="noFavoritesMsg">
           <p>No tienes eventos favoritos aún</p>
         </div>
+        <div class="favorites-grid" id="favoritesGrid"></div>
       </section>
 
       <!-- Bottom Navigation -->
@@ -103,6 +109,8 @@ export default function renderMemberDashboard() {
 function initializeMemberDashboard() {
   // Load upcoming events for user
   loadUpcomingForYou();
+  // Load user favorites
+  loadFavorites();
   
   setupUpcomingCarousel();
   
@@ -113,6 +121,9 @@ function initializeMemberDashboard() {
   setupHeaderProfileButton();
   
   setupAddPartyButton();
+  
+  // Wire "See more" to show more parties (dashboard view)
+  setupSeeMoreFavorites();
 }
 
 // Data Service Layer
@@ -139,7 +150,6 @@ class MemberDataService {
       return this.getMockUpcomingForYou();
     }
   }
-
 
   static getMockUpcomingForYou() {
     return [
@@ -225,6 +235,14 @@ function showUpcomingLoadingState() {
   }
 }
 
+function getHeartSVG(isActive) {
+  return `
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="${isActive ? '#ef4444' : 'currentColor'}">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.09 5.01 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+    </svg>
+  `;
+}
+
 function renderUpcomingCarousel(events) {
   const carousel = document.getElementById("upcomingCarousel");
   const dots = document.getElementById("upcomingDots");
@@ -241,6 +259,8 @@ function renderUpcomingCarousel(events) {
 
   // Limit to 3 events max
   const limitedEvents = events.slice(0, 3);
+  // Cache para actualizaciones optimistas de favoritos
+  upcomingCache = limitedEvents;
   
   const eventsHTML = limitedEvents.map(event => {
     // Format date for display
@@ -260,10 +280,15 @@ function renderUpcomingCarousel(events) {
     const maxAttendees = event.max_attendees || 100;
     const attendeesDisplay = `${attendeesCount}/${maxAttendees}`;
     
+    const isFavorited = favoritesSet.has(Number(event.id)) || !!event.liked;
+    
     return `
       <div class="upcoming-card" data-party-id="${event.id}">
         <div class="event-image">
           <img src="${event.image_url || event.image || 'https://images.unsplash.com/photo-1571266028243-e68f952df624?w=400&h=300&fit=crop'}" alt="${event.title}" />
+          <button class="favorite-heart" data-party-id="${event.id}" data-favorited="${isFavorited}">
+            ${getHeartSVG(isFavorited)}
+          </button>
         </div>
         <div class="event-info">
           <h3 class="event-title">${event.title} ${attendeesDisplay}</h3>
@@ -302,6 +327,89 @@ function renderUpcomingCarousel(events) {
   dots.innerHTML = dotsHTML;
 }
 
+async function loadFavorites() {
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      console.warn('No logged-in user, skipping favorites');
+      return;
+    }
+  const res = await makeRequest(`${CONFIG.API_ENDPOINTS.USER_FAVORITES(currentUser.id)}?email=${encodeURIComponent(currentUser.email)}`, 'GET');
+  const favorites = res && res.success ? (res.favorites || []) : [];
+  const favIds = favorites
+    .map(p => Number(p.id ?? p.party_id))
+    .filter(id => Number.isFinite(id));
+  favoritesSet = new Set(favIds);
+  // Avisar en bloque para sincronizar otros módulos
+  try {
+    window.dispatchEvent(new CustomEvent('favorites:bulk', {
+      detail: { ids: favIds }
+    }));
+  } catch (_) {}
+  renderFavoritesGrid(favorites);
+    // Re-render upcoming to reflect heart state
+    const upcomingCards = document.querySelectorAll('#upcomingCarousel .upcoming-card');
+    if (upcomingCards.length) {
+      // minor refresh by toggling heart icons
+      upcomingCards.forEach(card => {
+        const partyId = Number(card.dataset.partyId);
+        const heartBtn = card.querySelector('.favorite-heart');
+        if (heartBtn) {
+          const isFav = favoritesSet.has(partyId);
+          heartBtn.setAttribute('data-favorited', isFav.toString());
+          heartBtn.innerHTML = getHeartSVG(isFav);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error loading favorites:', error);
+    // Fallback: mostrar favoritos desde cache local si falla el backend
+    const localFavorites = upcomingCache.filter(e => favoritesSet.has(Number(e.id)));
+    renderFavoritesGrid(localFavorites);
+  }
+}
+
+function renderFavoritesGrid(favorites) {
+  const grid = document.getElementById('favoritesGrid');
+  const noMsg = document.getElementById('noFavoritesMsg');
+  if (!grid) return;
+  
+  if (!favorites || favorites.length === 0) {
+    grid.innerHTML = '';
+    if (noMsg) noMsg.style.display = 'block';
+    return;
+  }
+  if (noMsg) noMsg.style.display = 'none';
+  
+  const html = favorites.map(event => `
+    <div class="favorite-card" data-party-id="${event.id}">
+      <div class="event-image">
+        <img src="${event.image_url || event.image || 'https://images.unsplash.com/photo-1571266028243-e68f952df624?w=400&h=300&fit=crop'}" alt="${event.title}" />
+        <button class="favorite-heart" data-party-id="${event.id}" data-favorited="true" aria-label="Quitar de favoritos">
+          ${getHeartSVG(true)}
+        </button>
+      </div>
+      <div class="event-info">
+        <h3 class="event-title">${event.title}</h3>
+        <div class="event-details">
+          <div class="event-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span>${event.location}</span>
+          </div>
+          <div class="event-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+            </svg>
+            <span>${event.date}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  grid.innerHTML = html;
+}
 
 function setupUpcomingCarousel() {
   const carousel = document.getElementById("upcomingCarousel");
@@ -352,9 +460,56 @@ function setupActionButtons() {
       const card = e.target.closest('.upcoming-card');
       const partyId = card.dataset.partyId;
       
+      // Prevent navigation when clicking heart
+      if (e.target.closest('.favorite-heart')) {
+        return;
+      }
+      
       if (partyId) {
         console.log('Navigating to party details:', partyId);
         navigateTo(`/party-details/${partyId}`);
+      }
+    }
+
+    // Handle favorite heart toggles (both upcoming and favorites grid)
+    if (e.target.closest('.favorite-heart')) {
+      const btn = e.target.closest('.favorite-heart');
+      const partyId = Number(btn.dataset.partyId);
+      const favorited = btn.getAttribute('data-favorited') === 'true';
+      const currentUser = getCurrentUser();
+      if (!currentUser || !partyId) return;
+
+      // Actualización optimista inmediata
+      if (favorited) {
+        favoritesSet.delete(partyId);
+      } else {
+        favoritesSet.add(partyId);
+      }
+      btn.setAttribute('data-favorited', (!favorited).toString());
+      btn.innerHTML = getHeartSVG(!favorited);
+
+      // Notificar a otras pantallas que el estado de favoritos cambió
+      try {
+        window.dispatchEvent(new CustomEvent('favorites:updated', {
+          detail: { partyId, favorited: !favorited }
+        }));
+      } catch (_) {}
+
+      // Refrescar grid de favoritos con cache local
+      const localFavorites = upcomingCache.filter(e => favoritesSet.has(Number(e.id)));
+      renderFavoritesGrid(localFavorites);
+
+      try {
+        if (favorited) {
+          await makeRequest(`${CONFIG.API_ENDPOINTS.REMOVE_FAVORITE(currentUser.id, partyId)}?email=${encodeURIComponent(currentUser.email)}`, 'DELETE');
+        } else {
+          await makeRequest(CONFIG.API_ENDPOINTS.ADD_FAVORITE(currentUser.id), 'POST', { party_id: partyId, email: currentUser.email });
+        }
+        // Sincronizar con backend
+        loadFavorites();
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
+        // Mantener UI optimista aunque falle
       }
     }
   });
@@ -365,6 +520,16 @@ function setupAddPartyButton() {
   if (addPartyBtn) {
     addPartyBtn.addEventListener("click", () => {
       showAddPartyModal();
+    });
+  }
+}
+
+function setupSeeMoreFavorites() {
+  const seeMoreLink = document.getElementById('seeMoreFavorites');
+  if (seeMoreLink) {
+    seeMoreLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateTo('/dashboard');
     });
   }
 }

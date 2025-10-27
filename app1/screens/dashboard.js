@@ -7,7 +7,10 @@ const CONFIG = {
     HOT_TOPIC: "/parties/hot-topic",
     UPCOMING: "/parties/upcoming",
     SEARCH: "/parties/search",
-    LIKE: "/parties"
+    LIKE: "/parties",
+    USER_FAVORITES: (userId) => `/users/${userId}/favorites`,
+    ADD_FAVORITE: (userId) => `/users/${userId}/favorites`,
+    REMOVE_FAVORITE: (userId, partyId) => `/users/${userId}/favorites/${partyId}`
   }
 };
 
@@ -16,6 +19,9 @@ let dashboardController = {
   abortController: null,
   isLoading: false
 };
+
+// Track favorites in dashboard to render hearts correctly
+let favoritesSetDashboard = new Set();
 
 export default function renderDashboard() {
   const currentUser = getCurrentUser();
@@ -110,13 +116,16 @@ export default function renderDashboard() {
 }
 
 function initializeDashboard() {
-  // Load party data
-  loadPartyData();
+  // Load favorites first to reflect heart states, then load party data
+  loadFavoritesDashboard().finally(() => {
+    loadPartyData();
+  });
   
   setupSearch();
   setupFilters();
   
   setupLikeButtons();
+  setupFavoritesSync();
   
   setupEventDetailsNavigation();
   
@@ -206,6 +215,31 @@ class PartyDataService {
       console.error("Error toggling like:", error);
       throw new Error("No se pudo actualizar el like. Verifica que Supabase esté configurado correctamente.");
     }
+  }
+
+  // Favorites API for current user
+  static async getUserFavorites() {
+    try {
+      const currentUser = getCurrentUser();
+      if (!currentUser?.id) return [];
+      const res = await makeRequest(`${CONFIG.API_ENDPOINTS.USER_FAVORITES(currentUser.id)}?email=${encodeURIComponent(currentUser.email)}`, "GET");
+      return res?.favorites || res || [];
+    } catch (error) {
+      console.error("Error fetching user favorites:", error);
+      return [];
+    }
+  }
+
+  static async addFavorite(partyId) {
+    const currentUser = getCurrentUser();
+    if (!currentUser?.id) throw new Error("Usuario no autenticado");
+    return makeRequest(CONFIG.API_ENDPOINTS.ADD_FAVORITE(currentUser.id), "POST", { party_id: Number(partyId), email: currentUser.email });
+  }
+
+  static async removeFavorite(partyId) {
+    const currentUser = getCurrentUser();
+    if (!currentUser?.id) throw new Error("Usuario no autenticado");
+    return makeRequest(`${CONFIG.API_ENDPOINTS.REMOVE_FAVORITE(currentUser.id, Number(partyId))}?email=${encodeURIComponent(currentUser.email)}`, "DELETE");
   }
 
   static async getEventDetails(eventId) {
@@ -547,6 +581,9 @@ function renderHotTopicEvents(events) {
   setTimeout(() => {
     setupCarousel();
   }, 100);
+
+  // Sync hearts with favorites after rendering
+  syncHeartsWithFavorites();
 }
 
 function renderUpcomingEvents(events) {
@@ -567,6 +604,9 @@ function renderUpcomingEvents(events) {
   const selectedEvents = shuffled.slice(0, Math.min(5, events.length));
   
   container.innerHTML = selectedEvents.map(event => createUpcomingCard(event)).join("");
+
+  // Sync hearts with favorites after rendering
+  syncHeartsWithFavorites();
 }
 
 function createHotTopicCard(event) {
@@ -598,13 +638,14 @@ function createHotTopicCard(event) {
   
   // Handle image with fallback
   const imageUrl = event.image || 'https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=200&fit=crop';
+  const isFavorite = favoritesSetDashboard.has(Number(event.id)) || !!event.liked;
   
   return `
     <div class="hot-topic-card">
       <div class="card-image">
         <img src="${imageUrl}" alt="${event.title}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=200&fit=crop';" />
-        <button class="like-btn ${event.liked ? 'liked' : ''}" data-event-id="${event.id}">
-          ${event.liked ? '♥' : '♡'}
+        <button class="like-btn ${isFavorite ? 'liked' : ''}" data-event-id="${event.id}">
+          ${isFavorite ? '♥' : '♡'}
         </button>
       </div>
       <div class="card-content">
@@ -643,10 +684,14 @@ function createHotTopicCard(event) {
 
 function createUpcomingCard(event) {
   const displayPrice = event.price || (Array.isArray(event.prices) && event.prices.length ? event.prices[0].price : "");
+  const isFavorite = favoritesSetDashboard.has(Number(event.id)) || !!event.liked;
   return `
     <div class="upcoming-card">
       <div class="card-image">
         <img src="${event.image}" alt="${event.title}" />
+        <button class="like-btn ${isFavorite ? 'liked' : ''}" data-event-id="${event.id}">
+          ${isFavorite ? '♥' : '♡'}
+        </button>
       </div>
       <div class="card-content">
         <h3 class="event-title">${event.title}</h3>
@@ -1060,6 +1105,29 @@ function setupCarousel() {
   updateCarousel();
 }
 
+// Fetch favorites and sync heart states on dashboard
+async function loadFavoritesDashboard() {
+  try {
+    const favorites = await PartyDataService.getUserFavorites();
+    const ids = favorites.map(p => Number(p.id ?? p.party_id)).filter(Boolean);
+    favoritesSetDashboard = new Set(ids);
+    syncHeartsWithFavorites();
+  } catch (err) {
+    console.error('No se pudieron cargar los favoritos del usuario:', err);
+  }
+}
+
+function syncHeartsWithFavorites() {
+  try {
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      const id = Number(btn.dataset.eventId);
+      const liked = favoritesSetDashboard.has(id);
+      btn.classList.toggle('liked', liked);
+      btn.textContent = liked ? '♥' : '♡';
+    });
+  } catch (_) {}
+}
+
 function setupLikeButtons() {
   // Use event delegation for dynamically added like buttons
   document.addEventListener('click', async (e) => {
@@ -1068,19 +1136,60 @@ function setupLikeButtons() {
       const eventId = likeBtn.dataset.eventId;
       const isLiked = likeBtn.classList.contains('liked');
       
+      // Optimistic UI update
+      likeBtn.classList.toggle('liked', !isLiked);
+      likeBtn.textContent = !isLiked ? '♥' : '♡';
+      const partyIdNum = Number(eventId);
+      if (!isLiked) {
+        favoritesSetDashboard.add(partyIdNum);
+      } else {
+        favoritesSetDashboard.delete(partyIdNum);
+      }
+
       try {
-        const response = await PartyDataService.toggleLike(eventId, !isLiked);
-        
-        if (response.success) {
-          likeBtn.classList.toggle('liked', !isLiked);
+        if (!isLiked) {
+          await PartyDataService.addFavorite(partyIdNum);
+        } else {
+          await PartyDataService.removeFavorite(partyIdNum);
         }
       } catch (error) {
-        console.error('Error toggling like:', error);
-        // Still toggle the visual state for better UX
-        likeBtn.classList.toggle('liked', !isLiked);
+        console.error('Error toggling favorite:', error);
+        // Revert UI if backend fails
+        likeBtn.classList.toggle('liked', isLiked);
+        likeBtn.textContent = isLiked ? '♥' : '♡';
+        if (isLiked) {
+          favoritesSetDashboard.add(partyIdNum);
+        } else {
+          favoritesSetDashboard.delete(partyIdNum);
+        }
       }
     }
   });
+}
+
+// Escucha cambios de favoritos desde otras pantallas (MemberDashboard)
+function setupFavoritesSync() {
+  try {
+    window.addEventListener('favorites:updated', (ev) => {
+      const detail = ev && ev.detail ? ev.detail : {};
+      const partyId = Number(detail.partyId);
+      const favorited = !!detail.favorited;
+      if (Number.isFinite(partyId)) {
+        if (favorited) {
+          favoritesSetDashboard.add(partyId);
+        } else {
+          favoritesSetDashboard.delete(partyId);
+        }
+        syncHeartsWithFavorites();
+      }
+    });
+
+    window.addEventListener('favorites:bulk', (ev) => {
+      const ids = (ev && ev.detail && Array.isArray(ev.detail.ids)) ? ev.detail.ids : [];
+      favoritesSetDashboard = new Set(ids.map(Number).filter(Boolean));
+      syncHeartsWithFavorites();
+    });
+  } catch (_) {}
 }
 
 function setupEventDetailsNavigation() {

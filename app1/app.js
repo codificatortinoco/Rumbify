@@ -135,7 +135,7 @@ function renderRoute(currentRoute) {
   }
 }
 
-async function makeRequest(url, method, body) {
+async function makeRequest(url, method, body, extraHeaders = {}) {
   console.log('[makeRequest] Making request:', { url, method, body });
   
   const BASE_URL = window.location.origin; // same-origin
@@ -144,21 +144,41 @@ async function makeRequest(url, method, body) {
   console.log('[makeRequest] Full endpoint:', endpoint);
   
   try {
+    // Attach member email automatically for member-protected endpoints
+    let userEmail = null;
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      userEmail = currentUser?.email || null;
+    } catch (_) {}
+
+    const headers = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      ...(userEmail ? { 'x-user-email': userEmail } : {}),
+      ...extraHeaders,
+    };
+
     let response = await fetch(endpoint, {
       method: method,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
     console.log('[makeRequest] Raw response status:', response.status);
     console.log('[makeRequest] Raw response ok:', response.ok);
 
-    response = await response.json();
-    
-    console.log('[makeRequest] Parsed response:', response);
-    return response;
+    // Try JSON first; if it fails, fall back to text for clearer errors
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (contentType.includes('application/json')) {
+      const json = await response.json();
+      console.log('[makeRequest] Parsed JSON response:', json);
+      return json;
+    } else {
+      const text = await response.text();
+      const normalized = { success: response.ok, status: response.status, message: text };
+      console.log('[makeRequest] Non-JSON response:', normalized);
+      return normalized;
+    }
     
   } catch (error) {
     console.error('[makeRequest] Error in request:', error);

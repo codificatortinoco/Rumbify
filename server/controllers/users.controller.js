@@ -744,7 +744,9 @@ const getUserPartyHistory = async (req, res) => {
 
       partyHistory.push({
         id: party.id,
+        party_id: party.id, // Add party_id for frontend compatibility
         title: party.title,
+        location: party.location, // Add location for frontend display
         date: party.date,
         status: 'Attended', // For now, mark attended for used codes
         image: party.image,
@@ -754,7 +756,7 @@ const getUserPartyHistory = async (req, res) => {
       });
     }
 
-    res.json({ success: true, history: partyHistory });
+    res.json({ success: true, party_history: partyHistory, count: partyHistory.length });
   } catch (error) {
     console.error('[getUserPartyHistory] Error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });

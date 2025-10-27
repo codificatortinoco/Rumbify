@@ -17,7 +17,14 @@ const CONFIG = {
 let dashboardController = {
   isActive: false,
   abortController: null,
-  isLoading: false
+  isLoading: false,
+  // Guardar handlers para poder limpiarlos al navegar
+  eventHandlers: {
+    likeClick: null,
+    seeMoreClick: null,
+    favoritesUpdated: null,
+    favoritesBulk: null
+  }
 };
 
 // Track favorites in dashboard to render hearts correctly
@@ -1138,57 +1145,75 @@ function syncHeartsWithFavorites() {
 }
 
 function setupLikeButtons() {
-  // Use event delegation for dynamically added like buttons
-  document.addEventListener('click', async (e) => {
-    if (e.target.closest('.like-btn')) {
-      const likeBtn = e.target.closest('.like-btn');
-      e.preventDefault();
-      e.stopPropagation();
-      const partyIdNum = Number(likeBtn.dataset.eventId);
-      if (!Number.isFinite(partyIdNum)) return;
+  // Adjuntar el listener al contenedor del dashboard para evitar duplicados globales
+  const dashboardEl = document.getElementById('dashboard');
+  if (!dashboardEl) return;
 
-      // Determinar estado actual desde la fuente de verdad (favoritesSetDashboard)
-      const isCurrentlyLiked = favoritesSetDashboard.has(partyIdNum);
-      const nextLiked = !isCurrentlyLiked;
+  // Si ya existe un handler previamente instalado, elimínalo primero
+  if (dashboardController.eventHandlers.likeClick) {
+    try { dashboardEl.removeEventListener('click', dashboardController.eventHandlers.likeClick); } catch (_) {}
+  }
 
-      // Actualización optimista basada en nextLiked
-      likeBtn.classList.toggle('liked', nextLiked);
-      likeBtn.textContent = nextLiked ? '♥' : '♡';
+  const likeHandler = async (e) => {
+    const targetBtn = e.target.closest('.like-btn');
+    if (!targetBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const partyIdNum = Number(targetBtn.dataset.eventId);
+    if (!Number.isFinite(partyIdNum)) return;
+
+    // Determinar estado actual desde la fuente de verdad (favoritesSetDashboard)
+    const isCurrentlyLiked = favoritesSetDashboard.has(partyIdNum);
+    const nextLiked = !isCurrentlyLiked;
+
+    // Actualización optimista basada en nextLiked
+    targetBtn.classList.toggle('liked', nextLiked);
+    targetBtn.textContent = nextLiked ? '♥' : '♡';
+    if (nextLiked) {
+      favoritesSetDashboard.add(partyIdNum);
+    } else {
+      favoritesSetDashboard.delete(partyIdNum);
+    }
+    // Sincronizar todos los corazones
+    syncHeartsWithFavorites();
+
+    try {
       if (nextLiked) {
+        await PartyDataService.addFavorite(partyIdNum);
+      } else {
+        await PartyDataService.removeFavorite(partyIdNum);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      // Revertir si falla backend
+      targetBtn.classList.toggle('liked', isCurrentlyLiked);
+      targetBtn.textContent = isCurrentlyLiked ? '♥' : '♡';
+      if (isCurrentlyLiked) {
         favoritesSetDashboard.add(partyIdNum);
       } else {
         favoritesSetDashboard.delete(partyIdNum);
       }
-      // Sync all heart buttons to reflect the new state (hot topic and upcoming)
       syncHeartsWithFavorites();
-
-      try {
-        if (nextLiked) {
-          await PartyDataService.addFavorite(partyIdNum);
-        } else {
-          await PartyDataService.removeFavorite(partyIdNum);
-        }
-      } catch (error) {
-        console.error('Error toggling favorite:', error);
-        // Revert UI if backend fails
-        likeBtn.classList.toggle('liked', isCurrentlyLiked);
-        likeBtn.textContent = isCurrentlyLiked ? '♥' : '♡';
-        if (isCurrentlyLiked) {
-          favoritesSetDashboard.add(partyIdNum);
-        } else {
-          favoritesSetDashboard.delete(partyIdNum);
-        }
-        // Re-sync hearts after revert to keep the UI consistent
-        syncHeartsWithFavorites();
-      }
     }
-  });
+  };
+
+  dashboardEl.addEventListener('click', likeHandler);
+  dashboardController.eventHandlers.likeClick = likeHandler;
 }
 
 // Escucha cambios de favoritos desde otras pantallas (MemberDashboard)
 function setupFavoritesSync() {
   try {
-    window.addEventListener('favorites:updated', (ev) => {
+    // Eliminar listeners previos si existen para evitar acumulación
+    if (dashboardController.eventHandlers.favoritesUpdated) {
+      try { window.removeEventListener('favorites:updated', dashboardController.eventHandlers.favoritesUpdated); } catch (_) {}
+    }
+    if (dashboardController.eventHandlers.favoritesBulk) {
+      try { window.removeEventListener('favorites:bulk', dashboardController.eventHandlers.favoritesBulk); } catch (_) {}
+    }
+
+    const onFavUpdated = (ev) => {
       const detail = ev && ev.detail ? ev.detail : {};
       const partyId = Number(detail.partyId);
       const favorited = !!detail.favorited;
@@ -1200,48 +1225,61 @@ function setupFavoritesSync() {
         }
         syncHeartsWithFavorites();
       }
-    });
+    };
 
-    window.addEventListener('favorites:bulk', (ev) => {
+    const onFavBulk = (ev) => {
       const ids = (ev && ev.detail && Array.isArray(ev.detail.ids)) ? ev.detail.ids : [];
       favoritesSetDashboard = new Set(ids.map(Number).filter(Boolean));
       syncHeartsWithFavorites();
-    });
+    };
+
+    window.addEventListener('favorites:updated', onFavUpdated);
+    window.addEventListener('favorites:bulk', onFavBulk);
+    dashboardController.eventHandlers.favoritesUpdated = onFavUpdated;
+    dashboardController.eventHandlers.favoritesBulk = onFavBulk;
   } catch (_) {}
 }
 
 function setupEventDetailsNavigation() {
-  // Use event delegation for dynamically added see more buttons
-  document.addEventListener('click', async (e) => {
-    if (e.target.closest('.see-more-btn')) {
-      const seeMoreBtn = e.target.closest('.see-more-btn');
-      const eventId = seeMoreBtn.dataset.eventId;
-      
-      console.log('[setupEventDetailsNavigation] Button clicked, eventId:', eventId);
-      
-      if (eventId) {
-        try {
-          // Get event details and navigate
-          console.log('[setupEventDetailsNavigation] Fetching event details for ID:', eventId);
-          const eventDetails = await PartyDataService.getEventDetails(eventId);
-          console.log('[setupEventDetailsNavigation] Event details received:', eventDetails);
-          
-          if (eventDetails) {
-            navigateTo("/event-details", eventDetails);
-          } else {
-            throw new Error('No event details received from API');
-          }
-        } catch (error) {
-          console.error('[setupEventDetailsNavigation] Error getting event details:', error);
-          console.error('[setupEventDetailsNavigation] Error stack:', error.stack);
-          // Fallback to mock data
-          console.log('[setupEventDetailsNavigation] Falling back to mock data for ID:', eventId);
-          const mockEvent = PartyDataService.getMockEventDetails(eventId);
-          navigateTo("/event-details", mockEvent);
+  // Delegación sobre el contenedor del dashboard para evitar múltiples registros
+  const dashboardEl = document.getElementById('dashboard');
+  if (!dashboardEl) return;
+
+  if (dashboardController.eventHandlers.seeMoreClick) {
+    try { dashboardEl.removeEventListener('click', dashboardController.eventHandlers.seeMoreClick); } catch (_) {}
+  }
+
+  const seeMoreHandler = async (e) => {
+    const likeBtn = e.target.closest('.like-btn');
+    if (likeBtn) return; // No interferir con el corazón
+
+    const seeMoreBtn = e.target.closest('.see-more-btn');
+    if (!seeMoreBtn) return;
+
+    const eventId = seeMoreBtn.dataset.eventId;
+    console.log('[setupEventDetailsNavigation] Button clicked, eventId:', eventId);
+
+    if (eventId) {
+      try {
+        console.log('[setupEventDetailsNavigation] Fetching event details for ID:', eventId);
+        const eventDetails = await PartyDataService.getEventDetails(eventId);
+        console.log('[setupEventDetailsNavigation] Event details received:', eventDetails);
+        if (eventDetails) {
+          navigateTo("/event-details", eventDetails);
+        } else {
+          throw new Error('No event details received from API');
         }
+      } catch (error) {
+        console.error('[setupEventDetailsNavigation] Error getting event details:', error);
+        console.error('[setupEventDetailsNavigation] Error stack:', error.stack);
+        const mockEvent = PartyDataService.getMockEventDetails(eventId);
+        navigateTo("/event-details", mockEvent);
       }
     }
-  });
+  };
+
+  dashboardEl.addEventListener('click', seeMoreHandler);
+  dashboardController.eventHandlers.seeMoreClick = seeMoreHandler;
 }
 
 function setupBottomNavigation() {
@@ -1338,4 +1376,27 @@ export function cleanupDashboard() {
   carouselController.isInitialized = false;
   carouselController.isDragging = false;
   carouselController.carouselElement = null;
+
+  // Remover listeners propios del dashboard
+  try {
+    const dashboardEl = document.getElementById('dashboard');
+    if (dashboardEl) {
+      if (dashboardController.eventHandlers.likeClick) {
+        dashboardEl.removeEventListener('click', dashboardController.eventHandlers.likeClick);
+        dashboardController.eventHandlers.likeClick = null;
+      }
+      if (dashboardController.eventHandlers.seeMoreClick) {
+        dashboardEl.removeEventListener('click', dashboardController.eventHandlers.seeMoreClick);
+        dashboardController.eventHandlers.seeMoreClick = null;
+      }
+    }
+    if (dashboardController.eventHandlers.favoritesUpdated) {
+      window.removeEventListener('favorites:updated', dashboardController.eventHandlers.favoritesUpdated);
+      dashboardController.eventHandlers.favoritesUpdated = null;
+    }
+    if (dashboardController.eventHandlers.favoritesBulk) {
+      window.removeEventListener('favorites:bulk', dashboardController.eventHandlers.favoritesBulk);
+      dashboardController.eventHandlers.favoritesBulk = null;
+    }
+  } catch (_) {}
 }

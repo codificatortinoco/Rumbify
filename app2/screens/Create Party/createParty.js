@@ -142,6 +142,9 @@ export default function renderCreateParty(data = {}) {
     </div>
   `;
 
+  // Log render context to aid debugging
+  console.log('[create-party] renderCreateParty data:', data);
+
   // Cargar estilos específicos de la pantalla desde su propia carpeta
   const head = document.querySelector('head');
   const existing = document.querySelector('link[data-create-party-css]');
@@ -166,6 +169,13 @@ export default function renderCreateParty(data = {}) {
   const imageFileInput = document.getElementById("party-image-file");
   const imageHidden = document.getElementById("party-image");
 
+  // Safe DOM helpers
+  const getEl = (id) => document.getElementById(id);
+  const getVal = (id) => {
+    const el = getEl(id);
+    return el ? el.value : "";
+  };
+
   const openFileDialog = () => imageFileInput && imageFileInput.click();
   const setPreview = (url) => {
     if (!imageCard) return;
@@ -185,14 +195,58 @@ export default function renderCreateParty(data = {}) {
   // Prefill helpers for edit mode
   const prefillFromParty = async (partyId) => {
     try {
-      const details = await makeRequest(`/parties/${partyId}`, 'GET');
-      if (!details) return;
+      console.log('[create-party] Prefill start for id:', partyId);
+      const res = await makeRequest(`/parties/${partyId}`, 'GET');
+      console.log('[create-party] GET /parties/:id response:', res);
+      let details = (res && (res.party || res.data)) || (Array.isArray(res) ? res[0] : res);
+      console.log('[create-party] Parsed details:', details);
+
+      // Fallback: if no details returned (e.g., DB error and no mock for id)
+      if (!details) {
+        try {
+          const adminUserLocal = JSON.parse(localStorage.getItem('adminUser') || '{}');
+          const adminEmailLocal = adminUserLocal?.email;
+          console.log('[create-party] Trying fallback via /admin/parties with email:', adminEmailLocal);
+          if (adminEmailLocal) {
+            const listRes = await makeRequest('/admin/parties', 'POST', { email: adminEmailLocal });
+            console.log('[create-party] Fallback /admin/parties response:', listRes);
+            const candidate = listRes?.parties?.find(p => String(p.id) === String(partyId));
+            if (candidate) {
+              details = candidate;
+              console.warn('[create-party] Using fallback data from /admin/parties for id', partyId);
+            } else {
+              console.warn('[create-party] No party found for id', partyId, 'in /admin/parties');
+            }
+          } else {
+            console.warn('[create-party] No admin email in localStorage; cannot fetch fallback list');
+          }
+        } catch (fallbackErr) {
+          console.warn('[create-party] Fallback fetch failed:', fallbackErr);
+        }
+      }
+
+      if (!details) {
+        console.warn('[create-party] No details available for partyId', partyId, 'response:', res);
+        return;
+      }
+
       // Title
       const titleEl = document.getElementById('party-title');
-      if (titleEl && details.title) titleEl.value = details.title;
+      if (titleEl) {
+        const t = details.title || details.name;
+        if (t) {
+          titleEl.value = t;
+          console.log('[create-party] Title set to:', t);
+        }
+      }
+
       // Description (if available)
       const descEl = document.getElementById('party-description');
-      if (descEl && details.description) descEl.value = details.description;
+      if (descEl && details.description) {
+        descEl.value = details.description;
+        console.log('[create-party] Description set');
+      }
+
       // Location -> best-effort split
       const addrEl = document.getElementById('party-address');
       const cityEl = document.getElementById('party-city');
@@ -202,7 +256,9 @@ export default function renderCreateParty(data = {}) {
         addrEl && (addrEl.value = parts[0] || details.location);
         cityEl && (cityEl.value = parts[1] || '');
         countryEl && (countryEl.value = parts[parts.length - 1] || '');
+        console.log('[create-party] Location set to:', addrEl?.value, cityEl?.value, countryEl?.value);
       }
+
       // Date and hour: prefer backend parsed fields, fallback to parsing string
       const dateEl = document.getElementById('party-date');
       const hourEl = document.getElementById('party-hour');
@@ -211,7 +267,6 @@ export default function renderCreateParty(data = {}) {
       if (!iso || !hour) {
         const raw = String(details.date || '');
         if (raw) {
-          // Parse dd/mm/yy
           if (!iso) {
             const m1 = raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
             if (m1) {
@@ -222,7 +277,6 @@ export default function renderCreateParty(data = {}) {
               iso = `${y}-${m}-${d}`;
             }
           }
-          // Parse yyyy-mm-dd
           if (!iso) {
             const m2 = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
             if (m2) {
@@ -232,7 +286,6 @@ export default function renderCreateParty(data = {}) {
               iso = `${y}-${m}-${d}`;
             }
           }
-          // Extract first time HH:mm anywhere in the string
           if (!hour) {
             const t = raw.match(/(\d{1,2}:\d{2})/);
             if (t) {
@@ -248,18 +301,23 @@ export default function renderCreateParty(data = {}) {
         if (dateEl._flatpickr) {
           try { dateEl._flatpickr.setDate(iso, true, "Y-m-d"); } catch {}
         }
+        console.log('[create-party] Date set to:', iso);
       }
       if (hour && hourEl) {
         hourEl.value = hour;
         if (hourEl._flatpickr) {
           try { hourEl._flatpickr.setDate(hour, true, "H:i"); } catch {}
         }
+        console.log('[create-party] Hour set to:', hour);
       }
+
       // Image
       if (details.image) {
         imageHidden.value = details.image;
         setPreview(details.image);
+        console.log('[create-party] Image set');
       }
+
       // Attendees -> use current/max to prefill max and keep current for update
       let current = 0, max = 0;
       if (details.attendees) {
@@ -268,23 +326,46 @@ export default function renderCreateParty(data = {}) {
         max = parseInt(maxStr, 10) || 0;
       }
       const maxEl = document.getElementById('party-attendees-max');
-      if (maxEl) maxEl.value = max || '';
+      if (maxEl) {
+        maxEl.value = max || '';
+        console.log('[create-party] Attendees max set to:', maxEl.value);
+      }
+
       // Administrator and number
       const adminEl = document.getElementById('party-administrator');
       const numberEl = document.getElementById('party-number');
-      if (adminEl && details.administrator) adminEl.value = details.administrator;
-      if (numberEl && details.number) numberEl.value = details.number;
+      if (adminEl && details.administrator) {
+        adminEl.value = details.administrator;
+        console.log('[create-party] Administrator set:', details.administrator);
+      }
+      if (numberEl && details.number) {
+        numberEl.value = details.number;
+        console.log('[create-party] Number set:', details.number);
+      }
+
       // Tags
       const tagCheckboxes = Array.from(document.querySelectorAll('input[name="party-tag"]'));
+      let tagsArray = [];
       if (Array.isArray(details.tags)) {
-        tagCheckboxes.forEach(cb => { cb.checked = details.tags.includes(cb.value); });
+        tagsArray = details.tags;
+      } else if (typeof details.tags === 'string') {
+        try {
+          const parsed = JSON.parse(details.tags);
+          if (Array.isArray(parsed)) tagsArray = parsed; else tagsArray = details.tags.split(',').map(s => s.trim()).filter(Boolean);
+        } catch {
+          tagsArray = details.tags.split(',').map(s => s.trim()).filter(Boolean);
+        }
       }
+      tagCheckboxes.forEach(cb => { cb.checked = tagsArray.includes(cb.value); });
+      console.log('[create-party] Tags selected:', tagsArray);
+
       // Refresh tag chips
       const tagsToggle = document.getElementById('party-tags-toggle');
       const tagsChips = document.getElementById('party-tags-chips');
       const selected = Array.from(document.querySelectorAll('input[name="party-tag"]:checked')).map(el => el.value);
       if (tagsToggle) tagsToggle.textContent = selected.length ? `Tags (${selected.length})` : 'Selecciona tags';
       if (tagsChips) tagsChips.innerHTML = selected.map(v => `<span class="chip">${v}</span>`).join('');
+
       // Prices: prefill from details
       const prices = Array.isArray(details.prices) ? details.prices : [];
       pricesState.splice(0, pricesState.length);
@@ -293,15 +374,20 @@ export default function renderCreateParty(data = {}) {
           pricesState.push({ price_name: p.price_name || p.name || '', price: p.price || '' });
         });
       } else {
+        // fallback: one empty row to keep UI consistent
         pricesState.push({ price_name: "", price: "" });
       }
       renderPriceItems();
+      console.log('[create-party] Prices rows:', pricesState.length);
+
       // Change CTA to Save
       const submitBtnPrefill = document.getElementById('create-btn');
       if (submitBtnPrefill) submitBtnPrefill.textContent = 'Save';
+
       // Save edit context with current attendees
       editContext = { partyId, currentAttendees: current };
       try { localStorage.setItem('createPartyEditContext', JSON.stringify({ partyId })); } catch (_) {}
+      console.log('[create-party] Prefill completed for id:', partyId);
     } catch (e) {
       console.warn('Prefill failed:', e);
     }
@@ -372,11 +458,20 @@ export default function renderCreateParty(data = {}) {
   updateTagSummary();
 
   // If edit mode, prefill fields from existing party
-  if (data && (data.edit || data.mode === 'edit') && data.partyId) {
-    try { localStorage.setItem('createPartyEditContext', JSON.stringify({ partyId: Number(data.partyId) })); } catch (_) {}
-    prefillFromParty(data.partyId);
-  } else {
-    try { localStorage.removeItem('createPartyEditContext'); } catch (_) {}
+  // (Updated) Prefill whenever we have an id in URL or data
+  try {
+    const paramsPrefill = new URLSearchParams(window.location.search);
+    const qsId = paramsPrefill.get('id') || paramsPrefill.get('partyId');
+    const effectiveId = Number((data && data.partyId) || qsId);
+    console.log('[create-party] Prefill trigger check. data.partyId:', data?.partyId, 'qsId:', qsId, 'effectiveId:', effectiveId);
+    if (effectiveId) {
+      try { localStorage.setItem('createPartyEditContext', JSON.stringify({ partyId: effectiveId })); } catch (_) {}
+      prefillFromParty(effectiveId);
+    } else {
+      try { localStorage.removeItem('createPartyEditContext'); } catch (_) {}
+    }
+  } catch (_) {
+    // ignore
   }
 
   // Add a new editable price row (single input)
@@ -460,72 +555,40 @@ export default function renderCreateParty(data = {}) {
     }
   }
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  // Submit handler (create or update)
+  const partyForm = document.getElementById("create-party-form");
+  partyForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
     const submitBtn = document.getElementById("create-btn");
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = editContext ? "Saving..." : "Creating...";
-    submitBtn.disabled = true;
+    const originalText = submitBtn ? submitBtn.textContent : 'Create';
+    if (submitBtn) { submitBtn.textContent = 'Saving...'; submitBtn.disabled = true; }
 
     try {
-      // Get admin user email for authentication first
-      const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
-      const adminEmail = adminUser.email;
-      
-      if (!adminEmail) {
-        alert("No admin user found. Please log in again.");
-        navigateTo("/admin-login");
-        return;
-      }
+      const title = getVal("party-title").trim();
+      const address = getVal("party-address").trim();
+      const cityVal = getVal("party-city").trim();
+      const countryVal = getVal("party-country").trim();
+      const location = `${address}${cityVal ? ", " + cityVal : ""}${countryVal ? ", " + countryVal : ""}`;
+      const dateVal = getVal("party-date");
+      const hourVal = getVal("party-hour");
+      const maxAtt = parseInt(getVal("party-attendees-max"), 10) || 0;
+      const administrator = getVal("party-administrator").trim();
+      const number = getVal("party-number").trim();
+      const image = getVal("party-image");
 
-      const title = document.getElementById("party-title").value.trim();
-      const address = document.getElementById("party-address").value.trim();
-      const city = document.getElementById("party-city").value.trim();
-      const country = document.getElementById("party-country").value.trim();
-      const location = [address, city, country].filter(Boolean).join(", ");
-      const dateVal = document.getElementById("party-date").value; // yyyy-mm-dd
-      const hourVal = document.getElementById("party-hour").value; // HH:mm
-      const maxAtt = parseInt(document.getElementById("party-attendees-max").value, 10);
-      // Use admin name as administrator instead of form input
-      const administrator = adminUser.name;
-      const number = document.getElementById("party-number").value.trim();
-      const image = document.getElementById("party-image").value.trim();
-      const description = document.getElementById("party-description")?.value.trim() || "";
+      const selectedTags = Array.from(document.querySelectorAll('input[name="party-tag"]:checked')).map(el => el.value);
+      const tags = selectedTags;
 
-      if (!title || !address || !city || !country || !dateVal || !hourVal) {
-        alert("Por favor, completa todos los campos obligatorios.");
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        return;
-      }
-      
-      if (!adminEmail) {
-        alert("Error: No se encontró información de usuario autenticado. Por favor, inicia sesión nuevamente.");
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        return;
-      }
-      
-      console.log("Admin email for authentication:", adminEmail);
-      if (!maxAtt || maxAtt < 1) {
-        alert("Maximum attendees must be at least 1.");
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        return;
-      }
+      const description = getVal("party-description").trim();
 
-      const tags = Array.from(document.querySelectorAll('input[name="party-tag"]:checked')).map(el => el.value);
+      // Collect prices from dynamic inputs
+      const collectedPrices = pricesState
+        .map(p => ({ price_name: (p.price_name || "").trim(), price: (p.price || "").trim() }))
+        .filter(p => p.price_name || p.price);
 
-      // Validación: al menos un precio ingresado
-      const rows = Array.from(pricesList.querySelectorAll(".price-item"));
-      const collectedPrices = rows.map((row, i) => {
-        const name = row.querySelector(".price-name-input")?.value.trim();
-        const val = row.querySelector(".price-value-input")?.value.trim();
-        if (!val) return null; // omit rows without price
-        return { price_name: name || `Ticket ${i + 1}`, price: val };
-      }).filter(Boolean);
-      if (collectedPrices.length === 0) {
-        alert("Por favor ingresa al menos un precio.");
+      if (!title || !location || !dateVal || !hourVal || maxAtt <= 0 || !administrator) {
+        alert("Por favor completa los campos requeridos");
         const firstInput = pricesList.querySelector(".price-value-input");
         if (firstInput) firstInput.focus();
         submitBtn.textContent = originalText;
@@ -551,7 +614,7 @@ export default function renderCreateParty(data = {}) {
         tags,
         description,
         prices: collectedPrices, // Include prices in the main payload
-        email: adminEmail, // Include admin email for authentication
+        email: adminUser?.email, // Include admin email for authentication
       };
 
       let apiRes;

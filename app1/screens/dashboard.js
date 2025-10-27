@@ -571,30 +571,66 @@ function renderUpcomingEvents(events) {
 
 function createHotTopicCard(event) {
   const displayPrice = event.price || (Array.isArray(event.prices) && event.prices.length ? event.prices[0].price : "");
+  
+  // Format date properly - handle dd/mm/yy format from server
+  let dateDisplay = event.date || 'TBD';
+  try {
+    if (event.date && typeof event.date === 'string') {
+      // Check if date is already in format like "5/9/21 • 23:00-06:00"
+      if (event.date.includes('•')) {
+        dateDisplay = event.date;
+      } else {
+        // Try to parse as new Date
+        const date = new Date(event.date);
+        if (!isNaN(date.getTime())) {
+          // Format as MMM DD, YYYY
+          dateDisplay = date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Date parsing error:', e);
+  }
+  
+  // Handle image with fallback
+  const imageUrl = event.image || 'https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=200&fit=crop';
+  
   return `
     <div class="hot-topic-card">
       <div class="card-image">
-        <img src="${event.image}" alt="${event.title}" />
+        <img src="${imageUrl}" alt="${event.title}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=200&fit=crop';" />
         <button class="like-btn ${event.liked ? 'liked' : ''}" data-event-id="${event.id}">
-          ${event.liked ? 'Me gusta' : 'Like'}
+          ${event.liked ? '♥' : '♡'}
         </button>
       </div>
       <div class="card-content">
         <div class="card-header">
           <h3 class="event-title">${event.title}</h3>
-          <span class="attendees">${event.attendees}</span>
+          <span class="attendees-badge">${event.attendees}</span>
         </div>
         <div class="event-details">
           <div class="detail-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
             <span>${event.location}</span>
           </div>
           <div class="detail-item">
-            <span>${event.date}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+            </svg>
+            <span>${dateDisplay}</span>
           </div>
           <div class="detail-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
             <span>${event.administrator}</span>
           </div>
-          <div class="price">${displayPrice}</div>
         </div>
          <div class="card-tags">
            ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}

@@ -287,11 +287,6 @@ function renderUpcomingCarousel(events) {
               <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
             </div>
           </div>
-          <div class="event-actions">
-            <button class="action-btn going" data-event-id="${event.id}">I'm going</button>
-            <button class="action-btn maybe" data-event-id="${event.id}">Maybe</button>
-            <button class="action-btn not-going" data-event-id="${event.id}">Not going</button>
-          </div>
         </div>
       </div>
     `;
@@ -353,40 +348,13 @@ function setupUpcomingCarousel() {
 function setupActionButtons() {
   document.addEventListener('click', async (e) => {
     // Handle party card clicks
-    if (e.target.closest('.upcoming-card') && !e.target.closest('.action-btn')) {
+    if (e.target.closest('.upcoming-card')) {
       const card = e.target.closest('.upcoming-card');
       const partyId = card.dataset.partyId;
       
       if (partyId) {
         console.log('Navigating to party details:', partyId);
         navigateTo(`/party-details/${partyId}`);
-      }
-    }
-    
-    // Handle action button clicks
-    if (e.target.closest('.action-btn')) {
-      e.stopPropagation(); // Prevent card click
-      
-      const button = e.target.closest('.action-btn');
-      const eventId = button.dataset.eventId;
-      const action = button.classList.contains('going') ? 'going' : 
-                    button.classList.contains('maybe') ? 'maybe' : 'not-going';
-      
-      // Remove active class from all buttons in the same card
-      const card = button.closest('.upcoming-card');
-      const allButtons = card.querySelectorAll('.action-btn');
-      allButtons.forEach(btn => btn.classList.remove('active'));
-      
-      // Add active class to clicked button
-      button.classList.add('active');
-      
-      try {
-        await makeRequest(`${CONFIG.API_ENDPOINTS.LIKE}/${eventId}/attendance`, "POST", {
-          action: action
-        });
-        
-      } catch (error) {
-        console.error("Error updating attendance:", error);
       }
     }
   });

@@ -9,7 +9,19 @@ import renderProfile from "./screens/profile.js";
 import renderEditProfile from "./screens/editProfile.js";
 import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.js";
 
-const socket = io("/", { path: "/real-time" });
+let socket = null;
+
+// Initialize socket only if needed (don't auto-connect)
+if (typeof io !== 'undefined') {
+  try {
+    socket = io("/", { 
+      path: "/real-time",
+      autoConnect: false
+    });
+  } catch (error) {
+    console.warn('Socket.io initialization failed:', error);
+  }
+}
 
 function clearScripts() {
   cleanupDashboard();

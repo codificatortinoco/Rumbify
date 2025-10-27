@@ -55,7 +55,9 @@ export default function renderEventDetails(eventData) {
         
         <div class="organizer-info">
           <div class="organizer-avatar">
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" alt="Organizer" />
+            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" 
+                 alt="Organizer"
+                 onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face';" />
           </div>
           <div class="organizer-details">
             <div class="organizer-name">${safeEventData.administrator}</div>
@@ -76,7 +78,8 @@ export default function renderEventDetails(eventData) {
       <!-- Event Image -->
       <div class="event-image-section">
         <div class="event-image">
-          <img src="${safeEventData.image}" alt="${safeEventData.title}" />
+          <img src="${safeEventData.image}" alt="${safeEventData.title}" 
+               onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=200&fit=crop';" />
         </div>
       </div>
 

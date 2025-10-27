@@ -250,10 +250,10 @@ body {
 .hot-topic-card {
   min-width: 100%;
   width: 100%;
-  background: white;
+  background: rgba(30, 30, 50, 0.95);
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   scroll-snap-align: start;
   flex-shrink: 0;
 }
@@ -270,7 +270,7 @@ body {
 
 .card-image {
   position: relative;
-  height: 140px;
+  height: 180px;
   overflow: hidden;
 }
 
@@ -291,24 +291,31 @@ body {
   position: absolute;
   top: 15px;
   right: 15px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
+  color: white;
+  font-size: 20px;
 }
 
 .like-btn:hover {
-  background: white;
+  background: rgba(0, 0, 0, 0.8);
+  border-color: white;
   transform: scale(1.1);
 }
 
-.like-btn.liked { color: #ff4757; }
+.like-btn.liked { 
+  color: #ff4757;
+  border-color: #ff4757;
+  background: rgba(255, 71, 87, 0.2);
+}
 
 .card-content { padding: 15px; }
 .upcoming-card .card-content { flex: 1; padding: 0; }
@@ -323,7 +330,7 @@ body {
 .event-title {
   font-size: 20px;
   font-weight: 700;
-  color: #333;
+  color: white;
   margin: 0;
 }
 
@@ -333,24 +340,28 @@ body {
   margin-bottom: 8px;
 }
 
-.attendees {
-  background: #667eea;
-  color: white;
+.attendees-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
   padding: 4px 12px;
   border-radius: 15px;
   font-size: 14px;
   font-weight: 600;
 }
 
-.event-details { margin-bottom: 20px; }
+.event-details { 
+  margin-bottom: 20px; 
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .upcoming-card .event-details { margin-bottom: 10px; }
 
 .detail-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
 }
 
@@ -360,7 +371,7 @@ body {
 }
 
 .detail-item svg {
-  color: #667eea;
+  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
 }
 

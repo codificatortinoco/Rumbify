@@ -907,6 +907,10 @@ function setupCarousel() {
 
   // Touch/Swipe functionality
   carouselController.eventHandlers.touchStart = function(e) {
+    // Ignore touch interactions on interactive elements
+    if (e.target && (e.target.closest('.like-btn') || e.target.closest('.see-more-btn'))) {
+      return;
+    }
     carouselController.isDragging = true;
     carouselController.startX = e.touches[0].clientX;
     carouselController.currentX = carouselController.startX;
@@ -970,6 +974,10 @@ function setupCarousel() {
 
   // Mouse drag functionality (for desktop)
   carouselController.eventHandlers.mouseDown = function(e) {
+    // Ignore drag when clicking interactive elements (hearts, see more)
+    if (e.target && (e.target.closest('.like-btn') || e.target.closest('.see-more-btn'))) {
+      return;
+    }
     carouselController.isDragging = true;
     carouselController.startX = e.clientX;
     carouselController.currentX = carouselController.startX;
@@ -980,6 +988,7 @@ function setupCarousel() {
     }
     
     carousel.style.transition = 'none';
+    // Do not prevent default for clicks on children; only when dragging
     e.preventDefault();
   };
 
@@ -1133,21 +1142,28 @@ function setupLikeButtons() {
   document.addEventListener('click', async (e) => {
     if (e.target.closest('.like-btn')) {
       const likeBtn = e.target.closest('.like-btn');
-      const eventId = likeBtn.dataset.eventId;
-      const isLiked = likeBtn.classList.contains('liked');
-      
-      // Optimistic UI update
-      likeBtn.classList.toggle('liked', !isLiked);
-      likeBtn.textContent = !isLiked ? '♥' : '♡';
-      const partyIdNum = Number(eventId);
-      if (!isLiked) {
+      e.preventDefault();
+      e.stopPropagation();
+      const partyIdNum = Number(likeBtn.dataset.eventId);
+      if (!Number.isFinite(partyIdNum)) return;
+
+      // Determinar estado actual desde la fuente de verdad (favoritesSetDashboard)
+      const isCurrentlyLiked = favoritesSetDashboard.has(partyIdNum);
+      const nextLiked = !isCurrentlyLiked;
+
+      // Actualización optimista basada en nextLiked
+      likeBtn.classList.toggle('liked', nextLiked);
+      likeBtn.textContent = nextLiked ? '♥' : '♡';
+      if (nextLiked) {
         favoritesSetDashboard.add(partyIdNum);
       } else {
         favoritesSetDashboard.delete(partyIdNum);
       }
+      // Sync all heart buttons to reflect the new state (hot topic and upcoming)
+      syncHeartsWithFavorites();
 
       try {
-        if (!isLiked) {
+        if (nextLiked) {
           await PartyDataService.addFavorite(partyIdNum);
         } else {
           await PartyDataService.removeFavorite(partyIdNum);
@@ -1155,13 +1171,15 @@ function setupLikeButtons() {
       } catch (error) {
         console.error('Error toggling favorite:', error);
         // Revert UI if backend fails
-        likeBtn.classList.toggle('liked', isLiked);
-        likeBtn.textContent = isLiked ? '♥' : '♡';
-        if (isLiked) {
+        likeBtn.classList.toggle('liked', isCurrentlyLiked);
+        likeBtn.textContent = isCurrentlyLiked ? '♥' : '♡';
+        if (isCurrentlyLiked) {
           favoritesSetDashboard.add(partyIdNum);
         } else {
           favoritesSetDashboard.delete(partyIdNum);
         }
+        // Re-sync hearts after revert to keep the UI consistent
+        syncHeartsWithFavorites();
       }
     }
   });

@@ -1045,32 +1045,63 @@ const getAdminMetrics = async (req, res) => {
     // Get parties created by this admin using their NAME as administrator
     const { data: parties, error } = await supabaseCli
       .from("parties")
-      .select("attendees, prices(price)")
+      .select("id, attendees")
       .eq("administrator", adminUser.name);
+
+    console.log("[getAdminMetrics] Query result:", { parties, error });
 
     if (error) {
       console.error("Error fetching admin metrics:", error);
       return res.status(500).json({ success: false, message: "Error fetching metrics" });
     }
 
+    console.log("[getAdminMetrics] Number of parties found:", parties?.length || 0);
+    console.log("[getAdminMetrics] Parties data:", parties);
+
     // Calculate total attendees
     let totalAttendees = 0;
-    parties.forEach(party => {
-      const [current, max] = party.attendees.split('/').map(Number);
-      totalAttendees += current || 0;
-    });
+    if (parties && Array.isArray(parties)) {
+      parties.forEach((party, index) => {
+        console.log(`[getAdminMetrics] Party ${index} attendees:`, party.attendees);
+        if (party.attendees && typeof party.attendees === 'string') {
+          const [current, max] = party.attendees.split('/').map(Number);
+          console.log(`[getAdminMetrics] Parsed attendees - current: ${current}, max: ${max}`);
+          totalAttendees += current || 0;
+        } else {
+          console.warn(`[getAdminMetrics] Invalid attendees format for party:`, party);
+        }
+      });
+    }
 
-    // Calculate total revenue
+    console.log("[getAdminMetrics] Total attendees calculated:", totalAttendees);
+
+    // Calculate total revenue by getting prices for all party IDs
     let totalRevenue = 0;
-    parties.forEach(party => {
-      if (party.prices && party.prices.length > 0) {
-        party.prices.forEach(price => {
-          const priceStr = price.price.replace(/[^0-9]/g, '');
-          const priceNum = parseInt(priceStr, 10) || 0;
-          totalRevenue += priceNum;
+    if (parties && Array.isArray(parties) && parties.length > 0) {
+      const partyIds = parties.map(p => p.id);
+      console.log("[getAdminMetrics] Fetching prices for party IDs:", partyIds);
+      
+      const { data: allPrices, error: pricesError } = await supabaseCli
+        .from("prices")
+        .select("party_id, price")
+        .in("party_id", partyIds);
+
+      console.log("[getAdminMetrics] Prices query result:", { allPrices, pricesError });
+
+      if (!pricesError && allPrices && Array.isArray(allPrices)) {
+        allPrices.forEach(priceObj => {
+          if (priceObj && priceObj.price && typeof priceObj.price === 'string') {
+            const priceStr = priceObj.price.replace(/[^0-9]/g, '');
+            const priceNum = parseInt(priceStr, 10) || 0;
+            totalRevenue += priceNum;
+          }
         });
+      } else {
+        console.warn("[getAdminMetrics] Error fetching prices or no prices found:", pricesError);
       }
-    });
+    }
+
+    console.log("[getAdminMetrics] Total revenue calculated:", totalRevenue);
 
     const metrics = {
       totalAttendees: totalAttendees.toLocaleString(),

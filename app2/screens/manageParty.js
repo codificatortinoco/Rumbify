@@ -76,9 +76,14 @@ export default async function renderManageParty(routeData = {}) {
           <form id="createCodesForm" class="create-codes-form">
             <div class="form-group">
               <label for="ticketType">Ticket Type</label>
-              <select id="ticketType" name="ticketType">
-                <option value="" disabled selected>Loading ticket types...</option>
-              </select>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="ticketType" name="ticketType" style="flex: 1;">
+                  <option value="" disabled selected>Loading ticket types...</option>
+                </select>
+                <button type="button" id="refreshTicketTypes" style="padding: 8px; background: #6a35d3; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Refresh ticket types">
+                  ↻
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label for="codeQuantity">Quantity</label>
@@ -170,9 +175,28 @@ export default async function renderManageParty(routeData = {}) {
 
     // Update status counts
     const party = eventDetails?.party || eventDetails; // Handle both response formats
-    const capacity = party?.capacity || 220;
+    
+    // Parse capacity from attendees field (format: "current/max")
+    let capacity = 220; // Default fallback
+    if (party?.attendees && typeof party.attendees === 'string') {
+      const attendeesParts = party.attendees.split('/');
+      if (attendeesParts.length === 2) {
+        const maxCapacity = parseInt(attendeesParts[1], 10);
+        if (!isNaN(maxCapacity) && maxCapacity > 0) {
+          capacity = maxCapacity;
+        }
+      }
+    }
+    
     const inside = guestsData.filter(g => g.status === 'Valid').length;
     const remaining = Math.max(capacity - inside, 0);
+
+    console.log('[manageParty] Capacity calculation:', {
+      attendees: party?.attendees,
+      parsedCapacity: capacity,
+      inside,
+      remaining
+    });
 
     document.getElementById('insideCount').textContent = inside;
     document.getElementById('remainingCount').textContent = remaining;
@@ -254,7 +278,21 @@ function initializeEntryCodes(partyIdFromRender) {
   // Open create codes modal
   createCodesBtn?.addEventListener('click', async () => {
     createCodesModal.style.display = 'block';
+    // Clear previous options and show loading
+    const ticketSelect = document.getElementById('ticketType');
+    if (ticketSelect) {
+      ticketSelect.innerHTML = '<option disabled selected>Loading ticket types...</option>';
+    }
     // Refresh ticket types when modal opens
+    await loadPartyPrices(partyIdFromRender);
+  });
+
+  // Refresh ticket types button
+  document.getElementById('refreshTicketTypes')?.addEventListener('click', async () => {
+    const ticketSelect = document.getElementById('ticketType');
+    if (ticketSelect) {
+      ticketSelect.innerHTML = '<option disabled selected>Refreshing ticket types...</option>';
+    }
     await loadPartyPrices(partyIdFromRender);
   });
 
@@ -426,16 +464,29 @@ async function loadPartyPrices(partyIdParam) {
   const ticketSelect = document.getElementById('ticketType');
   try {
     const partyId = partyIdParam || localStorage.getItem('selectedPartyId') || 1;
-    console.log('Loading party prices for party ID:', partyId);
+    console.log('[loadPartyPrices] Loading party prices for party ID:', partyId);
+    
     const partyResponse = await makeRequest(`/parties/${partyId}`, 'GET');
-    console.log('Party response:', partyResponse);
+    console.log('[loadPartyPrices] Party response:', partyResponse);
 
-    const partyPrices = partyResponse?.prices || [];
-    console.log('Found party prices:', Array.isArray(partyPrices) ? partyPrices.length : 0);
+    // Handle both response formats
+    const party = partyResponse?.party || partyResponse;
+    const partyPrices = party?.prices || [];
+    
+    console.log('[loadPartyPrices] Party data:', party);
+    console.log('[loadPartyPrices] Found party prices:', Array.isArray(partyPrices) ? partyPrices.length : 0);
+    console.log('[loadPartyPrices] Prices details:', partyPrices);
 
-    updateTicketTypeOptions(partyPrices);
+    if (Array.isArray(partyPrices) && partyPrices.length > 0) {
+      updateTicketTypeOptions(partyPrices);
+    } else {
+      console.warn('[loadPartyPrices] No prices found for party');
+      if (ticketSelect) {
+        ticketSelect.innerHTML = '<option disabled selected>No ticket types found for this party</option>';
+      }
+    }
   } catch (error) {
-    console.error('Error loading party prices:', error);
+    console.error('[loadPartyPrices] Error loading party prices:', error);
     if (ticketSelect) {
       ticketSelect.innerHTML = '<option disabled selected>Failed to load ticket types</option>';
     }
@@ -445,26 +496,30 @@ async function loadPartyPrices(partyIdParam) {
 function updateTicketTypeOptions(prices) {
   const ticketSelect = document.getElementById('ticketType');
   if (!ticketSelect) {
-    console.warn('Ticket type select element not found');
+    console.warn('[updateTicketTypeOptions] Ticket type select element not found');
     return;
   }
   
+  console.log('[updateTicketTypeOptions] Updating with prices:', prices);
   ticketSelect.innerHTML = '';
 
   if (Array.isArray(prices) && prices.length > 0) {
-    prices.forEach(price => {
+    prices.forEach((price, index) => {
+      console.log(`[updateTicketTypeOptions] Processing price ${index}:`, price);
       const opt = document.createElement('option');
       opt.value = String(price.id);
       opt.dataset.name = price.price_name;
       opt.textContent = `${price.price_name} - ${price.price}`;
       ticketSelect.appendChild(opt);
+      console.log(`[updateTicketTypeOptions] Added option: ${opt.textContent} (value: ${opt.value})`);
     });
+    console.log(`[updateTicketTypeOptions] Successfully added ${prices.length} ticket types`);
   } else {
     const opt = document.createElement('option');
     opt.value = '';
     opt.textContent = 'No ticket types found for this party';
     ticketSelect.appendChild(opt);
-    console.log('Using fallback ticket type options');
+    console.warn('[updateTicketTypeOptions] No valid prices provided, using fallback');
   }
 }
 

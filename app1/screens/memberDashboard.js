@@ -4,7 +4,7 @@ import { makeRequest, navigateTo, getCurrentUser } from "../app.js";
 const CONFIG = {
   USE_MOCK_DATA: false,
   API_ENDPOINTS: {
-    UPCOMING_FOR_YOU: "/parties",
+    UPCOMING_FOR_YOU: (userId) => `/users/${userId}/party-history`,
     USER_FAVORITES: (userId) => `/users/${userId}/favorites`,
     ADD_FAVORITE: (userId) => `/users/${userId}/favorites`,
     REMOVE_FAVORITE: (userId, partyId) => `/users/${userId}/favorites/${partyId}`
@@ -128,20 +128,84 @@ class MemberDataService {
     }
     
     try {
-      const response = await makeRequest(CONFIG.API_ENDPOINTS.UPCOMING_FOR_YOU, "GET");
-      
-      if (!response || !Array.isArray(response)) {
-        return this.getMockUpcomingForYou();
+      const currentUser = getCurrentUser();
+      if (!currentUser || !currentUser.id) {
+        console.warn('No user logged in, returning empty array');
+        return [];
       }
       
-      const upcomingEvents = response
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
+      console.log('[MemberDataService] Getting upcoming parties for user:', currentUser.id);
+      
+      // Get parties the user is attending from their party history
+      const response = await makeRequest(CONFIG.API_ENDPOINTS.UPCOMING_FOR_YOU(currentUser.id), "GET");
+      
+      if (!response || !response.success || !response.party_history) {
+        console.warn('Invalid response or empty party history, returning empty array');
+        return [];
+      }
+      
+      console.log('[MemberDataService] Received party history:', response.party_history.length, 'parties');
+      
+      // Filter for active parties (in the future) and convert to upcoming events format
+      const now = new Date();
+      const upcomingEvents = response.party_history
+        .filter(item => {
+          try {
+            // Parse the date from the format "dd/mm/yy • HH:mm"
+            const dateStr = item.date.split(' • ')[0]; // Get just the date part
+            const [day, month, year] = dateStr.split('/');
+            const fullYear = year.length === 2 ? `20${year}` : year;
+            const partyDate = new Date(`${fullYear}-${month}-${day}`);
+            const isFuture = partyDate >= now;
+            console.log('[MemberDataService] Party:', item.title, 'date:', partyDate, 'isFuture:', isFuture);
+            return isFuture;
+          } catch (err) {
+            console.error('[MemberDataService] Error parsing date:', item.date, err);
+            return false; // Exclude if date parsing fails
+          }
+        })
+        .map(item => {
+          // Parse date for sorting and filtering but keep original for display
+          const fullDateStr = item.date; // e.g., "15/12/24 • 22:00-06:00"
+          const [datePart, timePart] = fullDateStr.split(' • ');
+          const [day, month, year] = datePart.split('/');
+          const fullYear = year.length === 2 ? `20${year}` : year;
+          
+          return {
+            id: item.party_id || item.id,
+            title: item.title,
+            location: item.location,
+            date: fullDateStr, // Keep original format for renderUpcomingCarousel to parse
+            organizer_name: item.organizer_name || 'Admin',
+            administrator: item.administrator || 'Admin',
+            image_url: item.image,
+            image: item.image,
+            tags: item.tags || [],
+            attendees_count: item.attendees || '0',
+            max_attendees: '100',
+            // Store ISO date for easier parsing
+            date_iso: `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+          };
+        })
+        .sort((a, b) => {
+          try {
+            // Use date_iso for sorting if available
+            if (a.date_iso && b.date_iso) {
+              return new Date(a.date_iso) - new Date(b.date_iso);
+            }
+            // Fallback: try to parse the original date
+            return new Date(a.date_iso || a.date) - new Date(b.date_iso || b.date);
+          } catch {
+            return 0;
+          }
+        })
         .slice(0, 3);
       
+      console.log('[MemberDataService] Returning', upcomingEvents.length, 'upcoming parties');
       return upcomingEvents;
     } catch (error) {
       console.error("Error fetching upcoming for you:", error);
-      return this.getMockUpcomingForYou();
+      return [];
     }
   }
 
@@ -257,17 +321,48 @@ function renderUpcomingCarousel(events) {
   upcomingCache = limitedEvents;
   
   const eventsHTML = limitedEvents.map(event => {
-    // Format date for display
-    const eventDate = new Date(event.date);
-    const formattedDate = eventDate.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit'
-    });
-    const formattedTime = eventDate.toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Format date for display - handle both formats
+    let eventDate;
+    let formattedDate;
+    let formattedTime;
+    
+    try {
+      // If date_iso is available (from party history), use it
+      if (event.date_iso) {
+        eventDate = new Date(event.date_iso);
+      } else {
+        // Try to parse the original date format "dd/mm/yy • HH:mm-HH:mm"
+        const [datePart, timePart] = event.date.split(' • ');
+        if (datePart) {
+          const [day, month, year] = datePart.split('/');
+          const fullYear = year.length === 2 ? `20${year}` : year;
+          eventDate = new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+        } else {
+          eventDate = new Date(event.date);
+        }
+      }
+      
+      formattedDate = eventDate.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+      });
+      
+      // Extract time from the original format if available
+      const timeMatch = event.date.match(/(\d{1,2}:\d{2})/);
+      if (timeMatch) {
+        formattedTime = timeMatch[1];
+      } else {
+        formattedTime = eventDate.toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    } catch (err) {
+      console.error('Error formatting date:', err, event.date);
+      formattedDate = event.date.split(' • ')[0] || event.date;
+      formattedTime = '';
+    }
     
     // Format attendees count
     const attendeesCount = event.attendees_count || 0;

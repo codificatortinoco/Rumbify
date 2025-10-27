@@ -1346,6 +1346,73 @@ const getPartyDescription = async (req, res) => {
   }
 };
 
+// Get parties that the user is already attending (has used a code for)
+const getUserAttendingParties = async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    
+    if (!user_id) {
+      return res.status(400).json({
+        success: false,
+        message: "user_id is required"
+      });
+    }
+
+    console.log('[getUserAttendingParties] Getting parties for user:', user_id);
+
+    // Get all codes that the user has used
+    const { data: userCodes, error: codesError } = await supabaseCli
+      .from('Codes')
+      .select('party_id')
+      .eq('user_id', parseInt(user_id))
+      .eq('already_used', true);
+
+    if (codesError) {
+      console.error('[getUserAttendingParties] Error fetching user codes:', codesError);
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching user codes"
+      });
+    }
+
+    if (!userCodes || userCodes.length === 0) {
+      console.log('[getUserAttendingParties] No codes found for user');
+      return res.json([]);
+    }
+
+    // Get unique party IDs
+    const partyIds = [...new Set(userCodes.map(code => code.party_id))];
+    console.log('[getUserAttendingParties] Found', partyIds.length, 'unique parties');
+
+    // Get parties for these IDs
+    const { data: parties, error: partiesError } = await supabaseCli
+      .from('parties')
+      .select('*')
+      .in('id', partyIds)
+      .order('date', { ascending: true });
+
+    if (partiesError) {
+      console.error('[getUserAttendingParties] Error fetching parties:', partiesError);
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching parties"
+      });
+    }
+
+    // Enrich parties with prices
+    const enriched = await attachPricesToParties(parties || []);
+    
+    console.log('[getUserAttendingParties] Returning', enriched.length, 'parties');
+    res.json(enriched);
+  } catch (error) {
+    console.error('[getUserAttendingParties] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 module.exports = {
   getHotTopicParties,
   getUpcomingParties,
@@ -1360,5 +1427,6 @@ module.exports = {
   deleteParty,
   uploadPartyImage,
   updateParty,
-  getPartyDescription
+  getPartyDescription,
+  getUserAttendingParties
 };

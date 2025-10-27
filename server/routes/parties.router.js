@@ -14,6 +14,7 @@ const {
   uploadPartyImage,
   updateParty,
   getPartyDescription,
+  getUserAttendingParties,
 } = require("../controllers/parties.controller");
 const guestsController = require("../controllers/guests.controller");
 const { requireAdmin } = require("../middleware/auth.middleware");
@@ -23,6 +24,7 @@ const router = express.Router();
 // Public/Member routes
 router.get("/parties/hot-topic", getHotTopicParties);
 router.get("/parties/upcoming", getUpcomingParties);
+router.get("/parties/attending", getUserAttendingParties);
 router.get("/parties", getAllParties);
 router.get("/parties/search", searchParties);
 router.patch("/parties/:id/like", toggleLike);

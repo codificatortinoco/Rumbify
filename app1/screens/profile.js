@@ -56,11 +56,6 @@ export default function renderProfile() {
       <!-- Settings Menu -->
       <div class="settings-section">
         <div class="settings-list">
-          <div class="settings-item" id="notificationsBtn">
-            <img src="assets/notifications.svg" alt="Notifications" class="settings-icon" />
-            <span class="settings-text">Notifications</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
-          </div>
           <div class="settings-item" id="editProfileBtn">
             <img src="assets/edit.svg" alt="Edit Profile" class="settings-icon" />
             <span class="settings-text">Edit profile</span>
@@ -352,11 +347,6 @@ function setupProfileEventListeners() {
   });
 
   // Settings menu items
-  document.getElementById("notificationsBtn").addEventListener("click", () => {
-    console.log("Notifications clicked");
-    // TODO: Navigate to notifications settings
-  });
-
   document.getElementById("editProfileBtn").addEventListener("click", () => {
     console.log("Edit profile clicked");
     navigateTo("/edit-profile");

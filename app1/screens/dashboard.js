@@ -54,9 +54,6 @@ export default function renderDashboard() {
             <span class="member-badge">Member</span>
           </div>
         </div>
-        <div class="notification-bell">
-          Notificaciones
-        </div>
       </header>
 
       <!-- Search Section -->

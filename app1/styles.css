@@ -111,18 +111,6 @@ body {
   font-weight: 400;
 }
 
-.notification-bell {
-  color: white;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: background-color 0.3s ease;
-}
-
-.notification-bell:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
 /* Search */
 .search-section { padding: 20px; }
 
@@ -2366,30 +2354,6 @@ input:checked + .toggle-slider:before {
   font-weight: 600;
   color: white;
   margin: 0;
-}
-
-.notification-bell {
-  position: relative;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
-}
-
-.notification-bell:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.notification-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 8px;
-  height: 8px;
-  background: #ef4444;
-  border-radius: 50%;
-  border: 2px solid #1a1a2e;
 }
 
 /* Welcome Message */

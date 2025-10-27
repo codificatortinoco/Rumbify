@@ -4,7 +4,7 @@ import { authManager } from "../auth.js";
 export default function renderAdminRegister(data = {}) {
   if (authManager.isAuthenticated()) {
     if (authManager.isUserAdmin()) {
-      window.location.href = '/app2/admin-dashboard';
+      window.location.href = '/app2/my-parties';
     } else if (authManager.isUserMember()) {
       window.location.href = '/app1/dashboard';
     }
@@ -157,8 +157,8 @@ export default function renderAdminRegister(data = {}) {
         localStorage.setItem('adminUser', JSON.stringify(response.user));
         
         // Redirect to admin dashboard
-        console.log('Registration successful, navigating to admin-dashboard');
-        navigateTo("/admin-dashboard", { 
+        console.log('Registration successful, navigating to my-parties');
+        navigateTo("/my-parties", { 
           userType: "admin", 
           user: response.user 
         });

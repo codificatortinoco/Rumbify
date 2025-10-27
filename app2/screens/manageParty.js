@@ -137,7 +137,7 @@ export default async function renderManageParty(routeData = {}) {
   })();
 
   // Back to Admin Dashboard
-  document.getElementById('mp-back')?.addEventListener('click', () => navigateTo('/admin-dashboard'));
+  document.getElementById('mp-back')?.addEventListener('click', () => navigateTo('/my-parties'));
   document.getElementById('seeMoreBtn')?.addEventListener('click', () => navigateTo('/guests-summary', { partyId }));
 
   // Fetch guests from backend (Supabase via server)

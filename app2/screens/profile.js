@@ -458,7 +458,7 @@ function setupProfileEventListeners() {
   // Settings menu items
   document.getElementById("statisticsBtn").addEventListener("click", () => {
     console.log("Statistics clicked");
-    navigateTo("/admin-dashboard");
+    navigateTo("/my-parties");
   });
 
   document.getElementById("editProfileBtn").addEventListener("click", () => {

@@ -13,8 +13,8 @@ export default function renderAdminDashboard(data = {}) {
 
   // Protección adicional: asegurar que el admin nunca pueda acceder a app1
   if (window.location.href.includes('/app1')) {
-    console.log('Admin detected on app1, redirecting to admin-dashboard');
-    window.location.href = '/app2/admin-dashboard';
+    console.log('Admin detected on app1, redirecting to my-parties');
+    window.location.href = '/app2/my-parties';
     return;
   }
 

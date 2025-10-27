@@ -19,7 +19,15 @@ function clearScripts() {
 
 function getInitialRoute() {
   const path = window.location.pathname;
-  const cleanPath = path.replace('/app2', '') || '/admin-login';
+  let cleanPath = path.replace('/app2', '') || '/admin-login';
+  
+  // If admin user is accessing admin-dashboard, redirect to my-parties
+  if (cleanPath === '/admin-dashboard' && authManager.isUserAdmin()) {
+    cleanPath = '/my-parties';
+    // Update the URL in the browser to reflect the redirect
+    window.history.replaceState({ path: cleanPath, data: {} }, '', '/app2/my-parties');
+  }
+  
   const params = new URLSearchParams(window.location.search);
   const data = {};
   // Recuperar contexto de edición para create-party desde query/localStorage

@@ -10,10 +10,41 @@
 .manage-party .status-card { margin: 12px 16px; padding: 12px; background: rgba(255,255,255,0.06); border-radius: 10px; }
 .status-header { display:flex; align-items:center; justify-content:space-between; }
 .live-dot { color: #2ecc71; font-weight: 700; }
+.live-dot.ended { color: #e74c3c; }
+.live-dot:not(.live):not(.ended) { color: #999; }
 .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px; }
 .status-item { text-align: center; }
 .status-number { font-size: 18px; font-weight: 700; }
 .status-label { font-size: 12px; color: #bbb; }
+
+/* Party Status Indicator */
+.party-status-indicator {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  border: 1px solid #2ecc71;
+}
+
+.status-badge.inactive {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+}
 
 .guest-list { margin: 12px 16px; }
 .guest-list-header { display:flex; align-items:center; justify-content:space-between; }

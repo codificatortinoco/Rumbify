@@ -331,7 +331,12 @@ function displayParties(parties) {
     return;
   }
 
-  eventsList.innerHTML = parties.map(party => `
+  eventsList.innerHTML = parties.map(party => {
+    const isActive = party.active !== false; // Default to true if not present
+    const statusClass = isActive ? 'active' : 'inactive';
+    const statusText = isActive ? 'Active' : 'Inactive';
+    
+    return `
     <div class="event-card">
       <div class="event-image">
         <img src="${party.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop'}" alt="${party.title}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop';" />
@@ -342,7 +347,7 @@ function displayParties(parties) {
         <p class="event-date">${party.date}</p>
         <p class="event-attendees">${party.attendees} attendees</p>
         <div class="event-actions">
-          <button class="status-btn ${getStatusClass(party.status)}">${getStatusText(party.status)}</button>
+          <button class="status-btn ${statusClass}">${statusText}</button>
           <button class="manage-btn" onclick="handleManageParty(${party.id})">Manage</button>
         </div>
       </div>
@@ -355,7 +360,8 @@ function displayParties(parties) {
         </button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function displayMockParties() {

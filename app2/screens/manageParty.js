@@ -27,7 +27,7 @@ export default async function renderManageParty(routeData = {}) {
       <section class="status-card">
         <div class="status-header">
           <h3>Current Status</h3>
-          <span class="live-dot">• Live</span>
+          <span class="live-dot" id="partyStatusDot">• Loading...</span>
         </div>
         <div class="status-grid">
           <div class="status-item">
@@ -42,6 +42,9 @@ export default async function renderManageParty(routeData = {}) {
             <div class="status-number" id="capacityCount">0</div>
             <div class="status-label">Capacity</div>
           </div>
+        </div>
+        <div class="party-status-indicator" id="partyStatusIndicator">
+          <span class="status-badge" id="statusBadge">Loading...</span>
         </div>
       </section>
 
@@ -148,21 +151,53 @@ export default async function renderManageParty(routeData = {}) {
     let guestsData = [];
 
     const eventDetails = await makeRequest(`/parties/${partyId}`, 'GET');
+    console.log('[manageParty] Event details response:', eventDetails);
+    
     if (adminEmail) {
-      const guestsResponse = await makeRequest(`/parties/${partyId}/guests`, 'GET', { email: adminEmail });
-      guestsData = Array.isArray(guestsResponse) ? guestsResponse : (guestsResponse?.guests || []);
+      try {
+        // Don't pass email in body - it's already sent via x-admin-email header by makeRequest
+        const guestsResponse = await makeRequest(`/parties/${partyId}/guests`, 'GET');
+        guestsData = Array.isArray(guestsResponse) ? guestsResponse : (guestsResponse?.guests || []);
+        console.log('[manageParty] Guests data:', guestsData);
+      } catch (guestError) {
+        console.error('[manageParty] Error fetching guests:', guestError);
+        // Continue with empty guests list if fetch fails
+        guestsData = [];
+      }
     } else {
-      console.warn('No admin email found; skipping guests fetch');
+      console.warn('[manageParty] No admin email found; skipping guests fetch');
     }
 
     // Update status counts
-    const capacity = eventDetails?.capacity || 220;
+    const party = eventDetails?.party || eventDetails; // Handle both response formats
+    const capacity = party?.capacity || 220;
     const inside = guestsData.filter(g => g.status === 'Valid').length;
     const remaining = Math.max(capacity - inside, 0);
 
     document.getElementById('insideCount').textContent = inside;
     document.getElementById('remainingCount').textContent = remaining;
     document.getElementById('capacityCount').textContent = capacity;
+
+    // Update party active status
+    // Check actual active status from backend - it will be computed based on whether date has passed
+    const isActive = typeof party?.active === 'boolean' ? party.active : true; // Default to active if not set
+    const statusBadge = document.getElementById('statusBadge');
+    const statusDot = document.getElementById('partyStatusDot');
+    
+    console.log('[manageParty] Event details:', eventDetails);
+    console.log('[manageParty] Party data:', party);
+    console.log('[manageParty] Active field:', party?.active, 'Type:', typeof party?.active);
+    console.log('[manageParty] Final isActive:', isActive, 'for party date:', party?.date);
+    
+    if (statusBadge) {
+      statusBadge.textContent = isActive ? 'Active' : 'Inactive';
+      statusBadge.className = `status-badge ${isActive ? 'active' : 'inactive'}`;
+    }
+    
+    if (statusDot) {
+      statusDot.textContent = isActive ? '• Live' : '• Ended';
+      statusDot.className = `live-dot ${isActive ? 'live' : 'ended'}`;
+    }
 
     // Render guest list
     const listEl = document.getElementById('guestList');
@@ -177,7 +212,18 @@ export default async function renderManageParty(routeData = {}) {
       </li>
     `).join('');
   } catch (err) {
-    console.error('Error fetching guests:', err);
+    console.error('[manageParty] Error loading party data:', err);
+    // Show error state in UI
+    const statusDot = document.getElementById('partyStatusDot');
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusDot) {
+      statusDot.textContent = '• Error';
+      statusDot.className = 'live-dot ended';
+    }
+    if (statusBadge) {
+      statusBadge.textContent = 'Error';
+      statusBadge.className = 'status-badge inactive';
+    }
   }
 
   // Bottom nav behavior

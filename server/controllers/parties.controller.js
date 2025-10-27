@@ -442,7 +442,8 @@ const getEventDetails = async (req, res) => {
 
       const displayPrice = (prices && prices.length) ? prices[0]?.price : data.price;
       const parsed = parseDateAndHour(data.date);
-      console.log("[getEventDetails] id:", data.id, "date:", data.date, "parsed:", parsed);
+      const isActive = isPartyActive(data.date);
+      console.log("[getEventDetails] id:", data.id, "date:", data.date, "parsed:", parsed, "isActive:", isActive);
       return res.json({ 
         success: true, 
         party: { 
@@ -452,7 +453,8 @@ const getEventDetails = async (req, res) => {
           description: descriptionText, 
           date_iso: parsed.iso, 
           hour_24: parsed.hour,
-          administrator_image: administratorImage
+          administrator_image: administratorImage,
+          active: isActive
         } 
       });
     }
@@ -568,6 +570,44 @@ function computeCategoryAuto(attendees, isoDate) {
   if (days !== null && days >= 0) return "upcoming";
   // Si la fecha ya pasó y no es hot, marcamos como hot-topic para no dejar sin categoría
   return "hot-topic";
+}
+
+// Check if party date has passed (returns true if party is active/future)
+function isPartyActive(partyDate) {
+  if (!partyDate) {
+    console.log('[isPartyActive] No date provided, defaulting to active');
+    return true; // Consider active if no date
+  }
+  
+  try {
+    console.log('[isPartyActive] Checking date:', partyDate);
+    const parsed = parseDateAndHour(partyDate);
+    console.log('[isPartyActive] Parsed date:', parsed);
+    
+    if (!parsed.iso) {
+      console.log('[isPartyActive] Date could not be parsed, defaulting to active');
+      return true; // Consider active if date can't be parsed
+    }
+    
+    const partyDateObj = new Date(parsed.iso);
+    if (isNaN(partyDateObj.getTime())) {
+      console.log('[isPartyActive] Invalid date object, defaulting to active');
+      return true; // Invalid date, consider active
+    }
+    
+    const now = new Date();
+    // Compare dates (without time) - party is active if date is today or future
+    partyDateObj.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+    
+    const isActive = partyDateObj >= now;
+    console.log('[isPartyActive] Party date:', partyDateObj, 'Now:', now, 'Is active:', isActive);
+    
+    return isActive; // Active if party date is today or in the future
+  } catch (error) {
+    console.error('[isPartyActive] Error checking if party is active:', error);
+    return true; // Default to active if there's an error
+  }
 }
 const createParty = async (req, res) => {
   try {
@@ -964,9 +1004,10 @@ const getAdminParties = async (req, res) => {
 
     console.log("[getAdminParties] Found parties:", parties?.length || 0);
 
-    // Add status based on category and other factors
+    // Add status based on active status and category
     const partiesWithStatus = parties.map(party => ({
       ...party,
+      active: isPartyActive(party.date),
       status: (party.category === 'hot-topic' || party.category === 'upcoming') ? 'active' : 'inactive'
     }));
 

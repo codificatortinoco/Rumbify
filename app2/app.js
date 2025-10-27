@@ -164,7 +164,10 @@ async function makeRequest(url, method, body, extraHeaders = {}) {
   const resp = await fetch(endpoint, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    // Don't send body for GET/HEAD requests (not allowed by HTTP spec)
+    body: (body !== undefined && !['GET', 'HEAD'].includes(method.toUpperCase())) 
+      ? JSON.stringify(body) 
+      : undefined,
   });
 
   const contentType = (resp.headers.get('content-type') || '').toLowerCase();

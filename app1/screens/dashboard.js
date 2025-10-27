@@ -215,7 +215,16 @@ class PartyDataService {
     
     try {
       const response = await makeRequest(`${CONFIG.API_ENDPOINTS.LIKE}/${eventId}`, "GET");
-      return response;
+      console.log('getEventDetails response:', response);
+      
+      // Handle response format - could be { success: true, party: {...} } or just the party object
+      const partyData = response?.party || response;
+      
+      if (!partyData) {
+        throw new Error("No party data received");
+      }
+      
+      return partyData;
     } catch (error) {
       console.error("Error fetching event details:", error);
       throw new Error("No se pudo obtener los detalles del evento. Verifica que Supabase esté configurado correctamente.");
@@ -1045,14 +1054,25 @@ function setupEventDetailsNavigation() {
       const seeMoreBtn = e.target.closest('.see-more-btn');
       const eventId = seeMoreBtn.dataset.eventId;
       
+      console.log('[setupEventDetailsNavigation] Button clicked, eventId:', eventId);
+      
       if (eventId) {
         try {
           // Get event details and navigate
+          console.log('[setupEventDetailsNavigation] Fetching event details for ID:', eventId);
           const eventDetails = await PartyDataService.getEventDetails(eventId);
-          navigateTo("/event-details", eventDetails);
+          console.log('[setupEventDetailsNavigation] Event details received:', eventDetails);
+          
+          if (eventDetails) {
+            navigateTo("/event-details", eventDetails);
+          } else {
+            throw new Error('No event details received from API');
+          }
         } catch (error) {
-          console.error('Error getting event details:', error);
+          console.error('[setupEventDetailsNavigation] Error getting event details:', error);
+          console.error('[setupEventDetailsNavigation] Error stack:', error.stack);
           // Fallback to mock data
+          console.log('[setupEventDetailsNavigation] Falling back to mock data for ID:', eventId);
           const mockEvent = PartyDataService.getMockEventDetails(eventId);
           navigateTo("/event-details", mockEvent);
         }

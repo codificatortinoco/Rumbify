@@ -2,7 +2,7 @@ import { makeRequest, navigateTo } from "../app.js";
 
 // Configuration for data source
 const CONFIG = {
-  USE_MOCK_DATA: true, // Set to false when Supabase is ready
+  USE_MOCK_DATA: false,
   API_ENDPOINTS: {
     EVENT_DETAILS: "/parties"
   }
@@ -10,6 +10,20 @@ const CONFIG = {
 
 export default function renderEventDetails(eventData) {
   const app = document.getElementById("app");
+  
+  // Ensure eventData has required fields with defaults
+  const safeEventData = {
+    title: eventData?.title || "Party",
+    attendees: eventData?.attendees || "0/100",
+    location: eventData?.location || "Location TBD",
+    date: eventData?.date || "TBD",
+    administrator: eventData?.administrator || "Organizer",
+    image: eventData?.image || "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=200&fit=crop",
+    tags: Array.isArray(eventData?.tags) && eventData.tags.length > 0 ? eventData.tags : ["General"],
+    prices: Array.isArray(eventData?.prices) && eventData.prices.length > 0 ? eventData.prices : [],
+    price: eventData?.price,
+    liked: eventData?.liked || false
+  };
 
   function renderPriceListHTML(evt) {
     const pricesList = Array.isArray(evt?.prices) && evt.prices.length
@@ -32,25 +46,25 @@ export default function renderEventDetails(eventData) {
           <img src="assets/arrow.svg" alt="Back" class="back-icon" />
         </button>
         <h1 class="event-title-header">Party Details</h1>
-        <span class="attendees-count">${eventData.attendees}</span>
+        <span class="attendees-count">${safeEventData.attendees}</span>
       </header>
 
       <!-- Event Overview -->
       <div class="event-overview">
-        <h2 class="main-event-title">${eventData.title}</h2>
+        <h2 class="main-event-title">${safeEventData.title}</h2>
         
         <div class="organizer-info">
           <div class="organizer-avatar">
             <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" alt="Organizer" />
           </div>
           <div class="organizer-details">
-            <div class="organizer-name">${eventData.administrator}</div>
+            <div class="organizer-name">${safeEventData.administrator}</div>
             <div class="organizer-phone">+57 3016531423</div>
           </div>
         </div>
 
         <div class="event-tags">
-          ${eventData.tags.map((tag, index) => `
+          ${safeEventData.tags.map((tag, index) => `
             <div class="event-tag">
               ${index === 0 ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'}
               ${tag}
@@ -62,21 +76,21 @@ export default function renderEventDetails(eventData) {
       <!-- Event Image -->
       <div class="event-image-section">
         <div class="event-image">
-          <img src="${eventData.image}" alt="${eventData.title}" />
+          <img src="${safeEventData.image}" alt="${safeEventData.title}" />
         </div>
       </div>
 
       <!-- Tickets and Location -->
       <div class="price-location">
         <div class="prices-list">
-          ${renderPriceListHTML(eventData)}
+          ${renderPriceListHTML(safeEventData)}
         </div>
         <div class="location-info">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <span>${eventData.location}</span>
+          <span>${safeEventData.location}</span>
         </div>
         <p class="event-description">We do not need to be in the 31st of December to party as God intended.</p>
       </div>

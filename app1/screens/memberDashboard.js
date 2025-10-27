@@ -466,8 +466,19 @@ function setupActionButtons() {
       }
       
       if (partyId) {
-        console.log('Navigating to party details:', partyId);
-        navigateTo(`/party-details/${partyId}`);
+        console.log('Navigating to event details:', partyId);
+        try {
+          // Get event details from the API
+          const response = await makeRequest(`/parties/${partyId}`, 'GET');
+          if (response && response.success && response.party) {
+            console.log('Event data received:', response.party);
+            navigateTo("/event-details", response.party);
+          } else {
+            console.error('No event data received or invalid response:', response);
+          }
+        } catch (error) {
+          console.error('Error fetching event details:', error);
+        }
       }
     }
 
@@ -751,6 +762,7 @@ function showModalSuccess(message) {
     successDiv.style.display = 'none';
   }, 2000);
 }
+
 
 export function cleanupMemberDashboard() {
   memberDashboardController.isActive = false;

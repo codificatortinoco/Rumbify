@@ -137,8 +137,8 @@ function renderRoute(currentRoute) {
 
 async function makeRequest(url, method, body, extraHeaders = {}) {
   console.log('[makeRequest] Making request:', { url, method, body });
-  
-  const BASE_URL = window.location.origin; // same-origin
+
+  const BASE_URL = "https://my-backend-ochre.vercel.app"; 
   const endpoint = `${BASE_URL}${url}`;
   
   console.log('[makeRequest] Full endpoint:', endpoint);

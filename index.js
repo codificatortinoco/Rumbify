@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const { createServer } = require("http");
+const cors = require("cors");
+
 
 const usersRouter = require("./server/routes/users.router");
 const partiesRouter = require("./server/routes/parties.router");
@@ -10,6 +12,9 @@ const codesRouter = require("./server/routes/codes.router");
 const { initSocketInstance } = require("./server/services/socket.service");
 
 const PORT = Number(process.env.PORT) || 5050;
+
+//cors
+app.use(cors());
 
 const app = express();
 const httpServer = createServer(app);

@@ -1,5 +1,5 @@
 //const { Server } = require("socket.io");
-const supabase = require(".supabase.service");
+const supabase = require("./supabase.service");
 const { channel } = require("./supabase.service");
 
 let io;

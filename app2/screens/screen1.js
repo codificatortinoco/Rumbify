@@ -1,4 +1,4 @@
-import { navigateTo, socket } from "../app.js";
+import { navigateTo, channel } from "../app.js";
 
 export default function renderScreen1() {
   const app = document.getElementById("app");
@@ -9,7 +9,11 @@ export default function renderScreen1() {
       </div>
       `;
 
-  socket.on("next-screen", (data) => {
-    navigateTo("/screen2", { name: "Hola" });
-  });
+ // socket.on("next-screen", (data) => {
+ //   navigateTo("/screen2", { name: "Hola" });
+ // });
+
+channel.on("broadcast", { event: "next-screen" }, (data) => {
+
+});
 }

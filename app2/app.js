@@ -11,7 +11,12 @@ import renderEditProfile from "./screens/editProfile.js";
 import renderMyParties from "./screens/myParties.js";
 import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.js";
 
-const socket = io("/", { path: "/real-time" });
+//const socket = io("/", { path: "/real-time" });
+const SUPABASE_URL = "https://brqucbjfhlarzrspgoto.supabase.co/"; // Placeholder, will be set dynamically
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycXVjYmpmaGxhcnpyc3Bnb3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODgxMTUsImV4cCI6MjA3NDQ2NDExNX0.0AoeSubn25i8GfJLq5kTJ9JIMrL9Y3YvqYL3RnsHoyg"; // Placeholder, will be set dynamically
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const channel = supabase.channel("realtime-events");
 
 function clearScripts() {
   document.getElementById("app").innerHTML = "";
@@ -144,7 +149,7 @@ function renderRoute(currentRoute) {
 
 // Centralized request helper that always targets current origin to avoid CORS
 async function makeRequest(url, method, body, extraHeaders = {}) {
-  const BASE_URL = window.location.origin; // same-origin to avoid CORS issues
+  const BASE_URL = "https://my-backend-ochre.vercel.app/"; // same-origin to avoid CORS issues
   const endpoint = `${BASE_URL}${url}`;
 
   // Attach admin email header automatically if present
@@ -187,4 +192,4 @@ async function makeRequest(url, method, body, extraHeaders = {}) {
   }
 }
 
-export { navigateTo, socket, makeRequest };
+export { navigateTo, channel, makeRequest };

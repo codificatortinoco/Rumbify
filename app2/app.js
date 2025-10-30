@@ -1,3 +1,4 @@
+import renderWelcome from "./screens/welcome.js";
 import renderScreen1 from "./screens/screen1.js";
 import renderScreen2 from "./screens/screen2.js";
 import renderAdminLogin from "./screens/adminLogin.js";
@@ -24,7 +25,7 @@ function clearScripts() {
 
 function getInitialRoute() {
   const path = window.location.pathname;
-  let cleanPath = path.replace('/app2', '') || '/admin-login';
+  let cleanPath = path.replace('/app2', '') || '/welcome';
   
   // If admin user is accessing admin-dashboard, redirect to my-parties
   if (cleanPath === '/admin-dashboard' && authManager.isUserAdmin()) {
@@ -93,6 +94,11 @@ function renderRoute(currentRoute) {
   }
 
   switch (currentRoute.path) {
+    case "/welcome":
+    case "/":
+      clearScripts();
+      renderWelcome(currentRoute?.data);
+      break;
     case "/admin-login":
       clearScripts();
       renderAdminLogin(currentRoute?.data);
@@ -138,12 +144,9 @@ function renderRoute(currentRoute) {
       renderMyParties(currentRoute?.data);
       break;
     default:
-      // Verificar si el usuario es admin antes de redirigir a app1
-      if (authManager.isUserAdmin()) {
-        window.location.href = '/app2/my-parties';
-      } else {
-        window.location.href = '/app1/welcome';
-      }
+      // Default to welcome screen
+      clearScripts();
+      renderWelcome({});
   }
 }
 

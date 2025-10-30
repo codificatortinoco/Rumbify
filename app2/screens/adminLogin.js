@@ -135,6 +135,6 @@ export default function renderAdminLogin(data = {}) {
 
   function handleBackToWelcome(e) {
     e.preventDefault();
-    window.location.href = '/app1/welcome';
+    navigateTo("/welcome");
   }
 }

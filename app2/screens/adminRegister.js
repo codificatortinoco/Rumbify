@@ -183,8 +183,8 @@ export default function renderAdminRegister(data = {}) {
 
   function handleBackToWelcome(e) {
     e.preventDefault();
-    // Navigate back to main app (app1) welcome screen
-    window.location.href = '/app1/welcome';
+    // Navigate back to app2 welcome screen
+    navigateTo("/welcome");
   }
   
   // Add test function for debugging registration

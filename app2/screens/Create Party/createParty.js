@@ -185,7 +185,8 @@ export default function renderCreateParty(data = {}) {
   // Prefill helpers for edit mode
   const prefillFromParty = async (partyId) => {
     try {
-      const details = await makeRequest(`/parties/${partyId}`, 'GET');
+      const resp = await makeRequest(`/parties/${partyId}`, 'GET');
+      const details = (resp && resp.party) ? resp.party : resp;
       if (!details) return;
       // Title
       const titleEl = document.getElementById('party-title');

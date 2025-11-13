@@ -384,7 +384,10 @@ async function loadPartyPrices(partyIdParam) {
     const partyResponse = await makeRequest(`/parties/${partyId}`, 'GET');
     console.log('Party response:', partyResponse);
 
-    const partyPrices = partyResponse?.prices || [];
+    // The backend returns { success, party: { ..., prices: [...] } }
+    // Safely extract prices from the nested party object, with a fallback
+    const partyObj = partyResponse?.party || partyResponse;
+    const partyPrices = partyObj?.prices || [];
     console.log('Found party prices:', Array.isArray(partyPrices) ? partyPrices.length : 0);
 
     updateTicketTypeOptions(partyPrices);

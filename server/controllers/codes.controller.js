@@ -1,4 +1,10 @@
 const { supabaseCli } = require('../db/users.db');
+const cryptoNode = require('crypto');
+
+// Ephemeral cache for preview codes (not persisted). Key: 6-char code
+// Value: { partyId: number, priceId: number, createdAt: number }
+const previewCodeCache = new Map();
+const PREVIEW_TTL_MS = 1000 * 60 * 60 * 6; // 6 hours
 
 /**
  * Test database connection and codes table
@@ -75,14 +81,37 @@ const testConnection = async (req, res) => {
 };
 
 /**
+ * Compose a code embedding party and price identifiers.
+ * Format: P<partyId>-T<priceId>-<random>
+ */
+function embedCode(partyId, priceId, rawCode) {
+  return `P${parseInt(partyId)}-T${parseInt(priceId)}-${String(rawCode)}`;
+}
+
+/**
+ * Generate a short uppercase alphanumeric code of fixed length (default 6)
+ */
+function generateShortCode(length = 6) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  // Prefer Node's crypto for uniform randomness
+  for (let i = 0; i < length; i++) {
+    const idx = cryptoNode.randomInt(0, chars.length);
+    result += chars[idx];
+  }
+  return result;
+}
+
+/**
  * Generate unique entry codes for a party
+ * Supports non-persist preview generation when `persist: false` is passed in body.
  */
 const generateCodes = async (req, res) => {
   try {
     console.log('[generateCodes] Starting code generation...');
     console.log('[generateCodes] Supabase client available:', !!supabaseCli);
     
-    const { party_id, price_id, price_name, quantity } = req.body;
+    const { party_id, price_id, price_name, quantity, persist } = req.body;
     
     console.log('[generateCodes] Request body:', req.body);
     console.log('[generateCodes] Parsed values:', { party_id, price_id, price_name, quantity });
@@ -98,6 +127,68 @@ const generateCodes = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Quantity must be between 1 and 100"
+      });
+    }
+
+    // Resolve price_id (prefer provided, else look up by name)
+    let resolvedPriceId = price_id ? parseInt(price_id) : null;
+
+    if (!resolvedPriceId) {
+      const { data: priceRow, error: priceLookupErr } = await supabaseCli
+        .from('prices')
+        .select('id, party_id')
+        .eq('party_id', parseInt(party_id))
+        .eq('price_name', String(price_name))
+        .single();
+
+      if (priceLookupErr) {
+        console.error('[generateCodes] Price lookup error:', priceLookupErr);
+        return res.status(500).json({ success: false, message: 'Error resolving ticket type' });
+      }
+      if (!priceRow) {
+        return res.status(404).json({ success: false, message: 'Ticket type not found for this party' });
+      }
+      resolvedPriceId = priceRow.id;
+    } else {
+      // Validate that the provided price_id belongs to the party
+      const { data: priceCheck, error: priceCheckErr } = await supabaseCli
+        .from('prices')
+        .select('id, party_id')
+        .eq('id', resolvedPriceId)
+        .single();
+      if (priceCheckErr) {
+        console.error('[generateCodes] Price check error:', priceCheckErr);
+        return res.status(500).json({ success: false, message: 'Error verifying ticket type' });
+      }
+      if (!priceCheck || String(priceCheck.party_id) !== String(party_id)) {
+        return res.status(400).json({ success: false, message: 'Ticket type does not belong to this party' });
+      }
+    }
+
+    // If caller requests preview/non-persist, generate 6-char codes and cache metadata (no DB writes)
+    if (persist === false) {
+      console.log('[generateCodes] Persist=false: generating SHORT preview codes (6 chars) without saving');
+      const codes = [];
+      for (let i = 0; i < quantity; i++) {
+        let code;
+        // ensure uniqueness within this batch and current cache
+        do {
+          code = generateShortCode(6);
+        } while (previewCodeCache.has(code) || codes.includes(code));
+
+        // store ephemeral mapping
+        previewCodeCache.set(code, {
+          partyId: parseInt(party_id, 10),
+          priceId: parseInt(resolvedPriceId, 10),
+          createdAt: Date.now()
+        });
+        codes.push(code);
+      }
+      return res.json({
+        success: true,
+        message: `Successfully generated ${codes.length} codes (preview, not saved, 6-char)`,
+        codes,
+        saved_codes: []
       });
     }
 
@@ -188,41 +279,6 @@ const generateCodes = async (req, res) => {
 
     console.log('[generateCodes] Generated codes:', codes.length);
 
-    // Resolve price_id (prefer provided, else look up by name)
-    let resolvedPriceId = price_id ? parseInt(price_id) : null;
-
-    if (!resolvedPriceId) {
-      const { data: priceRow, error: priceLookupErr } = await supabaseCli
-        .from('prices')
-        .select('id, party_id')
-        .eq('party_id', parseInt(party_id))
-        .eq('price_name', String(price_name))
-        .single();
-
-      if (priceLookupErr) {
-        console.error('[generateCodes] Price lookup error:', priceLookupErr);
-        return res.status(500).json({ success: false, message: 'Error resolving ticket type' });
-      }
-      if (!priceRow) {
-        return res.status(404).json({ success: false, message: 'Ticket type not found for this party' });
-      }
-      resolvedPriceId = priceRow.id;
-    } else {
-      // Validate that the provided price_id belongs to the party
-      const { data: priceCheck, error: priceCheckErr } = await supabaseCli
-        .from('prices')
-        .select('id, party_id')
-        .eq('id', resolvedPriceId)
-        .single();
-      if (priceCheckErr) {
-        console.error('[generateCodes] Price check error:', priceCheckErr);
-        return res.status(500).json({ success: false, message: 'Error verifying ticket type' });
-      }
-      if (!priceCheck || String(priceCheck.party_id) !== String(party_id)) {
-        return res.status(400).json({ success: false, message: 'Ticket type does not belong to this party' });
-      }
-    }
-
     // Double-check uniqueness before insertion (additional safety measure)
     if (!codesTableMissing) {
       const finalCheck = await supabaseCli
@@ -243,7 +299,7 @@ const generateCodes = async (req, res) => {
     if (!codesTableMissing) {
       const codeRecords = codes.map(code => ({
         party_id: parseInt(party_id),
-        code: code,
+        code: embedCode(party_id, resolvedPriceId, code),
         price_id: resolvedPriceId,
         already_used: false,
         user_id: null // Will be set when code is used
@@ -276,7 +332,7 @@ const generateCodes = async (req, res) => {
       return res.json({
         success: true,
         message: `Successfully generated ${codes.length} codes`,
-        codes: codes,
+        codes: codeRecords.map(r => r.code),
         saved_codes: insertedCodes
       });
     } else {
@@ -495,27 +551,104 @@ const verifyAndAddParty = async (req, res) => {
     console.log('[verifyAndAddParty] Code:', code);
     console.log('[verifyAndAddParty] User ID:', user_id);
     
-    if (!code || !user_id) {
-      console.log('[verifyAndAddParty] Missing required fields');
+    if (!code) {
+      console.log('[verifyAndAddParty] Missing code');
       return res.status(400).json({
         success: false,
-        message: "Code and user_id are required"
+        message: "Code is required"
       });
     }
 
     // First, verify the code exists and is not used
-    const { data: codeRecord, error: codeError } = await supabaseCli
+    let { data: codeRecord, error: codeError } = await supabaseCli
       .from('Codes')
       .select('*')
       .eq('code', code)
       .single();
 
     if (codeError || !codeRecord) {
-      console.log('[verifyAndAddParty] Code not found:', code);
-      return res.status(404).json({
-        success: false,
-        message: "Invalid code"
-      });
+      console.log('[verifyAndAddParty] Code not found in DB. Checking preview cache and embedded format:', code);
+
+      // First, try ephemeral preview cache for short 6-char codes
+      let parsedPartyId = null;
+      let parsedPriceId = null;
+      const cached = previewCodeCache.get(String(code));
+      if (cached) {
+        // Check TTL
+        if (Date.now() - cached.createdAt > PREVIEW_TTL_MS) {
+          console.warn('[verifyAndAddParty] Preview code expired:', code);
+          previewCodeCache.delete(String(code));
+        } else {
+          parsedPartyId = parseInt(cached.partyId, 10);
+          parsedPriceId = parseInt(cached.priceId, 10);
+        }
+      }
+
+      // If not found in cache, try to parse embedded code: P<partyId>-T<priceId>-<random>
+      if (parsedPartyId == null || parsedPriceId == null) {
+        const match = /^P(\d+)-T(\d+)-([A-Za-z0-9]+)$/.exec(String(code));
+        if (!match) {
+          return res.status(404).json({ success: false, message: 'Invalid code' });
+        }
+        parsedPartyId = parseInt(match[1], 10);
+        parsedPriceId = parseInt(match[2], 10);
+      }
+
+      // Validate party exists and capacity is available BEFORE inserting code
+      const { data: partyCheck, error: partyCheckError } = await supabaseCli
+        .from('parties')
+        .select('*')
+        .eq('id', parsedPartyId)
+        .single();
+      if (partyCheckError || !partyCheck) {
+        return res.status(404).json({ success: false, message: 'Party not found' });
+      }
+      // Capacity check based on reserved codes count
+      try {
+        const attStr = partyCheck.attendees || '0/100';
+        const parts = String(attStr).split('/');
+        const max = parseInt(parts[1], 10) || 100;
+        const { count, error: cntErr } = await supabaseCli
+          .from('Codes')
+          .select('id', { count: 'exact', head: true })
+          .eq('party_id', parsedPartyId)
+          .eq('already_used', true);
+        const reserved = cntErr ? 0 : (count || 0);
+        if (reserved >= max) {
+          return res.status(400).json({ success: false, message: 'Event is full' });
+        }
+      } catch (_) {}
+
+      // Validate price belongs to party
+      const { data: priceCheck, error: priceCheckErr } = await supabaseCli
+        .from('prices')
+        .select('id, party_id')
+        .eq('id', parsedPriceId)
+        .single();
+      if (priceCheckErr || !priceCheck || String(priceCheck.party_id) !== String(parsedPartyId)) {
+        return res.status(400).json({ success: false, message: 'Price information not found' });
+      }
+
+      // Insert the code now, marking it as NOT used yet; will mark as used after full verification
+      const { data: inserted, error: insertErr } = await supabaseCli
+        .from('Codes')
+        .insert({
+          party_id: parsedPartyId,
+          code: String(code),
+          price_id: parsedPriceId,
+          already_used: false,
+          user_id: user_id || null
+        })
+        .select('*')
+        .single();
+
+      if (insertErr || !inserted) {
+        console.error('[verifyAndAddParty] Failed to insert embedded code:', insertErr);
+        return res.status(500).json({ success: false, message: 'Error processing code' });
+      }
+
+      // Keep in cache until we mark as used successfully later
+      codeRecord = inserted;
     }
 
     if (codeRecord.already_used) {
@@ -556,73 +689,168 @@ const verifyAndAddParty = async (req, res) => {
       });
     }
 
-    // Verify user exists
-    const { data: user, error: userError } = await supabaseCli
-      .from('users')
-      .select('id, name')
-      .eq('id', user_id)
-      .single();
+    // Verify user exists only if provided
+    let userObj = null;
+    if (user_id) {
+      const { data: user, error: userError } = await supabaseCli
+        .from('users')
+        .select('id, name')
+        .eq('id', user_id)
+        .single();
 
-    if (userError || !user) {
-      console.log('[verifyAndAddParty] User not found:', user_id);
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      if (userError || !user) {
+        console.log('[verifyAndAddParty] User not found:', user_id);
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
+      userObj = user;
     }
+
+    // Early capacity check based on reserved codes to avoid marking codes as used when event is full
+    try {
+      const attStrEarly = party.attendees || '0/100';
+      const partsEarly = String(attStrEarly).split('/');
+      const maxEarly = parseInt(partsEarly[1], 10) || 100;
+      const { count, error: cntErr } = await supabaseCli
+        .from('Codes')
+        .select('id', { count: 'exact', head: true })
+        .eq('party_id', party.id)
+        .eq('already_used', true);
+      const reservedEarly = cntErr ? 0 : (count || 0);
+      if (reservedEarly >= maxEarly) {
+        return res.status(400).json({ success: false, message: 'Event is full' });
+      }
+    } catch (_) {}
 
     // Check if user already has this party in their history (BEFORE marking code as used)
     console.log('[verifyAndAddParty] Checking if user already has this party...');
     console.log('[verifyAndAddParty] User ID:', user_id);
     console.log('[verifyAndAddParty] Party ID:', codeRecord.party_id);
     
-    const { data: existingUserParty, error: checkError } = await supabaseCli
-      .from('Codes')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('party_id', codeRecord.party_id)
-      .eq('already_used', true)
-      .limit(1);
+    if (user_id) {
+      const { data: existingUserParty, error: checkError } = await supabaseCli
+        .from('Codes')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('party_id', codeRecord.party_id)
+        .eq('already_used', true)
+        .limit(1);
 
-    if (checkError) {
-      console.error('[verifyAndAddParty] Error checking existing party:', checkError);
-      return res.status(500).json({
-        success: false,
-        message: "Error checking party history"
-      });
+      if (checkError) {
+        console.error('[verifyAndAddParty] Error checking existing party:', checkError);
+        return res.status(500).json({
+          success: false,
+          message: "Error checking party history"
+        });
+      }
+
+      console.log('[verifyAndAddParty] Existing party check result:', existingUserParty);
+
+      if (existingUserParty && existingUserParty.length > 0) {
+        console.log('[verifyAndAddParty] User already has this party in history');
+        return res.status(400).json({
+          success: false,
+          message: "You have already added this party to your history"
+        });
+      }
     }
 
-    console.log('[verifyAndAddParty] Existing party check result:', existingUserParty);
+    // Mark code as used when we found (or inserted) an existing unused record.
+    if (!codeRecord.already_used) {
+      const { data: updatedCode, error: updateError } = await supabaseCli
+        .from('Codes')
+        .update({ 
+          already_used: true,
+          user_id: user_id || null
+        })
+        .eq('code', code)
+        .eq('already_used', false)
+        .select()
+        .single();
 
-    if (existingUserParty && existingUserParty.length > 0) {
-      console.log('[verifyAndAddParty] User already has this party in history');
-      return res.status(400).json({
-        success: false,
-        message: "You have already added this party to your history"
-      });
+      if (updateError || !updatedCode) {
+        console.error('[verifyAndAddParty] Error marking code as used:', updateError);
+        return res.status(500).json({
+          success: false,
+          message: "Error processing code"
+        });
+      }
+      // If it came from preview cache, consume it now that verification completed
+      previewCodeCache.delete(String(code));
+      codeRecord = updatedCode;
     }
 
-    // Mark code as used
-    const { data: updatedCode, error: updateError } = await supabaseCli
-      .from('Codes')
-      .update({ 
-        already_used: true,
-        user_id: user_id
-      })
-      .eq('code', code)
-      .eq('already_used', false)
-      .select()
-      .single();
+    // Increment attendees count on party (e.g., 0/100 -> 1/100)
+    try {
+      const attStr = party.attendees || "0/100";
+      const parts = String(attStr).split('/');
+      let current = parseInt(parts[0], 10) || 0;
+      let max = parseInt(parts[1], 10) || 100;
 
-    if (updateError || !updatedCode) {
-      console.error('[verifyAndAddParty] Error marking code as used:', updateError);
-      return res.status(500).json({
-        success: false,
-        message: "Error processing code"
-      });
+      if (current >= max) {
+        return res.status(400).json({
+          success: false,
+          message: "Event is full"
+        });
+      }
+
+      current += 1;
+
+      const { data: updatedParty, error: partyUpdateErr } = await supabaseCli
+        .from('parties')
+        .update({ attendees: `${current}/${max}` })
+        .eq('id', party.id)
+        .select('id, attendees')
+        .single();
+
+      if (partyUpdateErr || !updatedParty) {
+        console.error('[verifyAndAddParty] Error updating attendees:', partyUpdateErr);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update attendees"
+        });
+      }
+      console.log('[verifyAndAddParty] Attendees updated:', updatedParty.attendees);
+    } catch (attErr) {
+      console.error('[verifyAndAddParty] Unexpected error updating attendees:', attErr);
+      return res.status(500).json({ success: false, message: 'Unexpected error updating attendees' });
     }
 
     console.log('[verifyAndAddParty] Successfully added party to user history');
+
+    // Insert pending guest entry for this party (to show in guests-summary)
+    try {
+      const guestName = userObj?.name || 'Guest';
+      // Try Invitados_Lista first
+      let { data: insertedGuest, error: guestErr } = await supabaseCli
+        .from('Invitados_Lista')
+        .insert({ name: guestName, validado: null, party_id: party.id })
+        .select('id')
+        .single();
+
+      const isMissingTableOrColumn = (err) => !!err && (
+        String(err?.message || '').toLowerCase().includes('could not find') ||
+        String(err?.message || '').toLowerCase().includes('schema cache') ||
+        String(err?.message || '').toLowerCase().includes('relation') ||
+        String(err?.message || '').toLowerCase().includes('column')
+      );
+
+      if (guestErr && isMissingTableOrColumn(guestErr)) {
+        ({ data: insertedGuest, error: guestErr } = await supabaseCli
+          .from('Invitados_Fiesta')
+          .insert({ name: guestName, validado: null, party_id: party.id })
+          .select('id')
+          .single());
+      }
+
+      if (guestErr) {
+        console.warn('[verifyAndAddParty] Warning: could not insert pending guest:', guestErr?.message);
+      }
+    } catch (ge) {
+      console.warn('[verifyAndAddParty] Warning: unexpected error inserting pending guest:', ge?.message);
+    }
 
     return res.json({
       success: true,

@@ -101,16 +101,48 @@ async function getGuestsSummary(req, res) {
     const validated = all.filter(g => flagOf(g) === true);
     const denied = all.filter(g => flagOf(g) === false);
 
+    // Fallback: if no invitados tables or no pending, derive pending from Codes.already_used
+    let codesPending = [];
+    try {
+      const { data: usedCodes, error: usedErr } = await supabaseCli
+        .from('Codes')
+        .select('code, user_id')
+        .eq('party_id', id)
+        .eq('already_used', true);
+      if (!usedErr && Array.isArray(usedCodes) && usedCodes.length > 0) {
+        const userIds = usedCodes.map(c => c.user_id).filter(u => !!u);
+        let usersById = {};
+        if (userIds.length) {
+          const { data: usersList, error: usersErr } = await supabaseCli
+            .from('users')
+            .select('id, name')
+            .in('id', userIds);
+          if (!usersErr && Array.isArray(usersList)) {
+            usersList.forEach(u => { usersById[String(u.id)] = u.name || 'Guest'; });
+          }
+        }
+        codesPending = usedCodes.map(c => ({ id: c.code, name: usersById[String(c.user_id)] || 'Guest' }));
+      }
+    } catch (cpErr) {
+      console.warn('Codes-based pending derivation failed:', cpErr?.message);
+    }
+
+    // Merge pending with codesPending, avoiding duplicates by name
+    const pendingList = [
+      ...pending.map(g => ({ id: g.id, name: g.name })),
+      ...codesPending.filter(cp => !pending.some(p => String(p.name).toLowerCase() === String(cp.name).toLowerCase()))
+    ];
+
     return res.json({
       party: { id, title: partyTitle },
       totals: {
         total: all.length,
-        pending: pending.length,
+        pending: pendingList.length,
         validated: validated.length,
         denied: denied.length,
       },
       lists: {
-        pending: pending.map(g => ({ id: g.id, name: g.name })),
+        pending: pendingList,
         validated: validated.map(g => ({ id: g.id, name: g.name })),
         denied: denied.map(g => ({ id: g.id, name: g.name })),
       },

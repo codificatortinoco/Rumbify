@@ -7,20 +7,10 @@ class AuthManager {
   }
 
   loadUserFromStorage() {
-    const adminUser = localStorage.getItem('adminUser');
     const memberUser = localStorage.getItem('user');
     const currentUser = localStorage.getItem('currentUser');
     
-    if (adminUser) {
-      try {
-        this.currentUser = JSON.parse(adminUser);
-        this.isAdmin = this.currentUser.is_admin === true;
-        this.isMember = false;
-      } catch (error) {
-        console.error('Error parsing admin user:', error);
-        this.clearAuth();
-      }
-    } else if (memberUser) {
+    if (memberUser) {
       try {
         this.currentUser = JSON.parse(memberUser);
         this.isAdmin = false;
@@ -65,7 +55,6 @@ class AuthManager {
     this.currentUser = null;
     this.isAdmin = false;
     this.isMember = false;
-    localStorage.removeItem('adminUser');
     localStorage.removeItem('user');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('isLoggedIn');

@@ -8,9 +8,6 @@ class AuthManager {
 
   loadUserFromStorage() {
     const adminUser = localStorage.getItem('adminUser');
-    const memberUser = localStorage.getItem('user');
-    const currentUser = localStorage.getItem('currentUser');
-    
     if (adminUser) {
       try {
         this.currentUser = JSON.parse(adminUser);
@@ -18,24 +15,6 @@ class AuthManager {
         this.isMember = false;
       } catch (error) {
         console.error('Error parsing admin user:', error);
-        this.clearAuth();
-      }
-    } else if (memberUser) {
-      try {
-        this.currentUser = JSON.parse(memberUser);
-        this.isAdmin = false;
-        this.isMember = this.currentUser.is_admin === false;
-      } catch (error) {
-        console.error('Error parsing member user:', error);
-        this.clearAuth();
-      }
-    } else if (currentUser) {
-      try {
-        this.currentUser = JSON.parse(currentUser);
-        this.isAdmin = this.currentUser.is_admin === true;
-        this.isMember = this.currentUser.is_admin === false;
-      } catch (error) {
-        console.error('Error parsing app1 user:', error);
         this.clearAuth();
       }
     }
@@ -62,7 +41,6 @@ class AuthManager {
     this.isAdmin = true;
     this.isMember = false;
     localStorage.setItem('adminUser', JSON.stringify(userData));
-    localStorage.removeItem('user');
   }
 
   setMemberUser(userData) {
@@ -70,7 +48,6 @@ class AuthManager {
     this.isAdmin = false;
     this.isMember = true;
     localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.removeItem('adminUser');
   }
 
   clearAuth() {
@@ -78,9 +55,6 @@ class AuthManager {
     this.isAdmin = false;
     this.isMember = false;
     localStorage.removeItem('adminUser');
-    localStorage.removeItem('user');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isLoggedIn');
   }
 
   canAccessAdminRoutes() {

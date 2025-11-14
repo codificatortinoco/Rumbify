@@ -149,16 +149,19 @@ export default async function renderManageParty(routeData = {}) {
 
     const eventDetails = await makeRequest(`/parties/${partyId}`, 'GET');
     if (adminEmail) {
-      const guestsResponse = await makeRequest(`/parties/${partyId}/guests`, 'GET', { email: adminEmail });
+      // El helper ya envía 'x-admin-email' en headers; no incluir body en GET
+      const guestsResponse = await makeRequest(`/parties/${partyId}/guests`, 'GET');
       guestsData = Array.isArray(guestsResponse) ? guestsResponse : (guestsResponse?.guests || []);
     } else {
       console.warn('No admin email found; skipping guests fetch');
     }
 
     // Update status counts
-    const capacity = eventDetails?.capacity || 220;
+    const partyObj = eventDetails?.party || eventDetails;
+    const capacity = partyObj?.capacity || 220;
     const inside = guestsData.filter(g => g.status === 'Valid').length;
-    const remaining = Math.max(capacity - inside, 0);
+    // "Remaining" in this view = people who added codes (reserved_count)
+    const remaining = partyObj?.reserved_count ?? Math.max(capacity - inside, 0);
 
     document.getElementById('insideCount').textContent = inside;
     document.getElementById('remainingCount').textContent = remaining;
@@ -270,7 +273,8 @@ function initializeEntryCodes(partyIdFromRender) {
         party_id: partyId,
         price_id: priceId,
         price_name: ticketTypeName,
-        quantity: quantity
+        quantity: quantity,
+        persist: false
       });
 
       if (response.success) {

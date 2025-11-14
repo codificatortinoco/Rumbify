@@ -110,7 +110,16 @@ const getHotTopicParties = async (req, res) => {
 
     if (data && data.length > 0) {
       const enriched = await attachPricesToParties(data);
-      return res.json(enriched);
+      // add numeric attendee fields for client rendering
+      const withCounts = enriched.map(party => {
+        const { current, max } = parseAttendees(party.attendees || "0/0");
+        return {
+          ...party,
+          attendees_count: current,
+          max_attendees: max || 100
+        };
+      });
+      return res.json(withCounts);
     }
 
     // If no data in database, return mock data
@@ -142,7 +151,16 @@ const getUpcomingParties = async (req, res) => {
 
     if (data && data.length > 0) {
       const enriched = await attachPricesToParties(data);
-      return res.json(enriched);
+      // add numeric attendee fields for client rendering
+      const withCounts = enriched.map(party => {
+        const { current, max } = parseAttendees(party.attendees || "0/0");
+        return {
+          ...party,
+          attendees_count: current,
+          max_attendees: max || 100
+        };
+      });
+      return res.json(withCounts);
     }
 
     // If no data in database, return mock data
@@ -319,11 +337,29 @@ const getEventDetails = async (req, res) => {
         if (adminError) {
           console.warn("Error fetching administrator info:", adminError);
         } else {
-          administratorImage = adminUser?.profile_image;
-          console.log("[getEventDetails] Administrator image found:", administratorImage);
+          const rawImg = adminUser?.profile_image;
+          const SUPA_URL = process.env.SUPABASE_URL || "";
+          const isHttp = typeof rawImg === 'string' && /^https?:\/\//i.test(rawImg);
+          const isStoragePath = typeof rawImg === 'string' && rawImg.includes('/storage/v1/object/public/');
+          if (isHttp) {
+            administratorImage = rawImg;
+          } else if (isStoragePath && SUPA_URL) {
+            administratorImage = `${SUPA_URL}${rawImg}`;
+          } else if (typeof rawImg === 'string' && rawImg.length > 0 && SUPA_URL) {
+            // If a relative path was saved (e.g., bucket/path), try to build a public URL
+            const prefix = rawImg.startsWith('/') ? '' : '/';
+            administratorImage = `${SUPA_URL}${prefix}${rawImg}`;
+          } else {
+            // Robust fallback avatar generated from administrator name
+            const name = encodeURIComponent(data.administrator || 'Organizer');
+            administratorImage = `https://ui-avatars.com/api/?name=${name}&background=5636D3&color=ffffff&size=150`; 
+          }
+          console.log("[getEventDetails] Administrator image resolved:", administratorImage);
         }
       } catch (adminCatch) {
         console.warn("Administrator query failed:", adminCatch);
+        const name = encodeURIComponent(data.administrator || 'Organizer');
+        administratorImage = `https://ui-avatars.com/api/?name=${name}&background=5636D3&color=ffffff&size=150`;
       }
 
       // Fetch description for this party (single row optional)
@@ -343,6 +379,35 @@ const getEventDetails = async (req, res) => {
         console.warn("Description query failed:", descCatch);
       }
 
+      // Compute capacity from attendees (max part of "current/max")
+      const parseCapacity = (attStr = "0/0") => {
+        try {
+          const [curStr, maxStr] = String(attStr).split("/");
+          const max = parseInt(maxStr, 10) || 0;
+          return max;
+        } catch {
+          return 0;
+        }
+      };
+      const capacityMax = parseCapacity(data.attendees || "0/0");
+
+      // Count reserved codes (already_used = true) for this party
+      let reservedCount = 0;
+      try {
+        const { count, error: codesErr } = await supabaseCli
+          .from("Codes")
+          .select("id", { count: "exact", head: true })
+          .eq("party_id", data.id)
+          .eq("already_used", true);
+        if (codesErr) {
+          console.warn("Codes count error:", codesErr);
+        } else {
+          reservedCount = count || 0;
+        }
+      } catch (cErr) {
+        console.warn("Codes count failed:", cErr);
+      }
+
       const displayPrice = (prices && prices.length) ? prices[0]?.price : data.price;
       const parsed = parseDateAndHour(data.date);
       console.log("[getEventDetails] id:", data.id, "date:", data.date, "parsed:", parsed);
@@ -355,7 +420,9 @@ const getEventDetails = async (req, res) => {
           description: descriptionText, 
           date_iso: parsed.iso, 
           hour_24: parsed.hour,
-          administrator_image: administratorImage
+          administrator_image: administratorImage,
+          capacity: capacityMax,
+          reserved_count: reservedCount
         } 
       });
     }
@@ -1150,6 +1217,88 @@ module.exports = {
   searchParties,
   toggleLike,
   getEventDetails,
+  /**
+   * Update attendance for a party by simple actions: 'going', 'maybe', 'not-going'.
+   * - going: increments current attendees up to max
+   * - not-going: decrements current attendees down to 0
+   * - maybe: no change (placeholder for future tracking)
+   * Returns the updated counts in a consistent JSON shape expected by the frontend.
+   */
+  updateAttendance: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { action } = req.body || {};
+
+      if (!id) {
+        return res.status(400).json({ success: false, message: "Missing party id" });
+      }
+      if (!action || !['going', 'maybe', 'not-going'].includes(action)) {
+        return res.status(400).json({ success: false, message: "Invalid attendance action" });
+      }
+
+      // Fetch party to read and update attendees string
+      const { data: party, error: fetchErr } = await supabaseCli
+        .from('parties')
+        .select('id, attendees')
+        .eq('id', id)
+        .single();
+
+      if (fetchErr) {
+        console.error('[updateAttendance] Party fetch error:', fetchErr);
+        return res.status(500).json({ success: false, message: 'Failed to load party' });
+      }
+      if (!party) {
+        return res.status(404).json({ success: false, message: 'Party not found' });
+      }
+
+      // Parse attendees like "current/max"
+      const parse = (attStr = '0/0') => {
+        try {
+          const [curStr, maxStr] = String(attStr).split('/');
+          const current = parseInt(curStr, 10) || 0;
+          const max = parseInt(maxStr, 10) || 0;
+          return { current, max };
+        } catch {
+          return { current: 0, max: 0 };
+        }
+      };
+
+      const { current, max } = parse(party.attendees || '0/0');
+      let nextCurrent = current;
+      if (action === 'going') {
+        nextCurrent = Math.min(max || 0, current + 1);
+      } else if (action === 'not-going') {
+        nextCurrent = Math.max(0, current - 1);
+      } // 'maybe' leaves counts unchanged
+
+      const nextAttendees = `${nextCurrent}/${max || 0}`;
+
+      const { data: updatedRows, error: updateErr } = await supabaseCli
+        .from('parties')
+        .update({ attendees: nextAttendees })
+        .eq('id', id)
+        .select();
+
+      if (updateErr) {
+        console.error('[updateAttendance] Update error:', updateErr);
+        return res.status(500).json({ success: false, message: 'Failed to update attendance' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        attendance: {
+          current: nextCurrent,
+          max: max || 0,
+          display: nextAttendees,
+        },
+        party: updatedRows?.[0] || { id, attendees: nextAttendees },
+        action,
+      });
+    } catch (e) {
+      console.error('[updateAttendance] Unexpected error:', e);
+      return res.status(500).json({ success: false, message: 'Unexpected error' });
+    }
+  },
   createParty,
   getAdminStatistics,
   getAdminParties,

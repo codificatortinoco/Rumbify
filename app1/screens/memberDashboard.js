@@ -543,14 +543,11 @@ async function handleCodeSubmission() {
   
   try {
     const currentUser = getCurrentUser();
-    if (!currentUser) {
-      throw new Error('User not logged in');
-    }
     
     // Verify code and get party info
     const response = await makeRequest('/codes/verify-and-add', 'POST', {
       code: code,
-      user_id: currentUser.id
+      user_id: currentUser?.id || null
     });
     
     if (response.success) {
@@ -564,6 +561,10 @@ async function handleCodeSubmission() {
       }, 1500);
     } else {
       showModalError(response.message || 'Invalid code');
+      // Si falta login, sugerir iniciar sesión
+      if ((response.message || '').toLowerCase().includes('user')) {
+        setTimeout(() => navigateTo('/app1/welcome'), 1500);
+      }
     }
     
   } catch (error) {

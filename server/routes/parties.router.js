@@ -6,6 +6,7 @@ const {
   searchParties,
   toggleLike,
   getEventDetails,
+  updateAttendance,
   createParty,
   getAdminStatistics,
   getAdminParties,
@@ -28,6 +29,8 @@ router.get("/parties/search", searchParties);
 router.patch("/parties/:id/like", toggleLike);
 router.get("/parties/:id", getEventDetails);
 router.get("/parties/:partyId/description", getPartyDescription);
+// Attendance actions for members
+router.post("/parties/:id/attendance", updateAttendance);
 
 // Admin-only routes
 router.patch("/parties/:id", requireAdmin, updateParty);

@@ -340,15 +340,17 @@ const getEventDetails = async (req, res) => {
           const rawImg = adminUser?.profile_image;
           const SUPA_URL = process.env.SUPABASE_URL || "";
           const isHttp = typeof rawImg === 'string' && /^https?:\/\//i.test(rawImg);
-          const isStoragePath = typeof rawImg === 'string' && rawImg.includes('/storage/v1/object/public/');
+          const hasStoragePrefix = typeof rawImg === 'string' && rawImg.includes('/storage/v1/object/public/');
           if (isHttp) {
             administratorImage = rawImg;
-          } else if (isStoragePath && SUPA_URL) {
-            administratorImage = `${SUPA_URL}${rawImg}`;
+          } else if (hasStoragePrefix && SUPA_URL) {
+            // Raw path already includes storage public prefix; make absolute with SUPABASE_URL
+            const needsSlash = rawImg.startsWith('/') ? '' : '/';
+            administratorImage = `${SUPA_URL}${needsSlash}${rawImg}`;
           } else if (typeof rawImg === 'string' && rawImg.length > 0 && SUPA_URL) {
-            // If a relative path was saved (e.g., bucket/path), try to build a public URL
-            const prefix = rawImg.startsWith('/') ? '' : '/';
-            administratorImage = `${SUPA_URL}${prefix}${rawImg}`;
+            // Assume rawImg is bucket/object path (e.g., "avatars/admin.jpg"). Build proper public URL.
+            const cleanPath = rawImg.replace(/^\/+/, '');
+            administratorImage = `${SUPA_URL}/storage/v1/object/public/${cleanPath}`;
           } else {
             // Robust fallback avatar generated from administrator name
             const name = encodeURIComponent(data.administrator || 'Organizer');

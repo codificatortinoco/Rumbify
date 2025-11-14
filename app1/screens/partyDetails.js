@@ -168,19 +168,28 @@ async function loadPartyDetails(partyId) {
     console.log('[loadPartyDetails] Party image field:', party.image);
     console.log('[loadPartyDetails] All party fields:', Object.keys(party));
     
-    // Use administrator_image from backend, with fallback
-    const adminImage = party.administrator_image || "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face";
-    
-    console.log('[loadPartyDetails] Using administrator image:', adminImage);
-    
+    // Preload administrator image and set only if it loads; otherwise keep fallback
     const adminImageElement = document.getElementById("administratorImage");
-    adminImageElement.src = adminImage;
+    const fallbackAdmin = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face';
+    const candidateAdmin = party.administrator_image;
+
+    // Default to fallback to avoid onerror logs in UI
+    adminImageElement.src = fallbackAdmin;
     
-    // Handle image load error
-    adminImageElement.onerror = function() {
-      console.log('[loadPartyDetails] Administrator image failed to load, using fallback');
-      this.src = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face';
-    };
+    if (candidateAdmin && typeof candidateAdmin === 'string') {
+      console.log('[loadPartyDetails] Preloading administrator image candidate:', candidateAdmin);
+      const pre = new Image();
+      pre.onload = function() {
+        console.log('[loadPartyDetails] Administrator image loaded successfully');
+        adminImageElement.src = candidateAdmin;
+      };
+      pre.onerror = function() {
+        console.log('[loadPartyDetails] Administrator image candidate failed to load; keeping fallback');
+      };
+      pre.src = candidateAdmin;
+    } else {
+      console.log('[loadPartyDetails] No administrator image provided; using fallback');
+    }
     
     // Update party tags
     const tagsContainer = document.getElementById("partyTags");

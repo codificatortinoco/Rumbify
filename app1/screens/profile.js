@@ -138,8 +138,8 @@ async function loadUserProfile() {
         profilePicture.src = currentUser.profile_image;
       }
       
-      // Load user interests
-      loadUserInterests(currentUser.interests || []);
+      // Load user interests (normalize to array)
+      loadUserInterests(normalizeInterests(currentUser.interests));
       
       console.log("Profile loaded from logged-in user:", currentUser);
       return;
@@ -174,8 +174,8 @@ async function loadUserProfile() {
         profilePicture.src = response.profile_image;
       }
 
-      // Load user interests
-      loadUserInterests(response.interests || []);
+      // Load user interests (normalize to array)
+      loadUserInterests(normalizeInterests(response.interests));
 
       // Store user data for later use
       localStorage.setItem("currentUser", JSON.stringify(response));
@@ -290,10 +290,36 @@ function showNoHistoryMessage() {
   `;
 }
 
+// Ensure interests is always an array of strings
+function normalizeInterests(interests) {
+  try {
+    if (!interests) return [];
+    if (Array.isArray(interests)) return interests.filter(Boolean).map(i => String(i).trim());
+    if (typeof interests === 'string') {
+      const trimmed = interests.trim();
+      // Try JSON first
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean).map(i => String(i).trim());
+      } catch (_) {}
+      // Fallback: comma-separated list
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (typeof interests === 'object') {
+      // Possible map/object of flags: { Disco: true, Techno: false }
+      return Object.keys(interests).filter(k => interests[k]).map(k => String(k).trim());
+    }
+    return [];
+  } catch (_) {
+    return [];
+  }
+}
+
 function loadUserInterests(interests) {
   const interestsContainer = document.getElementById("interestsTags");
+  const safeInterests = normalizeInterests(interests);
   
-  if (!interests || interests.length === 0) {
+  if (!safeInterests || safeInterests.length === 0) {
     interestsContainer.innerHTML = `
       <div class="no-interests">
         <p>No interests selected yet</p>
@@ -325,7 +351,7 @@ function loadUserInterests(interests) {
     "Alternative": { class: "alternative", icon: "assets/partyIcon.svg" }
   };
 
-  interestsContainer.innerHTML = interests.map(interest => {
+  interestsContainer.innerHTML = safeInterests.map(interest => {
     const config = interestConfig[interest] || { class: "default", icon: "assets/partyIcon.svg" };
     return `
       <div class="interest-tag ${config.class}">
@@ -335,7 +361,7 @@ function loadUserInterests(interests) {
     `;
   }).join("");
 
-  console.log("Interests loaded:", interests);
+  console.log("Interests loaded:", safeInterests);
 }
 
 function setupProfileEventListeners() {

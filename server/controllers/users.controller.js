@@ -542,8 +542,8 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-// New endpoint for user login
-const loginUser = async (req, res) => {
+  // New endpoint for user login
+  const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     
@@ -570,6 +570,28 @@ const loginUser = async (req, res) => {
     }
 
 
+    // Normalize interests to array for consistency
+    const normalizeInterests = (val) => {
+      try {
+        if (!val) return [];
+        if (Array.isArray(val)) return val.filter(Boolean).map(v => String(v).trim());
+        if (typeof val === 'string') {
+          const trimmed = val.trim();
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed.filter(Boolean).map(v => String(v).trim());
+          } catch (_) {}
+          return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        if (typeof val === 'object') {
+          return Object.keys(val).filter(k => val[k]).map(k => String(k).trim());
+        }
+        return [];
+      } catch (_) {
+        return [];
+      }
+    };
+
     res.json({
       success: true,
       message: "Login successful",
@@ -581,7 +603,7 @@ const loginUser = async (req, res) => {
         is_admin: user.is_admin || false,
         attended_count: 0, // These would be calculated from actual data
         favorites_count: 0,
-        interests: user.interests || []
+        interests: normalizeInterests(user.interests)
       }
     });
 

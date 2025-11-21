@@ -713,6 +713,48 @@ const testSupabaseConnection = async (req, res) => {
   }
 };
 
+// Helpers used in party history enrichment
+function parseAttendeesString(attStr = "0/0") {
+  const [currentStr = "0", maxStr = "0"] = String(attStr).split("/");
+  const cleanNumber = (value) => {
+    const digits = String(value).replace(/[^\d]/g, "");
+    return Number(digits) || 0;
+  };
+  const current = cleanNumber(currentStr);
+  const max = cleanNumber(maxStr) || 100;
+  return { current, max };
+}
+
+function parsePartyDateToIso(rawDate) {
+  if (!rawDate) return null;
+  const cleaned = String(rawDate).split("•")[0].trim();
+  const slashMatch = cleaned.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (slashMatch) {
+    let year = slashMatch[3];
+    if (year.length === 2) {
+      year = `20${year}`;
+    }
+    const month = slashMatch[2].padStart(2, "0");
+    const day = slashMatch[1].padStart(2, "0");
+    const iso = `${year}-${month}-${day}T00:00:00`;
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const isoMatch = cleaned.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const year = isoMatch[1].padStart(4, "0");
+    const month = isoMatch[2].padStart(2, "0");
+    const day = isoMatch[3].padStart(2, "0");
+    const iso = `${year}-${month}-${day}T00:00:00`;
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const fallback = new Date(cleaned);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
 // Get user's party history using Codes table
 const getUserPartyHistory = async (req, res) => {
   try {
@@ -765,12 +807,17 @@ const getUserPartyHistory = async (req, res) => {
       }
 
       // Add to history
+      const attendeesInfo = parseAttendeesString(party.attendees);
+      const parsedDate = parsePartyDateToIso(party.date);
+      const isUpcoming = parsedDate ? parsedDate.getTime() >= Date.now() : false;
       const historyItem = {
         id: party.id,
         party_id: party.id, // Add party_id for navigation
         title: party.title,
         location: party.location,
         date: party.date,
+        date_display: party.date,
+        date_iso: parsedDate ? parsedDate.toISOString() : null,
         administrator: party.administrator,
         image: party.image,
         tags: party.tags,
@@ -779,7 +826,11 @@ const getUserPartyHistory = async (req, res) => {
         price: price.price,
         code_used: codeRecord.code,
         added_at: codeRecord.created_at,
-        status: 'attended'
+        attendees: party.attendees || "0/0",
+        attendees_count: attendeesInfo.current,
+        max_attendees: attendeesInfo.max,
+        is_upcoming: isUpcoming,
+        status: isUpcoming ? "upcoming" : "attended"
       };
       
       console.log('[getUserPartyHistory] Adding to history:', historyItem);

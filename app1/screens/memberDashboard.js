@@ -4,7 +4,7 @@ import { makeRequest, navigateTo, getCurrentUser } from "../app.js";
 const CONFIG = {
   USE_MOCK_DATA: false,
   API_ENDPOINTS: {
-    UPCOMING_FOR_YOU: "/parties",
+    UPCOMING_FOR_YOU: "/users",
     LIKE: "/parties"
   }
 };
@@ -14,6 +14,54 @@ let memberDashboardController = {
   abortController: null,
   isLoading: false
 };
+
+function parseEventDate(rawValue) {
+  if (!rawValue) return null;
+
+  if (rawValue instanceof Date) {
+    return rawValue;
+  }
+
+  const normalized = String(rawValue).split("•")[0].trim();
+
+  const slashMatch = normalized.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (slashMatch) {
+    let year = slashMatch[3];
+    if (year.length === 2) {
+      year = `20${year}`;
+    }
+    const month = slashMatch[2].padStart(2, "0");
+    const day = slashMatch[1].padStart(2, "0");
+    const iso = `${year}-${month}-${day}T00:00:00`;
+    const parsed = new Date(iso);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const isoMatch = normalized.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const year = isoMatch[1].padStart(4, "0");
+    const month = isoMatch[2].padStart(2, "0");
+    const day = isoMatch[3].padStart(2, "0");
+    const iso = `${year}-${month}-${day}T00:00:00`;
+    const parsed = new Date(iso);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const fallback = new Date(normalized);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function parseAttendeesFromString(attStr = "0/0") {
+  const [currentRaw = "0", maxRaw = "0"] = String(attStr).split("/");
+  const toNumber = (value) => {
+    const digits = String(value).replace(/[^\d]/g, "");
+    const parsed = Number(digits);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+  const current = toNumber(currentRaw);
+  const max = toNumber(maxRaw) || 100;
+  return { current, max };
+}
 
 export default function renderMemberDashboard() {
   const currentUser = getCurrentUser();
@@ -117,26 +165,49 @@ function initializeMemberDashboard() {
 
 // Data Service Layer
 class MemberDataService {
-  static async getUpcomingForYou() {
+  static async getUpcomingForYou(userId) {
     if (CONFIG.USE_MOCK_DATA) {
       return this.getMockUpcomingForYou();
     }
+
+    if (!userId) {
+      return [];
+    }
     
     try {
-      const response = await makeRequest(CONFIG.API_ENDPOINTS.UPCOMING_FOR_YOU, "GET");
+      const response = await makeRequest(
+        `${CONFIG.API_ENDPOINTS.UPCOMING_FOR_YOU}/${userId}/party-history`,
+        "GET"
+      );
       
-      if (!response || !Array.isArray(response)) {
-        return this.getMockUpcomingForYou();
-      }
+      const history = Array.isArray(response?.party_history) ? response.party_history : [];
+      const now = Date.now();
       
-      const upcomingEvents = response
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .slice(0, 3);
+      const upcomingEvents = history
+        .map((event) => {
+          const parsedDate = parseEventDate(event.date_iso || event.date);
+          if (!parsedDate) return null;
+
+          const attendeesInfo = parseAttendeesFromString(event.attendees);
+          
+          return {
+            ...event,
+            date: parsedDate.toISOString(),
+            attendees_count: attendeesInfo.current,
+            max_attendees: attendeesInfo.max
+          };
+        })
+        .filter(Boolean)
+        .filter((event) => {
+          const eventTime = new Date(event.date).getTime();
+          return !Number.isNaN(eventTime) && eventTime >= now;
+        })
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
       
       return upcomingEvents;
     } catch (error) {
       console.error("Error fetching upcoming for you:", error);
-      return this.getMockUpcomingForYou();
+      return [];
     }
   }
 
@@ -197,7 +268,14 @@ async function loadUpcomingForYou() {
   showUpcomingLoadingState();
 
   try {
-    const upcomingEvents = await MemberDataService.getUpcomingForYou();
+    const userId = getCurrentUser()?.id;
+    if (!userId) {
+      console.warn("[loadUpcomingForYou] No current user found, skipping registered parties");
+      renderUpcomingCarousel([]);
+      return;
+    }
+
+    const upcomingEvents = await MemberDataService.getUpcomingForYou(userId);
     
     if (!memberDashboardController.isActive) {
       console.log("Member dashboard no longer active, skipping render");

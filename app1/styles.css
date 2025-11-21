@@ -3095,6 +3095,28 @@ input:checked + .toggle-slider:before {
   font-weight: 500;
 }
 
+.status-badge.valid {
+  background: #22c55e;
+}
+
+.status-badge.scanned {
+  background: #f59e0b;
+}
+
+.status-badge.invalid {
+  background: #ef4444;
+}
+
+.qr-code-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  background: white;
+  padding: 12px;
+  display: block;
+  margin: 0 auto;
+}
+
 .qr-info {
   margin-top: 16px;
 }

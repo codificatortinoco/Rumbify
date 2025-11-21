@@ -217,6 +217,11 @@ async function loadPartyDetails(partyId) {
     await loadPartyDescription(partyId);
     console.log('[loadPartyDetails] ✅ Party description loaded');
     
+    // Load QR code
+    console.log('[loadPartyDetails] Loading QR code...');
+    await loadQRCode(partyId);
+    console.log('[loadPartyDetails] ✅ QR code loaded');
+    
     console.log('[loadPartyDetails] === PARTY DATA LOAD COMPLETE ===');
     
   } catch (error) {
@@ -252,6 +257,124 @@ async function loadPartyDescription(partyId) {
     document.getElementById("partyDescription").innerHTML = `
       <p>No description available for this party.</p>
     `;
+  }
+}
+
+async function loadQRCode(partyId) {
+  try {
+    console.log('[loadQRCode] Loading QR code for party:', partyId);
+    
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.id) {
+      console.log('[loadQRCode] No user logged in, cannot load QR code');
+      showQRCodePlaceholder('Please log in to view your QR code');
+      return;
+    }
+    
+    // Get QR code for this user and party
+    const qrResponse = await makeRequest(`/codes/qr-code/${currentUser.id}/${partyId}`, "GET");
+    
+    console.log('[loadQRCode] QR code response:', qrResponse);
+    
+    if (qrResponse && qrResponse.success && qrResponse.qr_code) {
+      const qrCode = qrResponse.qr_code;
+      console.log('[loadQRCode] QR code found:', qrCode.id);
+      
+      // Display QR code image using qr_image URL
+      const qrCodeElement = document.getElementById("qrCode");
+      if (qrCode.qr_image) {
+        qrCodeElement.innerHTML = `
+          <img src="${qrCode.qr_image}" alt="QR Code" class="qr-code-image" />
+        `;
+      } else {
+        showQRCodePlaceholder('QR code image not available');
+      }
+      
+      // Update QR status
+      const statusBadge = document.querySelector(".status-badge");
+      if (statusBadge) {
+        if (qrCode.status === 'used') {
+          statusBadge.textContent = "Used";
+          statusBadge.className = "status-badge scanned";
+        } else {
+          statusBadge.textContent = "Valid";
+          statusBadge.className = "status-badge valid";
+        }
+      }
+      
+      // Update QR time and validity
+      const qrTimeElement = document.getElementById("qrTime");
+      if (qrTimeElement && qrCode.created_at) {
+        const createdDate = new Date(qrCode.created_at);
+        const formattedDate = createdDate.toLocaleDateString('en-GB', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: '2-digit' 
+        });
+        const formattedTime = createdDate.toLocaleTimeString('en-GB', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false
+        });
+        qrTimeElement.textContent = `${formattedDate} • ${formattedTime}`;
+      }
+      
+      // Update validity text
+      const validityElement = document.querySelector(".qr-validity");
+      if (validityElement) {
+        if (qrCode.status === 'used' && qrCode.used_at) {
+          const scannedDate = new Date(qrCode.used_at);
+          const formattedScanned = scannedDate.toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: '2-digit' 
+          });
+          validityElement.textContent = `Used on • ${formattedScanned}`;
+        } else if (qrCode.valid_until) {
+          const validDate = new Date(qrCode.valid_until);
+          const formattedValid = validDate.toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: '2-digit' 
+          });
+          validityElement.textContent = `Valid until • ${formattedValid}`;
+        } else {
+          // Get party date for validity
+          const partyResponse = await makeRequest(`/parties/${partyId}`, "GET");
+          if (partyResponse && partyResponse.success && partyResponse.party) {
+            validityElement.textContent = `Valid until • ${partyResponse.party.date}`;
+          } else {
+            validityElement.textContent = "Valid until • Date";
+          }
+        }
+      }
+    } else {
+      console.log('[loadQRCode] No QR code found');
+      showQRCodePlaceholder('No QR code available. Please register for this party first.');
+    }
+    
+  } catch (error) {
+    console.error('[loadQRCode] Error loading QR code:', error);
+    showQRCodePlaceholder('Error loading QR code');
+  }
+}
+
+function showQRCodePlaceholder(message) {
+  const qrCodeElement = document.getElementById("qrCode");
+  qrCodeElement.innerHTML = `
+    <div class="qr-placeholder">
+      <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm2 2h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z"/>
+      </svg>
+      <p>${message || 'QR Code'}</p>
+    </div>
+  `;
+  
+  // Update status to show no QR code
+  const statusBadge = document.querySelector(".status-badge");
+  if (statusBadge) {
+    statusBadge.textContent = "Not Available";
+    statusBadge.className = "status-badge invalid";
   }
 }
 

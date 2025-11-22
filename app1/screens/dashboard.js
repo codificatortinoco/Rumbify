@@ -217,6 +217,11 @@ class PartyDataService {
     
     try {
       const response = await makeRequest(`${CONFIG.API_ENDPOINTS.LIKE}/${eventId}`, "GET");
+      // Extract party from response structure { success: true, party: {...} }
+      if (response && response.success && response.party) {
+        return response.party;
+      }
+      // Fallback if response structure is different
       return response;
     } catch (error) {
       console.error("Error fetching event details:", error);

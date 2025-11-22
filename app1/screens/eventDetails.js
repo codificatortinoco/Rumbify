@@ -2,9 +2,10 @@ import { makeRequest, navigateTo } from "../app.js";
 
 // Configuration for data source
 const CONFIG = {
-  USE_MOCK_DATA: true, // Set to false when Supabase is ready
+  USE_MOCK_DATA: false, // Fetch from database
   API_ENDPOINTS: {
-    EVENT_DETAILS: "/parties"
+    EVENT_DETAILS: "/parties",
+    PARTY_DESCRIPTION: "/parties"
   }
 };
 
@@ -41,11 +42,11 @@ export default function renderEventDetails(eventData) {
         
         <div class="organizer-info">
           <div class="organizer-avatar">
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" alt="Organizer" />
+            <img src="${eventData.administrator_image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'}" alt="Organizer" id="organizerImage" />
           </div>
           <div class="organizer-details">
-            <div class="organizer-name">${eventData.administrator}</div>
-            <div class="organizer-phone">+57 3016531423</div>
+            <div class="organizer-name">${eventData.administrator || 'Organizer'}</div>
+            <div class="organizer-phone" id="organizerPhone">${eventData.number ? `+57 ${eventData.number}` : 'Contact TBA'}</div>
           </div>
         </div>
 
@@ -76,29 +77,9 @@ export default function renderEventDetails(eventData) {
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <span>${eventData.location}</span>
+          <span>${eventData.location || 'Location TBA'}</span>
         </div>
-        <p class="event-description">We do not need to be in the 31st of December to party as God intended.</p>
-      </div>
-
-      <!-- Event Info -->
-      <div class="event-info">
-        <div class="info-section">
-          <h3 class="info-title">Inclusions</h3>
-          <ul class="info-list">
-            <li>Drink of courtesy</li>
-            <li>After midnight kiss dinamic</li>
-          </ul>
-        </div>
-
-        <div class="info-section">
-          <h3 class="info-title">Dress code</h3>
-          <ul class="info-list">
-            <li>Neon Colors</li>
-            <li>No formal attire required</li>
-            <li>Comfortable dancing shoes</li>
-          </ul>
-        </div>
+        <p class="event-description" id="eventDescription">${eventData.description || 'Loading description...'}</p>
       </div>
 
       <!-- Opening Hours -->
@@ -173,15 +154,84 @@ export default function renderEventDetails(eventData) {
   initializeEventDetails(eventData);
 }
 
-function initializeEventDetails(eventData) {
+async function initializeEventDetails(eventData) {
   // Setup back button
   setupBackButton();
   
-  // Setup calendar
-  setupCalendar();
+  // Update organizer image if available (already set in render, but ensure it loads)
+  if (eventData && eventData.administrator_image) {
+    const organizerImg = document.getElementById('organizerImage');
+    if (organizerImg) {
+      organizerImg.src = eventData.administrator_image;
+    }
+  }
+  
+  // Update organizer phone if available (already set in render, but ensure it's correct)
+  if (eventData && eventData.number) {
+    const phoneElement = document.getElementById('organizerPhone');
+    if (phoneElement) {
+      phoneElement.textContent = `+57 ${eventData.number}`;
+    }
+  }
+  
+  // Load additional party data from database (descriptions, inclusions, dress code)
+  if (eventData && eventData.id) {
+    await loadAdditionalPartyData(eventData.id);
+  }
+  
+  // Setup calendar with actual party date
+  setupCalendar(eventData?.date);
+  
+  // Setup opening hour display
+  updateOpeningHour(eventData);
   
   // Setup bottom navigation
   setupBottomNavigation();
+}
+
+async function loadAdditionalPartyData(partyId) {
+  try {
+    // Fetch party description
+    const descriptionResponse = await makeRequest(`/parties/${partyId}/description`, "GET");
+    
+    if (descriptionResponse && descriptionResponse.success) {
+      // Update description
+      const descriptionElement = document.getElementById('eventDescription');
+      if (descriptionElement && descriptionResponse.description) {
+        descriptionElement.textContent = descriptionResponse.description;
+      }
+    }
+  } catch (error) {
+    console.error("Error loading additional party data:", error);
+    // Keep default/mocked content if API call fails
+  }
+}
+
+function updateOpeningHour(eventData) {
+  if (!eventData || !eventData.date) return;
+  
+  try {
+    // Parse date string like "22/11/21 • 21:30-05:00" or extract hour
+    const dateStr = eventData.date;
+    const hourMatch = dateStr.match(/(\d{1,2}):(\d{2})/);
+    
+    if (hourMatch) {
+      const hours = parseInt(hourMatch[1], 10);
+      const minutes = parseInt(hourMatch[2], 10);
+      const isPM = hours >= 12;
+      const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+      
+      const hourBox = document.querySelector('.time-box:first-of-type .time-number');
+      const minuteBox = document.querySelector('.time-box:nth-of-type(2) .time-number');
+      const periodBox = document.querySelector('.time-box:last-of-type .time-number');
+      
+      if (hourBox) hourBox.textContent = displayHours.toString();
+      if (minuteBox) minuteBox.textContent = minutes.toString().padStart(2, '0');
+      if (periodBox) periodBox.textContent = isPM ? 'PM' : 'AM';
+    }
+  } catch (error) {
+    console.error("Error parsing opening hour:", error);
+  }
 }
 
 function setupBackButton() {
@@ -191,20 +241,66 @@ function setupBackButton() {
   });
 }
 
-function setupCalendar() {
+function setupCalendar(partyDate) {
   const calendarDays = document.getElementById("calendarDays");
+  const calendarHeader = document.querySelector('.calendar-header h3');
   
-  // Generate calendar days for November 2021
+  let eventDate = null;
+  let eventDay = null;
+  let monthYear = "November 2021";
+  
+  // Try to parse party date
+  if (partyDate) {
+    try {
+      // Parse date string like "22/11/21 • 21:30-05:00"
+      const dateMatch = partyDate.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      if (dateMatch) {
+        const day = parseInt(dateMatch[1], 10);
+        const month = parseInt(dateMatch[2], 10);
+        const year = parseInt(dateMatch[3], 10);
+        const fullYear = year < 100 ? 2000 + year : year;
+        
+        eventDate = new Date(fullYear, month - 1, day);
+        eventDay = day;
+        
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"];
+        monthYear = `${monthNames[month - 1]} ${fullYear}`;
+      }
+    } catch (error) {
+      console.error("Error parsing party date:", error);
+    }
+  }
+  
+  if (calendarHeader) {
+    calendarHeader.textContent = monthYear;
+  }
+  
+  if (!eventDate) {
+    // Fallback: use current month
+    eventDate = new Date();
+    monthYear = eventDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (calendarHeader) {
+      calendarHeader.textContent = monthYear;
+    }
+  }
+  
+  // Get first day of month and number of days
+  const firstDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), 1);
+  const lastDay = new Date(eventDate.getFullYear(), eventDate.getMonth() + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
   const days = [];
   
-  // Add empty cells for days before the 1st (November 1st was a Monday)
-  for (let i = 0; i < 1; i++) {
+  // Add empty cells for days before the 1st
+  for (let i = 0; i < startingDayOfWeek; i++) {
     days.push('<div class="calendar-day empty"></div>');
   }
   
-  // Add days 1-30
-  for (let day = 1; day <= 30; day++) {
-    const isEventDay = day === 22; // Highlight the 22nd as the event day
+  // Add days 1 to last day of month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const isEventDay = day === eventDay;
     days.push(`
       <div class="calendar-day ${isEventDay ? 'event-day' : ''}">
         ${day}
@@ -253,6 +349,11 @@ class EventDetailsService {
     
     try {
       const response = await makeRequest(`${CONFIG.API_ENDPOINTS.EVENT_DETAILS}/${eventId}`, "GET");
+      // Extract party from response structure { success: true, party: {...} }
+      if (response && response.success && response.party) {
+        return response.party;
+      }
+      // Fallback if response structure is different
       return response;
     } catch (error) {
       console.error("Error fetching event details:", error);

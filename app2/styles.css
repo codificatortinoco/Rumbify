@@ -97,10 +97,18 @@ body {
 /* Admin Login Styles */
 #admin-login-screen {
   min-height: 100vh;
+  background: 
+    linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.6) 100%),
+    /* Replaceable background image */
+    url('assets/Background.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
 }
 
 .admin-login-content {
@@ -111,12 +119,12 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
+  animation: loginFadeIn 0.6s ease-out;
 }
 
 .logo-section {
   display: flex;
   justify-content: center;
-  align-items: center;
   margin-bottom: 1rem;
 }
 
@@ -124,15 +132,15 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;
 }
 
 .admin-login-logo {
   max-width: 120px;
   width: 100%;
   height: auto;
-  filter: brightness(0) invert(1);
-  transition: all 0.3s ease;
+  /* Replaceable logo styling */
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+  transition: transform 0.3s ease;
 }
 
 .admin-login-logo:hover {
@@ -143,125 +151,200 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 1.5rem;
 }
 
 .admin-login-title {
-  color: #ff6b6b;
+  color: white;
   font-size: 2.5rem;
   font-weight: 700;
   text-align: center;
-  text-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
   margin: 0;
+  letter-spacing: 1px;
 }
 
 .admin-login-subtitle {
-  color: rgba(255, 107, 107, 0.9);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 1rem;
   text-align: center;
-  font-weight: 500;
   margin: 0;
+  font-weight: 400;
 }
 
 .form-container {
-  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
+  width: 100%;
 }
 
 .input-group {
-  width: 100%;
   position: relative;
 }
 
 .form-input {
   width: 100%;
-  padding: 1rem 1.5rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 1rem 1.25rem;
+  border: 2px solid #8b5cf6;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
   font-size: 1rem;
-  backdrop-filter: blur(10px);
+  font-weight: 500;
+  outline: none;
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .form-input::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: #8b5cf6;
+  font-weight: 500;
 }
 
 .form-input:focus {
-  outline: none;
-  border-color: #ff6b6b;
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+  border-color: #22c55e;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .forgot-password {
-  text-align: center;
-  margin-top: 0.5rem;
+  text-align: left;
+  margin-top: -0.5rem;
 }
 
 .forgot-link {
-  color: rgba(255, 107, 107, 0.8);
-  text-decoration: none;
+  color: #8b5cf6;
+  text-decoration: underline;
   font-size: 0.9rem;
+  font-weight: 500;
   transition: color 0.3s ease;
 }
 
 .forgot-link:hover {
-  color: #ff6b6b;
-  text-decoration: underline;
+  color: #22c55e;
 }
 
 .admin-login-btn {
   width: 100%;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-  border: 2px solid #ff6b6b;
+  background: linear-gradient(135deg, #22c55e 0%, #1e40af 100%);
+  border: none;
   border-radius: 12px;
   color: white;
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
 }
 
 .admin-login-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
-  background: linear-gradient(135deg, #ff5252 0%, #d63031 100%);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
 }
 
 .admin-login-btn:active {
   transform: translateY(0);
 }
 
-.back-section {
-  width: 100%;
-  display: flex;
-  justify-content: center;
+/* Register Section */
+.register-section {
+  text-align: center;
   margin-top: 1rem;
 }
 
+.register-text {
+  color: white;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.register-link {
+  color: white;
+  text-decoration: underline;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.register-link:hover {
+  color: #22c55e;
+}
+
+/* Login Animation */
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-section {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
 .back-btn {
-  padding: 0.8rem 1.5rem;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 12px;
   color: white;
-  font-size: 1rem;
+  padding: 0.8rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
+  letter-spacing: 0.5px;
 }
 
 .back-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
+}
+
+/* Mobile Optimizations for Admin Login */
+@media (hover: none) and (pointer: coarse) {
+  .admin-login-btn:hover {
+    transform: none;
+  }
+  
+  .admin-login-logo:hover {
+    transform: none;
+  }
+  
+  .back-btn:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 414px) {
+  .admin-login-content {
+    padding: 1.5rem;
+  }
+  
+  .admin-login-title {
+    font-size: 2rem;
+  }
+  
+  .form-input {
+    padding: 0.9rem 1rem;
+    font-size: 0.95rem;
+  }
+  
+  .admin-login-btn {
+    padding: 0.9rem 1.5rem;
+    font-size: 1rem;
+  }
 }
 
 /* Admin Dashboard Styles */
@@ -400,10 +483,18 @@ body {
 /* Admin Register Styles */
 #admin-register-screen {
   min-height: 100vh;
+  background: 
+    linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.6) 100%),
+    /* Replaceable background image */
+    url('assets/Background.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
 }
 
 .admin-register-content {
@@ -414,14 +505,16 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
+  animation: registerFadeIn 0.6s ease-out;
 }
 
 .admin-register-logo {
   max-width: 120px;
   width: 100%;
   height: auto;
-  filter: brightness(0) invert(1);
-  transition: all 0.3s ease;
+  /* Replaceable logo styling */
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+  transition: transform 0.3s ease;
 }
 
 .admin-register-logo:hover {
@@ -432,79 +525,144 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 1.5rem;
 }
 
 .admin-register-title {
-  color: #ff6b6b;
+  color: white;
   font-size: 2.5rem;
   font-weight: 700;
   text-align: center;
-  text-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
   margin: 0;
+  letter-spacing: 1px;
 }
 
 .admin-register-subtitle {
-  color: rgba(255, 107, 107, 0.9);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 1rem;
   text-align: center;
-  font-weight: 500;
   margin: 0;
+  font-weight: 400;
+}
+
+/* Reuse form styles from login */
+.admin-register-form .form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.admin-register-form .input-group {
+  position: relative;
+}
+
+.admin-register-form .form-input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 2px solid #8b5cf6;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  font-size: 1rem;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.admin-register-form .form-input::placeholder {
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+.admin-register-form .form-input:focus {
+  border-color: #22c55e;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .admin-phone-hint {
   display: block;
-  color: rgba(255, 107, 107, 0.7);
+  color: #8b5cf6;
   font-size: 0.8rem;
   margin-top: 0.3rem;
-  text-align: center;
+  text-align: left;
+  font-weight: 500;
 }
 
 .admin-register-btn {
   width: 100%;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-  border: 2px solid #ff6b6b;
+  background: linear-gradient(135deg, #22c55e 0%, #1e40af 100%);
+  border: none;
   border-radius: 12px;
   color: white;
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
 }
 
 .admin-register-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
-  background: linear-gradient(135deg, #ff5252 0%, #d63031 100%);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
 }
 
 .admin-register-btn:active {
   transform: translateY(0);
 }
 
-.register-section {
+/* Login Section */
+.login-section {
   text-align: center;
   margin-top: 1rem;
 }
 
-.register-text {
+.login-text {
   color: white;
   font-size: 1rem;
   margin: 0;
 }
 
-.register-link {
-  color: #ff6b6b;
+.login-link {
+  color: white;
   text-decoration: underline;
   font-weight: 600;
   transition: color 0.3s ease;
 }
 
-.register-link:hover {
-  color: #ff5252;
+.login-link:hover {
+  color: #22c55e;
+}
+
+/* Register Animation */
+@keyframes registerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile Optimizations for Admin Register */
+@media (hover: none) and (pointer: coarse) {
+  .admin-register-btn:hover {
+    transform: none;
+  }
+  
+  .admin-register-logo:hover {
+    transform: none;
+  }
+  
+  .back-btn:hover {
+    transform: none;
+  }
 }
 
 /* Responsive */
@@ -517,6 +675,16 @@ body {
   .admin-login-title,
   .admin-register-title {
     font-size: 2rem;
+  }
+  
+  .admin-register-form .form-input {
+    padding: 0.9rem 1rem;
+    font-size: 0.95rem;
+  }
+  
+  .admin-register-btn {
+    padding: 0.9rem 1.5rem;
+    font-size: 1rem;
   }
   
   .admin-stats-grid {

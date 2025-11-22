@@ -29,18 +29,20 @@ export default function renderMyParties(data = {}) {
       <div class="my-parties-content">
         <!-- Header -->
         <div class="admin-header">
-          <div class="admin-logo">
-            <img src="assets/Llogowhite.png" alt="Rumbify Admin" class="admin-logo-img" />
+          <div class="admin-profile-section">
+            <div class="admin-profile-pic">
+              <img src="${adminUser?.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face'}" alt="Profile" class="profile-picture" />
+            </div>
+            <div class="admin-user-info">
+              <h2 class="admin-welcome">Welcome, ${name}</h2>
+              <p class="admin-role">Administrator</p>
+            </div>
           </div>
-          <div class="admin-user-info">
-            <h2 class="admin-welcome">Welcome, ${name}</h2>
-            <p class="admin-email">${email}</p>
-          </div>
-          <div class="admin-header-actions">
-            <button class="admin-profile-btn" id="profileBtn">
-              <img src="assets/person.svg" alt="Profile" class="profile-icon" />
+          <div class="admin-notification">
+            <button class="notification-btn" id="notificationBtn">
+              <img src="assets/notifications.svg" alt="Notifications" class="notification-icon" />
+              <span class="notification-dot"></span>
             </button>
-            <button class="admin-logout-btn" onclick="handleLogout()">Logout</button>
           </div>
         </div>
 
@@ -54,6 +56,7 @@ export default function renderMyParties(data = {}) {
             </div>
           </div>
           <div class="metrics-right">
+            <h3 class="metrics-event-name" id="metricsEventName">Chicago Night</h3>
             <div class="metric-item">
               <span class="metric-number" id="totalRevenue">$0</span>
               <span class="metric-label">Revenue</span>
@@ -63,7 +66,7 @@ export default function renderMyParties(data = {}) {
 
         <!-- My Events Section -->
         <div class="my-events-section">
-          <h2 class="section-title">My Events</h2>
+          <h2 class="section-title">My events</h2>
           <div class="events-list" id="eventsList">
             <!-- Events will be loaded dynamically -->
             <div class="loading-events">Loading events...</div>
@@ -252,11 +255,12 @@ export default function renderMyParties(data = {}) {
     });
   });
 
-  // Profile button
-  const profileBtn = document.getElementById('profileBtn');
-  if (profileBtn) {
-    profileBtn.addEventListener('click', () => {
-      navigateTo('/profile');
+  // Notification button
+  const notificationBtn = document.getElementById('notificationBtn');
+  if (notificationBtn) {
+    notificationBtn.addEventListener('click', () => {
+      // Handle notifications
+      console.log('Notifications clicked');
     });
   }
 }
@@ -356,6 +360,15 @@ function displayParties(parties) {
       </div>
     </div>
   `).join('');
+  
+  // Update metrics event name with first party if available
+  if (parties && parties.length > 0) {
+    const firstParty = parties[0];
+    const eventNameEl = document.getElementById('metricsEventName');
+    if (eventNameEl) {
+      eventNameEl.textContent = firstParty.title || 'Chicago Night';
+    }
+  }
 }
 
 function displayMockParties() {

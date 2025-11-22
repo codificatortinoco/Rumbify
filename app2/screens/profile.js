@@ -23,9 +23,6 @@ export default function renderProfile() {
         </div>
         <h1 class="profile-name" id="profileName">DJ KC</h1>
         <p class="profile-email" id="profileEmail">DJKC@hotmail.com</p>
-        <div class="user-type-badge" id="userTypeBadge">
-          <span class="user-type-text">Admin</span>
-        </div>
         
         <!-- Stats -->
         <div class="profile-stats">
@@ -65,15 +62,24 @@ export default function renderProfile() {
       <!-- Settings Menu -->
       <div class="settings-section">
         <div class="settings-list">
-          <div class="settings-item" id="statisticsBtn">
-            <img src="assets/notifications.svg" alt="Statistics" class="settings-icon" />
-            <span class="settings-text">Statistics</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
+          <div class="settings-item" id="notificationsBtn">
+            <img src="assets/notifications.svg" alt="Notifications" class="settings-icon" />
+            <span class="settings-text">Notifications</span>
+            <img src="assets/backIcon.svg" alt="Arrow" class="arrow-icon" />
+          </div>
+          <div class="settings-item" id="yourCodesBtn">
+            <img src="assets/copyIcon.svg" alt="Your codes" class="settings-icon" />
+            <span class="settings-text">Your codes</span>
+            <img src="assets/backIcon.svg" alt="Arrow" class="arrow-icon" />
           </div>
           <div class="settings-item" id="editProfileBtn">
             <img src="assets/edit.svg" alt="Edit Profile" class="settings-icon" />
             <span class="settings-text">Edit profile</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
+            <img src="assets/backIcon.svg" alt="Arrow" class="arrow-icon" />
+          </div>
+          <div class="settings-item" id="changeUserBtn">
+            <img src="assets/person.svg" alt="Change User" class="settings-icon" />
+            <span class="settings-text">Change User</span>
           </div>
           <div class="settings-item" id="logoutBtn">
             <img src="assets/logOut.svg" alt="Logout" class="settings-icon" />
@@ -192,17 +198,6 @@ async function loadUserProfile() {
       document.getElementById("attendedCount").textContent = adminUser.parties_count || 0;
       document.getElementById("favoritesCount").textContent = adminUser.attendees_count || "0";
       
-      // Update user type badge
-      const userTypeBadge = document.getElementById("userTypeBadge");
-      const userTypeText = document.querySelector(".user-type-text");
-      if (adminUser.is_admin) {
-        userTypeBadge.className = "user-type-badge admin";
-        userTypeText.textContent = "Admin";
-      } else {
-        userTypeBadge.className = "user-type-badge member";
-        userTypeText.textContent = "Member";
-      }
-      
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");
       if (profilePicture && adminUser.profile_image) {
@@ -228,19 +223,8 @@ async function loadUserProfile() {
       // Update profile information with real data
       document.getElementById("profileName").textContent = response.name || "Admin";
       document.getElementById("profileEmail").textContent = response.email || "admin@example.com";
-      document.getElementById("attendedCount").textContent = partiesCount || response.parties_count || 13;
-      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : (response.attendees_count || "3.2k");
-      
-      // Update user type badge
-      const userTypeBadge = document.getElementById("userTypeBadge");
-      const userTypeText = document.querySelector(".user-type-text");
-      if (response.is_admin) {
-        userTypeBadge.className = "user-type-badge admin";
-        userTypeText.textContent = "Admin";
-      } else {
-        userTypeBadge.className = "user-type-badge member";
-        userTypeText.textContent = "Member";
-      }
+      document.getElementById("attendedCount").textContent = response.parties_count || 13;
+      document.getElementById("favoritesCount").textContent = response.attendees_count || "3.2k";
       
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");
@@ -274,8 +258,8 @@ async function loadUserProfile() {
       // Update profile information with calculated data
       document.getElementById("profileName").textContent = mockUser.name;
       document.getElementById("profileEmail").textContent = mockUser.email;
-      document.getElementById("attendedCount").textContent = partiesCount || mockUser.parties_count;
-      document.getElementById("favoritesCount").textContent = totalAttendees > 0 ? totalAttendees.toLocaleString() : mockUser.attendees_count;
+      document.getElementById("attendedCount").textContent = mockUser.parties_count;
+      document.getElementById("favoritesCount").textContent = mockUser.attendees_count;
       
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");
@@ -336,15 +320,31 @@ async function loadUserParties() {
       console.log('Profile - Filtered parties count:', filteredParties.length);
       
       // Convert filtered parties to the format expected by profile screen
-      partiesToShow = filteredParties.slice(0, 3).map(party => ({
-        id: party.id,
-        title: party.title,
-        date: party.date.split(' • ')[0], // Just the date part
-        status: party.status === 'active' ? 'In progress' : party.status === 'inactive' ? 'Inactive' : 'Finished',
-        image: party.image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
-        buttonText: "Manage",
-        buttonClass: "manage-btn"
-      }));
+      partiesToShow = filteredParties.slice(0, 3).map((party, index) => {
+        let status = 'In progress';
+        let buttonText = 'Manage';
+        let buttonClass = 'manage-btn';
+        
+        if (party.status === 'inactive') {
+          status = 'Inactive';
+          buttonText = 'Statistics';
+          buttonClass = 'statistics-btn';
+        } else if (party.status === 'finished' || index === 2) {
+          status = 'Finished';
+          buttonText = 'Statistics';
+          buttonClass = 'statistics-btn';
+        }
+        
+        return {
+          id: party.id,
+          title: party.title,
+          date: party.date.split(' • ')[0], // Just the date part
+          status: status,
+          image: party.image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
+          buttonText: buttonText,
+          buttonClass: buttonClass
+        };
+      });
     } else {
       console.warn('Profile - No parties found in API response');
       partiesToShow = [];
@@ -361,10 +361,20 @@ async function loadUserParties() {
           <p class="party-date">${party.date} • ${party.status}</p>
         </div>
         <div class="party-action">
-          <button class="party-btn ${party.buttonClass}">${party.buttonText}</button>
+          <button class="party-btn ${party.buttonClass}" onclick="handlePartyAction(${party.id}, '${party.buttonText}')">${party.buttonText}</button>
         </div>
       </div>
     `).join("");
+    
+    // Make handlePartyAction available globally
+    window.handlePartyAction = function(partyId, action) {
+      if (action === 'Manage') {
+        navigateTo("/manage-party", { partyId: partyId });
+      } else if (action === 'Statistics') {
+        // TODO: Navigate to statistics
+        console.log('Statistics for party:', partyId);
+      }
+    };
 
   } catch (error) {
     console.error("Error loading user parties:", error);
@@ -410,7 +420,7 @@ function loadUserInterests(interests) {
   // Map interest names to their corresponding CSS classes and icons
   const interestConfig = {
     "Disco Music": { class: "disco", icon: "assets/partyIcon.svg" },
-    "Elegant": { class: "elegant", icon: "assets/edit.svg" },
+    "Elegant": { class: "elegant", icon: "assets/partyIcon.svg" },
     "Cocktailing": { class: "cocktail", icon: "assets/partyIcon.svg" },
     "House Music": { class: "house", icon: "assets/partyIcon.svg" },
     "Techno": { class: "techno", icon: "assets/partyIcon.svg" },
@@ -456,14 +466,24 @@ function setupProfileEventListeners() {
   });
 
   // Settings menu items
-  document.getElementById("statisticsBtn").addEventListener("click", () => {
-    console.log("Statistics clicked");
-    navigateTo("/admin-dashboard");
+  document.getElementById("notificationsBtn").addEventListener("click", () => {
+    console.log("Notifications clicked");
+    // TODO: Navigate to notifications
+  });
+
+  document.getElementById("yourCodesBtn").addEventListener("click", () => {
+    console.log("Your codes clicked");
+    // TODO: Navigate to codes
   });
 
   document.getElementById("editProfileBtn").addEventListener("click", () => {
     console.log("Edit profile clicked");
     navigateTo("/edit-profile");
+  });
+
+  document.getElementById("changeUserBtn").addEventListener("click", () => {
+    console.log("Change User clicked");
+    handleLogout();
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -472,10 +492,15 @@ function setupProfileEventListeners() {
   });
 
   // Camera button for profile picture
-  document.querySelector(".camera-btn").addEventListener("click", () => {
-    console.log("Change profile picture clicked");
-    // TODO: Implement profile picture change
-  });
+  const cameraBtn = document.querySelector(".camera-btn");
+  if (cameraBtn) {
+    cameraBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("Change profile picture clicked - navigating to edit profile");
+      navigateTo("/edit-profile");
+    });
+  }
 }
 
 function handleLogout() {

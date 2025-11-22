@@ -32,9 +32,9 @@ export default function renderMyParties(data = {}) {
           <div class="admin-profile-section">
             <div class="admin-profile-pic">
               <img src="${adminUser?.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face'}" alt="Profile" class="profile-picture" />
-            </div>
-            <div class="admin-user-info">
-              <h2 class="admin-welcome">Welcome, ${name}</h2>
+          </div>
+          <div class="admin-user-info">
+            <h2 class="admin-welcome">Welcome, ${name}</h2>
               <p class="admin-role">Administrator</p>
             </div>
           </div>

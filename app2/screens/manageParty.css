@@ -1,18 +1,19 @@
 /* Manage Party Screen Styles */
 #manage-party-screen {
-  background: #f5f5f5;
+  background: url('../assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   padding-bottom: 80px;
+  background-attachment: fixed;
 }
 
 /* Top Section */
 .top-section {
-  padding: 8px 16px 0;
-  background: #fff;
+  padding: 20px 20px 0;
+  background: transparent;
 }
 
 .top-label {
-  color: #999;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
   margin-bottom: 6px;
   padding: 0 4px;
@@ -22,11 +23,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(90deg, #5b2cac, #6a35d3);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
   padding: 12px 16px;
-  border-radius: 0;
-  margin: 0 -16px;
+  border-radius: 16px;
+  margin: 0;
 }
 
 .page-title {
@@ -54,8 +57,10 @@
 /* Scan Card Section */
 .scan-card {
   margin: 16px;
-  background: #fff;
-  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
   padding: 20px;
 }
 
@@ -81,15 +86,17 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: white;
 }
 
 /* Status Card Section */
 .status-card {
   margin: 16px;
   padding: 20px;
-  background: #fff;
-  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
 }
 
 .status-header {
@@ -103,7 +110,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #333;
+  color: white;
 }
 
 .live-dot {
@@ -135,13 +142,13 @@
 .status-number {
   font-size: 32px;
   font-weight: 700;
-  color: #333;
+  color: white;
   margin-bottom: 4px;
 }
 
 .status-label {
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
 }
 
@@ -149,8 +156,10 @@
 .guest-list {
   margin: 16px;
   padding: 20px;
-  background: #fff;
-  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
 }
 
 .guest-list-header {
@@ -164,7 +173,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #333;
+  color: white;
 }
 
 .see-more {
@@ -194,7 +203,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .guest-item:last-child {
@@ -222,12 +231,12 @@
 .guest-name {
   font-weight: 600;
   font-size: 16px;
-  color: #333;
+  color: white;
 }
 
 .guest-time {
   font-size: 12px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .guest-status {
@@ -256,8 +265,10 @@
 .entry-codes-section {
   margin: 16px;
   padding: 20px;
-  background: #fff;
-  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
 }
 
 .entry-codes-header {
@@ -271,7 +282,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #333;
+  color: white;
 }
 
 .create-codes-btn {
@@ -297,7 +308,7 @@
 .entry-codes-description {
   margin: 0;
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   line-height: 1.5;
 }
 
@@ -315,15 +326,17 @@
 }
 
 .modal-content {
-  background: #fff;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   margin: 5% auto;
   padding: 0;
-  border-radius: 12px;
+  border-radius: 16px;
   width: 90%;
   max-width: 500px;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -331,12 +344,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #333;
+  color: white;
   font-size: 18px;
   font-weight: 600;
 }
@@ -344,7 +357,7 @@
 .close-modal {
   background: none;
   border: none;
-  color: #999;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 28px;
   cursor: pointer;
   padding: 0;
@@ -359,8 +372,8 @@
 }
 
 .close-modal:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #333;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
 .modal-body {
@@ -379,7 +392,7 @@
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #333;
+  color: white;
   font-weight: 600;
   font-size: 14px;
 }
@@ -390,7 +403,7 @@
   padding: 12px;
   border: 2px solid #8b5cf6;
   border-radius: 8px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
   color: #333;
   font-size: 14px;
   transition: border-color 0.2s;
@@ -427,12 +440,13 @@
 }
 
 .btn-secondary {
-  background: #e5e5e5;
-  color: #333;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .btn-secondary:hover {
-  background: #d5d5d5;
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .btn-primary {
@@ -452,17 +466,18 @@
 /* Codes Display Styles */
 .codes-display {
   padding: 20px;
-  color: #333;
+  color: white;
 }
 
 .codes-display p {
   margin: 8px 0;
   font-size: 14px;
+  color: white;
 }
 
 .codes-display strong {
   font-weight: 600;
-  color: #333;
+  color: white;
 }
 
 .codes-list {
@@ -477,9 +492,9 @@
   align-items: center;
   padding: 12px;
   margin-bottom: 8px;
-  background: #f5f5f5;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .code-item {
@@ -516,15 +531,20 @@
 /* Bottom Navigation - Override for manage party screen */
 #manage-party-screen .bottom-nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #8b5cf6;
-  padding: 12px 0;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 500px;
+  background: rgba(75, 39, 184, 0.95);
+  padding: 16px 20px;
   display: flex;
   justify-content: space-around;
   align-items: center;
-  border-radius: 0;
+  border-radius: 36px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: saturate(140%) blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 100;
 }
 

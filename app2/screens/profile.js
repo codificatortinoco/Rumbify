@@ -336,11 +336,11 @@ async function loadUserParties() {
         }
         
         return {
-          id: party.id,
-          title: party.title,
-          date: party.date.split(' • ')[0], // Just the date part
+        id: party.id,
+        title: party.title,
+        date: party.date.split(' • ')[0], // Just the date part
           status: status,
-          image: party.image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
+        image: party.image || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop",
           buttonText: buttonText,
           buttonClass: buttonClass
         };
@@ -499,7 +499,7 @@ function setupProfileEventListeners() {
       e.stopPropagation();
       console.log("Change profile picture clicked - navigating to edit profile");
       navigateTo("/edit-profile");
-    });
+  });
   }
 }
 

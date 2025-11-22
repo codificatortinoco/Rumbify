@@ -56,12 +56,7 @@ body {
 
 /* Dashboard Styles */
 #dashboard {
-  background:
-    linear-gradient(135deg, rgba(102, 126, 234, 0.55) 0%, rgba(118, 75, 162, 0.55) 100%),
-    url('assets/BackgroundApp.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   padding: 0;
   position: relative;
@@ -482,7 +477,7 @@ body {
 
 /* Event Details Styles */
 #event-details {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   padding: 0;
   position: relative;
@@ -989,7 +984,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 0;
   animation: loginFadeIn 0.6s ease-out;
 }
 
@@ -997,7 +992,31 @@ body {
 .logo-section {
   display: flex;
   justify-content: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+}
+
+/* Reduce logo margin specifically for login page */
+#login-screen .logo-section {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Reduce spacing between logo and form on login page */
+#login-screen .login-form {
+  margin-top: 0.5rem !important;
+  padding-top: 0 !important;
+}
+
+/* Ensure logo container has no margin */
+#login-screen .logo-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure login logo has no margin */
+#login-screen .login-logo {
+  margin: 0 !important;
+  display: block;
 }
 
 .logo-container {
@@ -1034,6 +1053,12 @@ body {
   text-align: center;
   margin: 0;
   letter-spacing: 1px;
+}
+
+/* Ensure login title has no top margin on login screen */
+#login-screen .login-title {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .login-subtitle {
@@ -1255,15 +1280,35 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 0;
   animation: registerFadeIn 0.6s ease-out;
 }
 
-/* Logo Section */
-.logo-section {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
+/* Logo Section - Register (duplicate, should not override login) */
+
+/* Reduce logo margin specifically for register page */
+#register-screen .logo-section {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Reduce spacing between logo and form on register page */
+#register-screen .login-form,
+#register-screen .register-form {
+  margin-top: 0.5rem !important;
+  padding-top: 0 !important;
+}
+
+/* Ensure logo container has no margin on register */
+#register-screen .logo-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure register logo has no margin */
+#register-screen .register-logo {
+  margin: 0 !important;
+  display: block;
 }
 
 .logo-container {
@@ -1300,6 +1345,12 @@ body {
   text-align: center;
   margin: 0;
   letter-spacing: 1px;
+}
+
+/* Ensure register title has no top margin on register screen */
+#register-screen .register-title {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .register-subtitle {
@@ -1543,12 +1594,7 @@ body {
 
 /* Profile Screen Styles */
 #profile-screen {
-  background:
-    linear-gradient(135deg, rgba(102, 126, 234, 0.55) 0%, rgba(118, 75, 162, 0.55) 100%),
-    url('assets/BackgroundApp.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   padding: 0 0 100px 0;
   position: relative;
@@ -1843,12 +1889,7 @@ body {
 
 /* Edit Profile Screen Styles */
 #edit-profile-screen {
-  background:
-    linear-gradient(135deg, rgba(102, 126, 234, 0.55) 0%, rgba(118, 75, 162, 0.55) 100%),
-    url('assets/BackgroundApp.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   padding: 0 0 100px 0;
   position: relative;
@@ -2944,7 +2985,7 @@ input:checked + .toggle-slider:before {
 /* Party Details Screen Styles */
 #party-details-screen {
   min-height: 100vh;
-  background: linear-gradient(135deg, #2d1b69 0%, #1a0b3d 100%);
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   color: white;
 }
 

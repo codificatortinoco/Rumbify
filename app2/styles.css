@@ -118,14 +118,44 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 0;
   animation: loginFadeIn 0.6s ease-out;
 }
 
 .logo-section {
   display: flex;
   justify-content: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+}
+
+/* Reduce logo margin specifically for admin login page */
+#admin-login-screen .logo-section {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Reduce spacing between logo and form on admin login page */
+#admin-login-screen .admin-login-form {
+  margin-top: 0.5rem !important;
+  padding-top: 0 !important;
+}
+
+/* Ensure logo container has no margin */
+#admin-login-screen .logo-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure admin login logo has no margin */
+#admin-login-screen .admin-login-logo {
+  margin: 0 !important;
+  display: block;
+}
+
+/* Ensure admin login title has no top margin */
+#admin-login-screen .admin-login-title {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .logo-container {
@@ -350,7 +380,7 @@ body {
 /* Admin Dashboard Styles */
 #admin-dashboard-screen {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
 }
 
 .admin-dashboard-content {
@@ -504,8 +534,38 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 0;
   animation: registerFadeIn 0.6s ease-out;
+}
+
+/* Reduce logo margin specifically for admin register page */
+#admin-register-screen .logo-section {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Reduce spacing between logo and form on admin register page */
+#admin-register-screen .admin-register-form {
+  margin-top: 0.5rem !important;
+  padding-top: 0 !important;
+}
+
+/* Ensure logo container has no margin on register */
+#admin-register-screen .logo-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure admin register logo has no margin */
+#admin-register-screen .admin-register-logo {
+  margin: 0 !important;
+  display: block;
+}
+
+/* Ensure admin register title has no top margin */
+#admin-register-screen .admin-register-title {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .admin-register-logo {
@@ -817,34 +877,11 @@ html, body, input, textarea, button, select {
 
 /* Profile Screen Styles */
 #profile-screen {
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
-    linear-gradient(135deg, #1a0b2e 0%, #16213e 50%, #0f3460 100%);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  background-position: 0% 0%, 100% 100%, 50% 50%, 0% 0%;
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   padding: 0 0 100px 0;
   position: relative;
   overflow-x: hidden;
-}
-
-#profile-screen::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0),
-    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.1) 1px, transparent 0);
-  background-size: 40px 40px, 80px 80px;
-  background-position: 0 0, 20px 20px;
-  opacity: 0.3;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* Profile Header */
@@ -1133,34 +1170,11 @@ html, body, input, textarea, button, select {
 
 /* Edit Profile Screen Styles */
 #edit-profile-screen {
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
-    linear-gradient(135deg, #1a0b2e 0%, #16213e 50%, #0f3460 100%);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  background-position: 0% 0%, 100% 100%, 50% 50%, 0% 0%;
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   padding: 0 0 100px 0;
   position: relative;
   overflow-x: hidden;
-}
-
-#edit-profile-screen::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0),
-    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.1) 1px, transparent 0);
-  background-size: 40px 40px, 80px 80px;
-  background-position: 0 0, 20px 20px;
-  opacity: 0.3;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* Edit Profile Header */
@@ -1800,33 +1814,11 @@ input:checked + .toggle-slider:before {
 /* My Parties Screen Styles */
 #my-parties-screen {
   min-height: 100vh;
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
-    linear-gradient(135deg, #1a0b2e 0%, #16213e 50%, #0f3460 100%);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  background-position: 0% 0%, 100% 100%, 50% 50%, 0% 0%;
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   padding: 0;
   margin: 0;
   position: relative;
   overflow-x: hidden;
-}
-
-#my-parties-screen::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0),
-    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.1) 1px, transparent 0);
-  background-size: 40px 40px, 80px 80px;
-  background-position: 0 0, 20px 20px;
-  opacity: 0.3;
-  pointer-events: none;
 }
 
 .my-parties-content {

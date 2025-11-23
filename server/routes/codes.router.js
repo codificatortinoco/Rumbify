@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { testConnection, generateCodes, getPartyCodes, validateCode, useCode, verifyAndAddParty } = require('../controllers/codes.controller');
+const { testConnection, generateCodes, getPartyCodes, validateCode, useCode, verifyAndAddParty, getActiveQrForParty } = require('../controllers/codes.controller');
 
 // Test database connection
 router.get('/test', testConnection);
@@ -19,5 +19,8 @@ router.post('/use', useCode);
 
 // Verify code and add party to user's history
 router.post('/verify-and-add', verifyAndAddParty);
+
+// Get active QR for a party and user
+router.get('/qr/:partyId', getActiveQrForParty);
 
 module.exports = router;

@@ -216,6 +216,11 @@ async function loadPartyDetails(partyId) {
     console.log('[loadPartyDetails] Loading party description...');
     await loadPartyDescription(partyId);
     console.log('[loadPartyDetails] ✅ Party description loaded');
+
+    // Load active QR for this user and party
+    console.log('[loadPartyDetails] Loading active QR...');
+    await loadActiveQr(partyId);
+    console.log('[loadPartyDetails] ✅ Active QR loaded or placeholder shown');
     
     console.log('[loadPartyDetails] === PARTY DATA LOAD COMPLETE ===');
     
@@ -282,6 +287,91 @@ function loadDressCode(tags) {
   dressCodeList.innerHTML = dressCodeItems.map(item => `
     <li>${item}</li>
   `).join("");
+}
+
+async function loadActiveQr(partyId) {
+  try {
+    const user = getCurrentUser();
+    if (!user || !user.id) {
+      console.warn('[loadActiveQr] No current user; skipping QR fetch');
+      return;
+    }
+
+    console.log('[loadActiveQr] Fetching active QR:', { partyId, userId: user.id });
+    const response = await makeRequest(`/codes/qr/${partyId}?user_id=${user.id}`, 'GET');
+    console.log('[loadActiveQr] QR response:', response);
+    if (response && response.success && response.qr && response.qr.token) {
+      console.log('[loadActiveQr] Active QR found, ensuring library...');
+      const token = response.qr.token;
+      await ensureQrLib();
+      console.log('[loadActiveQr] Library ready, rendering QR');
+      await renderQr(token);
+    } else {
+      console.log('[loadActiveQr] No active QR found; keeping placeholder');
+    }
+  } catch (err) {
+    console.warn('[loadActiveQr] Error loading active QR:', err?.message);
+  }
+}
+
+function ensureQrLib() {
+  return new Promise((resolve, reject) => {
+    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+      console.log('[ensureQrLib] QRCode library already present');
+      return resolve();
+    }
+    console.log('[ensureQrLib] Injecting QRCode library script...');
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('[ensureQrLib] QRCode library loaded');
+      resolve();
+    };
+    script.onerror = () => {
+      console.warn('[ensureQrLib] Failed to load QR library');
+      reject(new Error('Failed to load QR library'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+async function renderQr(token) {
+  try {
+    const container = document.getElementById('qrCode');
+    if (!container) return;
+
+    // Clear placeholder
+    container.innerHTML = '';
+
+    const canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+    await window.QRCode.toCanvas(canvas, String(token), {
+      width: 180,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    });
+    console.log('[renderQr] QR rendered with token:', token);
+  } catch (e) {
+    console.warn('[renderQr] Failed to render QR:', e?.message);
+    // Fallback: show token as text for troubleshooting
+    const container = document.getElementById('qrCode');
+    if (container) {
+      const fallback = document.createElement('div');
+      fallback.style.padding = '12px';
+      fallback.style.background = '#1e1e1e';
+      fallback.style.color = '#fff';
+      fallback.style.borderRadius = '8px';
+      fallback.style.fontSize = '12px';
+      fallback.style.wordBreak = 'break-all';
+      fallback.textContent = `QR token: ${String(token)}`;
+      container.innerHTML = '';
+      container.appendChild(fallback);
+    }
+  }
 }
 
 function setupPartyDetailsEventListeners() {

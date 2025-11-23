@@ -820,6 +820,74 @@ const verifyAndAddParty = async (req, res) => {
 
     console.log('[verifyAndAddParty] Successfully added party to user history');
 
+    // Create QR record for this verified access
+    let qrRecord = null;
+    try {
+      const qrToken = cryptoNode.randomBytes(16).toString('hex');
+      const validUntilTs = (() => {
+        // Try to parse party.date if it's ISO or a recognizable format; else leave null
+        if (party?.date) {
+          const parsed = new Date(party.date);
+          if (!isNaN(parsed.getTime())) return parsed.toISOString();
+        }
+        return null;
+      })();
+
+      // First try: insert including code_id (FK to Codes.id) if schema supports it
+      let insertPayload = {
+        party_id: party.id,
+        user_id: userObj?.id || null,
+        code: codeRecord.code,
+        qr_token: qrToken,
+        status: 'active',
+        valid_until: validUntilTs,
+        code_id: codeRecord?.id || null
+      };
+
+      let { data: insertedQr, error: qrErr } = await supabaseCli
+        .from('qr_codes')
+        .insert(insertPayload)
+        .select('*')
+        .single();
+
+      // Fallback: if code_id column doesn't exist or violates schema, try without it
+      const isMissingColumn = (err) => !!err && (
+        String(err?.message || '').toLowerCase().includes('column') &&
+        String(err?.message || '').toLowerCase().includes('does not exist')
+      );
+      const isFkIssue = (err) => !!err && (
+        String(err?.message || '').toLowerCase().includes('foreign key') ||
+        String(err?.message || '').toLowerCase().includes('constraint')
+      );
+
+      if (qrErr && (isMissingColumn(qrErr) || isFkIssue(qrErr))) {
+        const { data: insertedQr2, error: qrErr2 } = await supabaseCli
+          .from('qr_codes')
+          .insert({
+            party_id: party.id,
+            user_id: userObj?.id || null,
+            code: codeRecord.code,
+            qr_token: qrToken,
+            status: 'active',
+            valid_until: validUntilTs
+          })
+          .select('*')
+          .single();
+        if (!qrErr2) {
+          insertedQr = insertedQr2;
+          qrErr = null;
+        }
+      }
+
+      if (qrErr) {
+        console.warn('[verifyAndAddParty] Warning: failed to create QR record:', qrErr?.message);
+      } else {
+        qrRecord = insertedQr;
+      }
+    } catch (qe) {
+      console.warn('[verifyAndAddParty] Warning: unexpected error creating QR record:', qe?.message);
+    }
+
     // Insert pending guest entry for this party (to show in guests-summary)
     try {
       const guestName = userObj?.name || 'Guest';
@@ -866,7 +934,12 @@ const verifyAndAddParty = async (req, res) => {
         category: party.category,
         price_name: price.price_name,
         price: price.price
-      }
+      },
+      qr: qrRecord ? {
+        token: qrRecord.qr_token,
+        status: qrRecord.status,
+        valid_until: qrRecord.valid_until
+      } : null
     });
 
   } catch (error) {
@@ -884,5 +957,45 @@ module.exports = {
   getPartyCodes,
   validateCode,
   useCode,
-  verifyAndAddParty
+  verifyAndAddParty,
+  // Fetch latest active QR for a given party and user
+  getActiveQrForParty: async (req, res) => {
+    try {
+      const { partyId } = req.params;
+      const userId = (req.query.user_id || req.body?.user_id || '').toString();
+
+      if (!partyId || !userId) {
+        return res.status(400).json({ success: false, message: 'partyId and user_id are required' });
+      }
+
+      const { data: qrRows, error } = await supabaseCli
+        .from('qr_codes')
+        .select('*')
+        .eq('party_id', parseInt(partyId, 10))
+        .eq('user_id', parseInt(userId, 10))
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        return res.status(500).json({ success: false, message: 'Error fetching QR', error: error.message });
+      }
+
+      const qr = (qrRows && qrRows[0]) || null;
+      if (!qr) {
+        return res.json({ success: true, qr: null });
+      }
+
+      return res.json({
+        success: true,
+        qr: {
+          token: qr.qr_token,
+          status: qr.status,
+          valid_until: qr.valid_until
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
 };

@@ -181,28 +181,41 @@ class MemberDataService {
       );
       
       const history = Array.isArray(response?.party_history) ? response.party_history : [];
-      const now = Date.now();
+      const nowDate = new Date();
+      nowDate.setHours(0, 0, 0, 0);
+      const now = nowDate.getTime();
       
       const upcomingEvents = history
         .map((event) => {
           const parsedDate = parseEventDate(event.date_iso || event.date);
-          if (!parsedDate) return null;
-
           const attendeesInfo = parseAttendeesFromString(event.attendees);
-          
           return {
             ...event,
-            date: parsedDate.toISOString(),
+            date: parsedDate ? parsedDate.toISOString() : (event.date_iso || event.date || new Date().toISOString()),
             attendees_count: attendeesInfo.current,
             max_attendees: attendeesInfo.max
           };
         })
-        .filter(Boolean)
         .filter((event) => {
-          const eventTime = new Date(event.date).getTime();
-          return !Number.isNaN(eventTime) && eventTime >= now;
+          if (typeof event.is_upcoming === 'boolean') {
+            return event.is_upcoming;
+          }
+          return true;
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      if (upcomingEvents.length === 0 && history.length > 0) {
+        return history.map((event) => {
+          const parsedDate = parseEventDate(event.date_iso || event.date);
+          const attendeesInfo = parseAttendeesFromString(event.attendees);
+          return {
+            ...event,
+            date: parsedDate ? parsedDate.toISOString() : (event.date_iso || event.date || new Date().toISOString()),
+            attendees_count: attendeesInfo.current,
+            max_attendees: attendeesInfo.max
+          };
+        });
+      }
       
       return upcomingEvents;
     } catch (error) {

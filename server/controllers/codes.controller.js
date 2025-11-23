@@ -1,5 +1,6 @@
 const { supabaseCli } = require('../db/users.db');
 const cryptoNode = require('crypto');
+const QRCode = require('qrcode');
 
 // Ephemeral cache for preview codes (not persisted). Key: 6-char code
 // Value: { partyId: number, priceId: number, createdAt: number }
@@ -776,11 +777,7 @@ const verifyAndAddParty = async (req, res) => {
       console.log('[verifyAndAddParty] Existing party check result:', existingUserParty);
 
       if (existingUserParty && existingUserParty.length > 0) {
-        console.log('[verifyAndAddParty] User already has this party in history');
-        return res.status(400).json({
-          success: false,
-          message: "You have already added this party to your history"
-        });
+        console.log('[verifyAndAddParty] User already has this party in history - will proceed to ensure QR generation/reuse');
       }
     }
 
@@ -1341,16 +1338,113 @@ const getQRCode = async (req, res) => {
         console.log('[getQRCode] Found QR code for guest');
       } else {
         console.log('[getQRCode] QR code not found for guest either');
+        // Fallback: find code used by this user for this party and fetch QR by code FK
+        console.log('[getQRCode] Trying fallback via Codes table (user+party) ...');
+        const { data: usedCode, error: codeErr } = await supabaseCli
+          .from('Codes')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('party_id', partyId)
+          .eq('already_used', true)
+          .single();
+        if (usedCode && !codeErr) {
+          const { data: qrByCode, error: qrByCodeErr } = await supabaseCli
+            .from('qr_codes')
+            .select('*')
+            .eq('code', usedCode.id)
+            .single();
+          if (qrByCode && !qrByCodeErr) {
+            qrCode = qrByCode;
+            error = null;
+            console.log('[getQRCode] Found QR via code FK');
+          }
+        }
       }
     }
     
     if (error) {
       if (error.code === 'PGRST116') {
-        console.log('[getQRCode] QR code not found in database');
-        return res.status(404).json({
-          success: false,
-          message: "QR code not found"
-        });
+        console.log('[getQRCode] QR code not found in database - attempting on-demand generation');
+        try {
+          const { data: usedCode, error: codeErr } = await supabaseCli
+            .from('Codes')
+            .select('id, party_id')
+            .eq('user_id', userId)
+            .eq('party_id', partyId)
+            .eq('already_used', true)
+            .single();
+          if (!usedCode || codeErr) {
+            return res.status(404).json({ success: false, message: 'QR code not found' });
+          }
+          const timestamp = Date.now();
+          const randomPart = cryptoNode.randomBytes(8).toString('hex').toUpperCase();
+          const qrToken = `QR-${userId}-${partyId}-${usedCode.id}-${timestamp}-${randomPart}`;
+          let qrImageOut = null;
+          try {
+            qrImageOut = await QRCode.toDataURL(qrToken, {
+              errorCorrectionLevel: 'M',
+              type: 'image/png',
+              quality: 0.92,
+              margin: 1,
+              width: 300
+            });
+          } catch (genErr) {
+            console.warn('[getQRCode] Inline generation failed:', genErr?.message);
+          }
+          let validUntilIso = null;
+          try {
+            const { data: party, error: partyErr } = await supabaseCli
+              .from('parties')
+              .select('*')
+              .eq('id', partyId)
+              .single();
+            if (!partyErr && party) {
+              const dateStr = String(party.date || '').split('•')[0].trim();
+              if (dateStr.includes('/')) {
+                const [day, month, year] = dateStr.split('/');
+                const fullYear = year.length === 2 ? `20${year}` : year;
+                validUntilIso = `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T23:59:59`;
+              } else if (party.date) {
+                const d = new Date(party.date);
+                validUntilIso = isNaN(d.getTime()) ? null : d.toISOString();
+              }
+            }
+          } catch (_) {}
+          const insertData = {
+            user_id: userId,
+            party_id: partyId,
+            code: usedCode.id,
+            qr_token: qrToken,
+            status: 'not used',
+            valid_until: validUntilIso,
+            used_at: null,
+            qr_image: qrImageOut
+          };
+          const { data: inserted, error: insertErr } = await supabaseCli
+            .from('qr_codes')
+            .insert(insertData)
+            .select('*')
+            .single();
+          if (insertErr || !inserted) {
+            console.error('[getQRCode] Failed to insert on-demand QR:', insertErr);
+            return res.status(500).json({ success: false, message: 'Error generating QR code' });
+          }
+          return res.json({
+            success: true,
+            qr_code: {
+              id: inserted.id,
+              qr_token: inserted.qr_token,
+              qr_image: inserted.qr_image,
+              status: inserted.status,
+              used_at: inserted.used_at,
+              valid_until: inserted.valid_until,
+              created_at: inserted.created_at
+            }
+          });
+        } catch (genError) {
+          console.error('[getQRCode] On-demand generation exception:', genError);
+          return res.status(404).json({ success: false, message: 'QR code not found' });
+        }
       }
       console.error('[getQRCode] Error fetching QR code:', error);
       return res.status(500).json({
@@ -1361,12 +1455,28 @@ const getQRCode = async (req, res) => {
     
     console.log('[getQRCode] QR code found:', qrCode.id);
     
+    let qrImageOut = qrCode.qr_image;
+    if (!qrImageOut && qrCode.qr_token) {
+      try {
+        qrImageOut = await QRCode.toDataURL(qrCode.qr_token, {
+          errorCorrectionLevel: 'M',
+          type: 'image/png',
+          quality: 0.92,
+          margin: 1,
+          width: 300
+        });
+        console.log('[getQRCode] Generated inline QR image as fallback');
+      } catch (genErr) {
+        console.warn('[getQRCode] Could not generate inline QR image:', genErr?.message);
+      }
+    }
+    
     res.json({
       success: true,
       qr_code: {
         id: qrCode.id,
         qr_token: qrCode.qr_token,
-        qr_image: qrCode.qr_image,
+        qr_image: qrImageOut,
         status: qrCode.status,
         used_at: qrCode.used_at,
         valid_until: qrCode.valid_until,

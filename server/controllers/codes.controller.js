@@ -654,12 +654,36 @@ const verifyAndAddParty = async (req, res) => {
       codeRecord = inserted;
     }
 
+    // Handle already used codes: allow re-association if no user was set
+    let reassociated = false;
     if (codeRecord.already_used) {
-      console.log('[verifyAndAddParty] Code already used:', code);
-      return res.status(400).json({
-        success: false,
-        message: "Code has already been used"
-      });
+      if (user_id && !codeRecord.user_id) {
+        const { data: reassocData, error: reassocErr } = await supabaseCli
+          .from('Codes')
+          .update({ user_id })
+          .eq('code', code)
+          .eq('already_used', true)
+          .is('user_id', null)
+          .select('*')
+          .single();
+
+        if (reassocErr || !reassocData) {
+          console.log('[verifyAndAddParty] Could not re-associate used code to user:', reassocErr);
+          return res.status(400).json({
+            success: false,
+            message: "Code has already been used"
+          });
+        }
+        console.log('[verifyAndAddParty] ✅ Re-associated used code to user:', user_id);
+        reassociated = true;
+        codeRecord = reassocData;
+      } else {
+        console.log('[verifyAndAddParty] Code already used and associated');
+        return res.status(400).json({
+          success: false,
+          message: "Code has already been used"
+        });
+      }
     }
 
     // Get party information
@@ -694,7 +718,7 @@ const verifyAndAddParty = async (req, res) => {
 
     // Verify user exists only if provided
     let userObj = null;
-    if (user_id) {
+    if (user_id && !reassociated) {
       const { data: user, error: userError } = await supabaseCli
         .from('users')
         .select('id, name')
@@ -761,6 +785,7 @@ const verifyAndAddParty = async (req, res) => {
     }
 
     // Mark code as used when we found (or inserted) an existing unused record.
+    const shouldIncrementAttendees = !codeRecord.already_used;
     if (!codeRecord.already_used) {
       const { data: updatedCode, error: updateError } = await supabaseCli
         .from('Codes')
@@ -785,8 +810,11 @@ const verifyAndAddParty = async (req, res) => {
       codeRecord = updatedCode;
     }
 
-    // Increment attendees count on party (e.g., 0/100 -> 1/100)
+    // Increment attendees count on party only on first use
     try {
+      if (!shouldIncrementAttendees) {
+        console.log('[verifyAndAddParty] Skipping attendees increment (code was already used)');
+      } else {
       const attStr = party.attendees || "0/100";
       const parts = String(attStr).split('/');
       let current = parseInt(parts[0], 10) || 0;
@@ -816,6 +844,7 @@ const verifyAndAddParty = async (req, res) => {
         });
       }
       console.log('[verifyAndAddParty] Attendees updated:', updatedParty.attendees);
+      }
     } catch (attErr) {
       console.error('[verifyAndAddParty] Unexpected error updating attendees:', attErr);
       return res.status(500).json({ success: false, message: 'Unexpected error updating attendees' });

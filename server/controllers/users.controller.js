@@ -808,6 +808,15 @@ const getUserPartyHistory = async (req, res) => {
     
     // Get user's used codes
     const supabaseCli = require("../services/supabase.service");
+    const { data: user, error: userError } = await supabaseCli
+      .from('users')
+      .select('id, name')
+      .eq('id', id)
+      .single();
+
+    if (userError) {
+      console.warn('[getUserPartyHistory] Could not load user for guest association:', userError);
+    }
     const { data: userCodes, error: codesError } = await supabaseCli
       .from('Codes')
       .select('id, code, party_id, price_id, created_at')
@@ -882,6 +891,57 @@ const getUserPartyHistory = async (req, res) => {
     }
     
     console.log('[getUserPartyHistory] Found', partyHistory.length, 'parties in history');
+
+    try {
+      const guestName = user?.name;
+      if (guestName) {
+        const { data: guestInvites, error: guestsError } = await supabaseCli
+          .from('Invitados_Lista')
+          .select('id, party_id, name, validado, created_at')
+          .eq('name', guestName);
+
+        if (!guestsError && Array.isArray(guestInvites) && guestInvites.length) {
+          const existing = new Set(partyHistory.map(h => String(h.party_id)));
+          for (const invite of guestInvites) {
+            const { data: party, error: partyError } = await supabaseCli
+              .from('parties')
+              .select('*')
+              .eq('id', invite.party_id)
+              .single();
+            if (partyError || !party) continue;
+            const attendeesInfo = parseAttendeesString(party.attendees);
+            const parsedDate = parsePartyDateToIso(party.date);
+            const isUpcoming = parsedDate ? parsedDate.getTime() >= Date.now() : false;
+            const historyItem = {
+              id: party.id,
+              party_id: party.id,
+              title: party.title,
+              location: party.location,
+              date: party.date,
+              date_display: party.date,
+              date_iso: parsedDate ? parsedDate.toISOString() : null,
+              administrator: party.administrator,
+              image: party.image,
+              tags: party.tags,
+              category: party.category,
+              price_name: null,
+              price: null,
+              code_used: null,
+              added_at: invite.created_at,
+              attendees: party.attendees || "0/0",
+              attendees_count: attendeesInfo.current,
+              max_attendees: attendeesInfo.max,
+              is_upcoming: isUpcoming,
+              status: isUpcoming ? "upcoming" : "attended"
+            };
+            if (!existing.has(String(historyItem.party_id))) {
+              partyHistory.push(historyItem);
+              existing.add(String(historyItem.party_id));
+            }
+          }
+        }
+      }
+    } catch (_) {}
 
     res.json({
       success: true,

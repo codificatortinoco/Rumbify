@@ -136,12 +136,6 @@ function preventAdminAccess() {
 // Ejecutar verificación al cargar la página
 preventAdminAccess();
 
-// Interceptar cualquier cambio de URL
-setInterval(() => {
-  if (authManager.isUserAdmin()) {
-    console.log('Admin detected in app1, redirecting to app2');
-    window.location.href = '/app2/admin-dashboard';
-  }
-}, 100);
+// Eliminado intervalo de redirección automática
 
 export { authManager, checkRouteAccess, handleUnauthorizedAccess };

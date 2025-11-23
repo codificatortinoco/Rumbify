@@ -46,6 +46,20 @@ export default async function renderManageParty(routeData = {}) {
         </div>
       </section>
 
+      <!-- Guest Approval Modal -->
+      <div id="guestApprovalModal" class="modal-overlay hidden">
+        <div class="modal-card">
+          <div class="modal-close" id="ga-close">×</div>
+          <div class="modal-title">Solicitud de invitación</div>
+          <img id="ga-avatar" src="/app2/assets/userIcon.svg" alt="Avatar" class="modal-avatar"/>
+          <div id="ga-name" class="modal-name">Invitado</div>
+          <div class="modal-actions">
+            <button id="ga-approve" class="btn btn-approve">✓</button>
+            <button id="ga-reject" class="btn btn-reject">X</button>
+          </div>
+        </div>
+      </div>
+
       <section class="guest-list">
         <div class="guest-list-header">
           <h3>Guest List</h3>
@@ -155,7 +169,48 @@ export default async function renderManageParty(routeData = {}) {
             await reloadPartyData();
             const n = resp?.qr_code?.users?.name || 'Invitado';
             const p = resp?.qr_code?.parties?.title || 'Fiesta';
-            alert(`QR validado: ${n} — ${p}`);
+            // Buscar invitado en la lista para obtener su id
+            let guestsList = await makeRequest(`/parties/${currentPartyId}/guests`, 'GET');
+            if (!Array.isArray(guestsList) && guestsList?.guests) guestsList = guestsList.guests;
+            const match = (guestsList || []).find(g => String(g.name).toLowerCase() === String(n).toLowerCase());
+            const guestId = match?.id;
+            // Abrir modal de aprobación inmediata
+            const modalEl = document.getElementById('guestApprovalModal');
+            const nameEl = document.getElementById('ga-name');
+            const closeEl = document.getElementById('ga-close');
+            const approveEl = document.getElementById('ga-approve');
+            const rejectEl = document.getElementById('ga-reject');
+            nameEl.textContent = n || 'Invitado';
+            modalEl.classList.remove('hidden');
+            const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+            const adminEmail = adminUser?.email;
+            const onClose = () => { modalEl.classList.add('hidden'); cleanupHandlers(); };
+            const cleanupHandlers = () => {
+              closeEl.removeEventListener('click', onClose);
+              approveEl.replaceWith(approveEl.cloneNode(true));
+              rejectEl.replaceWith(rejectEl.cloneNode(true));
+            };
+            closeEl.addEventListener('click', onClose);
+            document.getElementById('ga-approve').addEventListener('click', async () => {
+              try {
+                if (guestId) {
+                  const url = `/parties/${currentPartyId}/guests/${guestId}/status${adminEmail ? `?email=${encodeURIComponent(adminEmail)}` : ''}`;
+                  await makeRequest(url, 'PATCH', { status: 'validated' });
+                }
+                await reloadPartyData();
+              } catch (e) { console.error('Approve error:', e); }
+              onClose();
+            });
+            document.getElementById('ga-reject').addEventListener('click', async () => {
+              try {
+                if (guestId) {
+                  const url = `/parties/${currentPartyId}/guests/${guestId}/status${adminEmail ? `?email=${encodeURIComponent(adminEmail)}` : ''}`;
+                  await makeRequest(url, 'PATCH', { status: 'denied' });
+                }
+                await reloadPartyData();
+              } catch (e) { console.error('Reject error:', e); }
+              onClose();
+            });
           } else {
             alert(resp?.message || 'QR inválido');
           }

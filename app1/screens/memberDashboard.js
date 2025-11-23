@@ -86,12 +86,6 @@ export default function renderMemberDashboard() {
             <h3>Welcome, ${userName} Member</h3>
           </div>
         </div>
-        <div class="notification-bell">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-          </svg>
-          <div class="notification-dot"></div>
-        </div>
       </header>
 
       <!-- Welcome Message -->
@@ -120,9 +114,11 @@ export default function renderMemberDashboard() {
       <section class="favorites-section">
         <div class="section-header">
           <h2 class="section-title">Favorites</h2>
-          <a href="#" class="see-more-link" id="seeMoreFavorites">See more</a>
         </div>
-        <div class="no-favorites">
+        <div class="favorites-grid" id="favoritesGrid">
+          <!-- Favorite parties will be loaded here -->
+        </div>
+        <div class="no-favorites" id="noFavorites" style="display: none;">
           <p>No tienes eventos favoritos aún</p>
         </div>
       </section>
@@ -151,6 +147,9 @@ export default function renderMemberDashboard() {
 function initializeMemberDashboard() {
   // Load upcoming events for user
   loadUpcomingForYou();
+  
+  // Load favorite parties
+  loadFavorites();
   
   setupUpcomingCarousel();
   
@@ -265,6 +264,72 @@ class MemberDataService {
         tags: ["New Year", "Celebration"],
         liked: false,
         category: "upcoming"
+      }
+    ];
+  }
+
+  static async getLikedParties(userId) {
+    if (CONFIG.USE_MOCK_DATA) {
+      return this.getMockLikedParties();
+    }
+
+    if (!userId) {
+      return [];
+    }
+    
+    try {
+      // Fetch all parties and filter by liked
+      const response = await makeRequest("/parties", "GET");
+      const allParties = Array.isArray(response) ? response : [];
+      
+      // Filter parties that are liked
+      // Note: This assumes liked is a boolean on the party
+      // If there's a user_likes table, we'd need a different endpoint
+      const likedParties = allParties.filter(party => party.liked === true);
+      
+      return likedParties.map(party => {
+        const attendeesInfo = parseAttendeesFromString(party.attendees || "0/0");
+        const parsedDate = parseEventDate(party.date_iso || party.date);
+        return {
+          ...party,
+          date: parsedDate ? parsedDate.toISOString() : (party.date_iso || party.date || new Date().toISOString()),
+          attendees_count: attendeesInfo.current,
+          max_attendees: attendeesInfo.max
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching liked parties:", error);
+      return [];
+    }
+  }
+
+  static getMockLikedParties() {
+    return [
+      {
+        id: 2,
+        title: "Summer Vibes",
+        attendees: "45/100",
+        location: "Calle 15#45-12",
+        date: "20/12/24 • 20:00-04:00",
+        administrator: "DJ Summer",
+        price: "$45.000",
+        image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=300&fit=crop",
+        tags: ["Summer", "Outdoor"],
+        liked: true,
+        category: "upcoming"
+      },
+      {
+        id: 4,
+        title: "Chicago Night",
+        attendees: "23/96",
+        location: "Calle 23#32-26",
+        date: "5/9/21 • 23:00-06:00",
+        administrator: "Loco Foroko",
+        price: "$65.000",
+        image: "https://images.unsplash.com/photo-1571266028243-d220b6b0b8c5?w=400&h=200&fit=crop",
+        tags: ["Elegant", "Cocktailing"],
+        liked: true,
+        category: "hot-topic"
       }
     ];
   }
@@ -723,5 +788,116 @@ export function cleanupMemberDashboard() {
   if (modal) {
     modal.remove();
   }
+}
+
+async function loadFavorites() {
+  if (!memberDashboardController.isActive) {
+    return;
+  }
+
+  try {
+    const userId = getCurrentUser()?.id;
+    if (!userId) {
+      renderFavorites([]);
+      return;
+    }
+
+    const likedParties = await MemberDataService.getLikedParties(userId);
+    
+    if (!memberDashboardController.isActive) {
+      return;
+    }
+    
+    renderFavorites(likedParties);
+  } catch (error) {
+    console.error("Error loading favorites:", error);
+    renderFavorites([]);
+  }
+}
+
+function renderFavorites(events) {
+  const favoritesGrid = document.getElementById("favoritesGrid");
+  const noFavorites = document.getElementById("noFavorites");
+  
+  if (!favoritesGrid || !noFavorites) {
+    console.warn("Favorites elements not found, skipping render");
+    return;
+  }
+  
+  if (!events || events.length === 0) {
+    favoritesGrid.style.display = "none";
+    noFavorites.style.display = "block";
+    return;
+  }
+
+  favoritesGrid.style.display = "flex";
+  noFavorites.style.display = "none";
+  
+  const eventsHTML = events.map(event => {
+    // Format date for display
+    const eventDate = new Date(event.date);
+    const formattedDate = eventDate.toLocaleDateString('es-ES', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: '2-digit' 
+    });
+    const formattedTime = eventDate.toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+
+    const attendeesInfo = parseAttendeesFromString(event.attendees || "0/0");
+    const attendeesCount = attendeesInfo.current;
+    const maxAttendees = attendeesInfo.max;
+    const attendeesDisplay = `${attendeesCount}/${maxAttendees}`;
+    
+    return `
+      <div class="favorite-card" data-party-id="${event.id}">
+        <div class="event-image">
+          <img src="${event.image_url || event.image || 'https://images.unsplash.com/photo-1571266028243-e68f952df624?w=400&h=300&fit=crop'}" alt="${event.title}" />
+          <div class="favorite-heart">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="event-info">
+          <div>
+            <h3 class="event-title">
+              ${event.title.length > 20 ? event.title.substring(0, 20) + '...' : event.title}
+              <span>${attendeesDisplay}</span>
+            </h3>
+            <div class="event-details">
+              <div class="event-detail">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <span>${event.location}</span>
+              </div>
+              <div class="event-detail">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                </svg>
+                <span>${formattedDate} • ${formattedTime}</span>
+              </div>
+              <div class="event-detail">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+                <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
+              </div>
+            </div>
+          </div>
+          <div class="event-actions">
+            <button class="action-btn going" data-event-id="${event.id}">I'm going</button>
+            <button class="action-btn maybe" data-event-id="${event.id}">Maybe</button>
+            <button class="action-btn not-going" data-event-id="${event.id}">Not going</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  favoritesGrid.innerHTML = eventsHTML;
 }
 

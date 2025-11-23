@@ -1,3 +1,6 @@
+/* Import Poppins font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 /* Global Styles */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -6,6 +9,16 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
   color: #333;
+}
+
+/* Apply Poppins font to all titles */
+h1, h2, h3, h4, h5, h6,
+.title, .section-title,
+.login-title, .register-title,
+.profile-title, .edit-profile-title,
+.event-title, .party-title,
+.welcome-message h2 {
+  font-family: 'Poppins', sans-serif;
 }
 
 #app {
@@ -2352,25 +2365,11 @@ input:checked + .toggle-slider:before {
 
 /* ===== MEMBER DASHBOARD STYLES ===== */
 #member-dashboard {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: url('assets/BackgroundImage.png') center/cover no-repeat;
   min-height: 100vh;
   color: white;
   position: relative;
   overflow-x: hidden;
-}
-
-#member-dashboard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 40% 60%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
-  pointer-events: none;
 }
 
 /* Header Styles */
@@ -2444,13 +2443,12 @@ input:checked + .toggle-slider:before {
 }
 
 .welcome-message h2 {
+  font-family: 'Poppins', sans-serif;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: white;
+  line-height: 1.3;
 }
 
 .add-party-btn {
@@ -2476,11 +2474,19 @@ input:checked + .toggle-slider:before {
 }
 
 /* Section Styles */
-.upcoming-for-you-section,
-.favorites-section {
+.upcoming-for-you-section {
   padding: 20px;
+  padding-bottom: 0;
   position: relative;
   z-index: 2;
+}
+
+.favorites-section {
+  padding: 0 20px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  position: relative;
+  z-index: 2;
+  margin-top: 10px;
 }
 
 .section-title {
@@ -2497,6 +2503,10 @@ input:checked + .toggle-slider:before {
   margin-bottom: 20px;
 }
 
+.favorites-section .section-header {
+  justify-content: flex-start;
+}
+
 .see-more-link {
   color: #8b5cf6;
   text-decoration: none;
@@ -2510,7 +2520,13 @@ input:checked + .toggle-slider:before {
 }
 
 /* Carousel Styles */
-.upcoming-carousel,
+.upcoming-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 0;
+}
+
 .favorites-grid {
   display: flex;
   gap: 16px;
@@ -2520,39 +2536,141 @@ input:checked + .toggle-slider:before {
   -ms-overflow-style: none;
 }
 
-.upcoming-carousel::-webkit-scrollbar,
 .favorites-grid::-webkit-scrollbar {
   display: none;
 }
 
 /* Event Cards */
-.upcoming-card,
-.favorite-card {
-  min-width: 280px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+.upcoming-card {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
   overflow: hidden;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.favorite-card {
+  min-width: 320px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: row;
+  padding: 12px;
+  gap: 12px;
+}
+
+.favorite-card .event-image {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.favorite-card .favorite-heart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  padding: 6px;
+  color: #22c55e;
+  backdrop-filter: blur(10px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.favorite-card .favorite-heart svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.favorite-card .event-info {
+  flex: 1;
+  padding: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.favorite-card .event-title {
+  font-size: 18px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.favorite-card .event-title span {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.favorite-card .event-details {
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.favorite-card .event-detail {
+  font-size: 12px;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.favorite-card .event-detail svg {
+  width: 14px;
+  height: 14px;
+}
+
+.favorite-card .event-actions {
+  margin-top: 8px;
+  gap: 6px;
+}
+
+.favorite-card .action-btn {
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 .upcoming-card:hover,
 .favorite-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .event-image {
   position: relative;
+  width: 100%;
   height: 180px;
   overflow: hidden;
+  order: 1;
+  flex-shrink: 0;
 }
 
 .event-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.event-info {
+  order: 2;
 }
 
 .favorite-heart {
@@ -2567,80 +2685,92 @@ input:checked + .toggle-slider:before {
 }
 
 .event-info {
-  padding: 20px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .event-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
   margin-bottom: 12px;
   color: white;
+  line-height: 1.2;
 }
 
 .event-details {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .event-detail {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #cbd5e1;
-  font-size: 14px;
+  color: white;
+  font-size: 13px;
+  margin-bottom: 4px;
 }
 
 .event-detail svg {
-  color: #8b5cf6;
+  color: white;
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
 }
 
 /* Action Buttons */
 .event-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.upcoming-card .event-actions {
+  margin-top: 12px;
 }
 
 .action-btn {
   flex: 1;
   padding: 10px 12px;
   border: none;
-  border-radius: 12px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.action-btn.going,
+.action-btn.not-going {
+  background: rgba(55, 65, 81, 0.8);
+  color: white;
 }
 
 .action-btn.maybe {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: #8b5cf6;
   color: white;
-  border: none;
 }
 
 .action-btn.active {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #22c55e;
   color: white;
-  border: none;
-  transform: scale(1.05);
 }
 
 .action-btn:hover {
-  transform: translateY(-2px);
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 /* Carousel Dots */
 .carousel-dots {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .dot {
@@ -2720,7 +2850,10 @@ input:checked + .toggle-slider:before {
 
 /* Responsive Design */
 @media (max-width: 480px) {
-  .upcoming-card,
+  .upcoming-card {
+    width: 100%;
+  }
+  
   .favorite-card {
     min-width: 260px;
   }

@@ -23,7 +23,7 @@ async function geocodeAddress(address) {
       const options = {
         headers: {
           "User-Agent": "Rumbify/1.0 (contact: dev@rumbify.local)",
-          "Referer": "http://localhost:5050/",
+          "Referer": "http://localhost:5052/",
           "Accept-Language": "es",
         },
       };

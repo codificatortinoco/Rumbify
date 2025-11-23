@@ -136,8 +136,7 @@ function renderRoute(currentRoute) {
 
 // Centralized request helper that always targets current origin to avoid CORS
 async function makeRequest(url, method, body, extraHeaders = {}) {
-  const BASE_URL = window.location.origin; // same-origin to avoid CORS issues
-  const endpoint = `${BASE_URL}${url}`;
+  const base = await resolveApiBase();
 
   // Attach admin email header automatically if present
   let adminEmail = null;
@@ -153,27 +152,41 @@ async function makeRequest(url, method, body, extraHeaders = {}) {
     ...extraHeaders,
   };
 
-  const resp = await fetch(endpoint, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-
-  const contentType = (resp.headers.get('content-type') || '').toLowerCase();
-
-  // Try to parse JSON if available; otherwise, read text for clearer errors
-  if (contentType.includes('application/json')) {
-    const json = await resp.json();
-    return json;
-  } else {
+  try {
+    const resp = await fetch(`${base}${url}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+    if (contentType.includes('application/json')) {
+      const json = await resp.json();
+      return json;
+    }
     const text = await resp.text();
-    // Normalize into a consistent object so callers can show message
-    return {
-      success: resp.ok,
-      status: resp.status,
-      message: text || `Unexpected ${resp.status} response`,
-    };
+    return { success: resp.ok, status: resp.status, message: text || `Unexpected ${resp.status} response` };
+  } catch (e) {
+    return { success: false, status: 0, message: e.message };
   }
 }
 
 export { navigateTo, socket, makeRequest };
+export { resolveApiBase };
+async function resolveApiBase() {
+  if (window.__API_BASE__) return window.__API_BASE__;
+  const primary = window.location.origin;
+  const candidates = [primary];
+  if (!primary.includes(':5050')) candidates.push('http://localhost:5050');
+  if (!primary.includes(':5052')) candidates.push('http://localhost:5052');
+  for (const base of candidates) {
+    try {
+      const resp = await fetch(`${base}/codes/test`, { method: 'GET' });
+      if (resp.ok) {
+        window.__API_BASE__ = base;
+        return window.__API_BASE__;
+      }
+    } catch (_) {}
+  }
+  window.__API_BASE__ = primary;
+  return window.__API_BASE__;
+}

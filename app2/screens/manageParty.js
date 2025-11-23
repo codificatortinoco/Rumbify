@@ -1,4 +1,5 @@
 import { navigateTo, makeRequest } from "../app.js";
+import { openScannerModal } from "../controllers/lector.controller.js";
 
 export default async function renderManageParty(routeData = {}) {
   const app = document.getElementById("app");
@@ -139,6 +140,34 @@ export default async function renderManageParty(routeData = {}) {
   // Back to My Parties list for admins
   document.getElementById('mp-back')?.addEventListener('click', () => navigateTo('/my-parties'));
   document.getElementById('seeMoreBtn')?.addEventListener('click', () => navigateTo('/guests-summary', { partyId }));
+  document.querySelector('.scan-box')?.addEventListener('click', () => {
+    openScannerModal({
+      onDecoded: async (text) => {
+        try {
+          const qrText = String(text).trim();
+          console.log('Decoded QR:', qrText);
+          const resp = await makeRequest(`/codes/scan-qr-code?qr=${encodeURIComponent(qrText)}&party=${encodeURIComponent(currentPartyId)}`, 'GET');
+          if (resp && resp.status === 404) {
+            alert('Endpoint no encontrado en el servidor');
+            return;
+          }
+          if (resp?.success) {
+            await reloadPartyData();
+            const n = resp?.qr_code?.users?.name || 'Invitado';
+            const p = resp?.qr_code?.parties?.title || 'Fiesta';
+            alert(`QR validado: ${n} — ${p}`);
+          } else {
+            alert(resp?.message || 'QR inválido');
+          }
+        } catch (_) {
+          alert('Error al validar QR');
+        }
+      },
+      onError: () => {
+        alert('Error al iniciar el escáner');
+      }
+    });
+  });
 
   // Fetch guests from backend (Supabase via server)
   try {
@@ -196,6 +225,36 @@ export default async function renderManageParty(routeData = {}) {
 
   // Initialize entry codes with the current party id
   initializeEntryCodes(currentPartyId);
+  async function reloadPartyData() {
+    try {
+      const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+      const adminEmail = adminUser?.email;
+      let guestsData = [];
+      const eventDetails = await makeRequest(`/parties/${partyId}`, 'GET');
+      if (adminEmail) {
+        const guestsResponse = await makeRequest(`/parties/${partyId}/guests`, 'GET');
+        guestsData = Array.isArray(guestsResponse) ? guestsResponse : (guestsResponse?.guests || []);
+      }
+      const partyObj = eventDetails?.party || eventDetails;
+      const capacity = partyObj?.capacity || 220;
+      const inside = guestsData.filter(g => g.status === 'Valid').length;
+      const remaining = partyObj?.reserved_count ?? Math.max(capacity - inside, 0);
+      document.getElementById('insideCount').textContent = inside;
+      document.getElementById('remainingCount').textContent = remaining;
+      document.getElementById('capacityCount').textContent = capacity;
+      const listEl = document.getElementById('guestList');
+      listEl.innerHTML = guestsData.slice(0, 10).map(g => `
+        <li class="guest-item">
+          <img src="${g.avatar || '/app2/assets/userIcon.svg'}" alt="${g.name}" class="guest-avatar"/>
+          <div class="guest-info">
+            <div class="guest-name">${g.name}</div>
+            <div class="guest-time">${g.time || ''}</div>
+          </div>
+          <div class="guest-status ${g.status === 'Valid' ? 'valid' : 'invalid'}">${g.status}</div>
+        </li>
+      `).join('');
+    } catch (_) {}
+  }
 }
 
 // Entry Codes Functionality

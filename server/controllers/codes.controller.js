@@ -1497,7 +1497,10 @@ const getQRCode = async (req, res) => {
  */
 const scanQRCode = async (req, res) => {
   try {
-    const { qr_code_data } = req.body;
+    let { qr_code_data, party_id } = req.body || {};
+    if (!qr_code_data) qr_code_data = req.query?.qr || req.query?.qr_code_data;
+    if (!party_id) party_id = req.query?.party || req.query?.party_id;
+    qr_code_data = String(qr_code_data || '').trim();
     
     if (!qr_code_data) {
       return res.status(400).json({
@@ -1505,18 +1508,103 @@ const scanQRCode = async (req, res) => {
         message: "QR code data is required"
       });
     }
+
+    // Try to parse party id from token: QR-<userId>-<partyId>-<codeId>-<timestamp>-<random>
+    let tokenPartyId = null;
+    try {
+      const parts = String(qr_code_data).split('-');
+      if (parts[0] === 'QR' && parts.length >= 6) {
+        tokenPartyId = Number(parts[2]);
+      }
+    } catch (_) {}
     
-    const { data: qrCode, error: fetchError } = await supabaseCli
-      .from('qr_codes')
-      .select('*, users(name), parties(title)')
-      .eq('qr_token', qr_code_data)
-      .single();
+    let qrCode = null;
+    let fetchError = null;
+    const tryFirst = async (builder) => {
+      const { data, error } = await builder.limit(1);
+      if (error) return { data: null, error };
+      const d = Array.isArray(data) ? data[0] : data;
+      return { data: d || null, error: null };
+    };
+
+    ({ data: qrCode, error: fetchError } = await tryFirst(
+      supabaseCli.from('qr_codes')
+        .select('*, users(name), parties(title)')
+        .eq('qr_token', qr_code_data)
+    ));
+
+    if ((fetchError && fetchError.code === 'PGRST116') || !qrCode) {
+      const alt = await tryFirst(
+        supabaseCli.from('qr_codes')
+          .select('*, users(name), parties(title)')
+          .eq('qr_code_data', qr_code_data)
+      );
+      qrCode = alt.data; fetchError = alt.error;
+    }
+
+    if ((fetchError && fetchError.code === 'PGRST116') || !qrCode) {
+      // Try via code id parsed from token QR-<userId>-<partyId>-<codeId>-...
+      let parsedCodeId = null;
+      try {
+        const parts = qr_code_data.split('-');
+        if (parts[0] === 'QR' && parts.length >= 4) {
+          parsedCodeId = Number(parts[3]);
+        }
+      } catch (_) {}
+      if (parsedCodeId) {
+        const byCode = await tryFirst(
+          supabaseCli.from('qr_codes')
+            .select('*, users(name), parties(title)')
+            .eq('code', parsedCodeId)
+        );
+        qrCode = byCode.data; fetchError = byCode.error;
+      }
+    }
+
+    if ((fetchError && fetchError.code === 'PGRST116') || !qrCode) {
+      // Last resort: look by user+party from token if present
+      let tokenUserId = null;
+      let tokenPartyId2 = null;
+      try {
+        const parts = qr_code_data.split('-');
+        if (parts[0] === 'QR' && parts.length >= 3) {
+          tokenUserId = Number(parts[1]);
+          tokenPartyId2 = Number(parts[2]);
+        }
+      } catch (_) {}
+      if (tokenPartyId2 || tokenUserId) {
+        const byUserParty = await tryFirst(
+          supabaseCli.from('qr_codes')
+            .select('*, users(name), parties(title)')
+            .eq('party_id', tokenPartyId2)
+            .or(`user_id.eq.${tokenUserId},user_id.is.null`)
+        );
+        qrCode = byUserParty.data; fetchError = byUserParty.error;
+      }
+    }
     
     if (fetchError || !qrCode) {
       return res.status(404).json({
         success: false,
         message: "Invalid QR code"
       });
+    }
+
+    // Validate party match if provided or token encodes it
+    const resolvedPartyId = qrCode.party_id || tokenPartyId || party_id || null;
+    if (party_id && resolvedPartyId && Number(party_id) !== Number(resolvedPartyId)) {
+      return res.status(400).json({
+        success: false,
+        message: "QR code belongs to a different party"
+      });
+    }
+
+    // Fix legacy records missing party_id
+    if (!qrCode.party_id && tokenPartyId) {
+      try {
+        await supabaseCli.from('qr_codes').update({ party_id: tokenPartyId }).eq('id', qrCode.id);
+        qrCode.party_id = tokenPartyId;
+      } catch (_) {}
     }
     
     if (qrCode.status === 'used') {
@@ -1532,7 +1620,7 @@ const scanQRCode = async (req, res) => {
         status: 'used',
         used_at: new Date().toISOString()
       })
-      .eq('qr_token', qr_code_data)
+      .eq('id', qrCode.id)
       .eq('status', 'not used')
       .select('*, users(name), parties(title)')
       .single();

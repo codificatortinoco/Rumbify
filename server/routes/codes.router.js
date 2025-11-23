@@ -25,6 +25,7 @@ router.get('/qr-code/:userId/:partyId', getQRCode);
 
 // Scan/validate a QR code (mark as scanned)
 router.post('/scan-qr-code', scanQRCode);
+router.get('/scan-qr-code', scanQRCode);
 
 // Diagnostic endpoint to check qr_codes table structure
 router.get('/diagnose-qr-codes', diagnoseQRCodes);

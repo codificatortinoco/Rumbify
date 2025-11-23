@@ -53,7 +53,6 @@ export default function renderDashboard() {
         <!-- Categories Row -->
         <div class="filter-bar" id="categoryBar">
           <button class="filter-pill active" data-category="">All</button>
-          <button class="filter-pill" data-category="hot-topic">Hot Topic</button>
           <button class="filter-pill" data-category="upcoming">Upcoming</button>
         </div>
 
@@ -552,35 +551,63 @@ function renderUpcomingEvents(events) {
 
 function createHotTopicCard(event) {
   const displayPrice = event.price || (Array.isArray(event.prices) && event.prices.length ? event.prices[0].price : "");
+  const isLiked = event.liked || false;
+  const attendeesDisplay = event.attendees || `${event.attendees_count || 0}/${event.max_attendees || 0}`;
+  
+  // Map tags to icons (similar to member dashboard)
+  const tagIcons = {
+    "Elegant": "assets/edit.svg",
+    "Cocktailing": "assets/partyIcon.svg",
+    "Disco Music": "assets/partyIcon.svg"
+  };
+  
   return `
     <div class="hot-topic-card">
-      <div class="card-image">
-        <img src="${event.image}" alt="${event.title}" />
-        <button class="like-btn ${event.liked ? 'liked' : ''}" data-event-id="${event.id}">
-          ${event.liked ? 'Me gusta' : 'Like'}
+      <div class="hot-topic-image-container">
+        <img src="${event.image}" alt="${event.title}" class="hot-topic-image" />
+        <button class="hot-topic-like-btn ${isLiked ? 'liked' : ''}" data-event-id="${event.id}" aria-label="Like">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="${isLiked ? '#22c55e' : 'none'}" stroke="white" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
         </button>
       </div>
-      <div class="card-content">
-        <div class="card-header">
-          <h3 class="event-title">${event.title}</h3>
-          <span class="attendees">${event.attendees}</span>
+      <div class="hot-topic-details">
+        <div class="hot-topic-header">
+          <h3 class="hot-topic-title">${event.title}</h3>
+          <span class="hot-topic-count">${attendeesDisplay}</span>
         </div>
-        <div class="event-details">
-          <div class="detail-item">
+        <div class="hot-topic-info">
+          <div class="hot-topic-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
             <span>${event.location}</span>
           </div>
-          <div class="detail-item">
+          <div class="hot-topic-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+            </svg>
             <span>${event.date}</span>
           </div>
-          <div class="detail-item">
+          <div class="hot-topic-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
             <span>${event.administrator}</span>
           </div>
-          <div class="price">${displayPrice}</div>
         </div>
-         <div class="card-tags">
-           ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
-           <button class="see-more-btn" data-event-id="${event.id}">See More</button>
-         </div>
+        <div class="hot-topic-footer">
+          <div class="hot-topic-tags">
+            ${(event.tags || []).slice(0, 2).map(tag => `
+              <div class="hot-topic-tag">
+                <img src="${tagIcons[tag] || 'assets/partyIcon.svg'}" alt="${tag}" class="tag-icon" />
+                <span>${tag}</span>
+              </div>
+            `).join("")}
+          </div>
+          <div class="hot-topic-price">${displayPrice}</div>
+          <button class="hot-topic-see-more-btn" data-event-id="${event.id}">See More</button>
+        </div>
       </div>
     </div>
   `;
@@ -695,8 +722,20 @@ function setupSearch() {
 }
 
 function displaySearchResults(results) {
-  // Separate results by category
-  const hotTopicResults = results.filter(party => party.category === "hot-topic");
+  // Sort results by attendees count for hot topic (most attendees first)
+  const sortedResults = results
+    .map(party => {
+      const attendeesStr = party.attendees || "0/0";
+      const [current] = attendeesStr.split("/").map(n => parseInt(n, 10) || 0);
+      return { ...party, attendees_count: current };
+    })
+    .sort((a, b) => b.attendees_count - a.attendees_count);
+  
+  // Separate results: hot topic (top attendees) and upcoming
+  const hotTopicResults = sortedResults.filter(party => {
+    // Show parties with most attendees as hot topic
+    return sortedResults.indexOf(party) < Math.min(5, sortedResults.length);
+  });
   const upcomingResults = results.filter(party => party.category === "upcoming");
   
   // Render filtered results
@@ -708,15 +747,24 @@ function filterEventsLocally(searchTerm, tags = [], category = "") {
   // Fallback client-side filtering
   const hotTopicCards = document.querySelectorAll(".hot-topic-card");
   hotTopicCards.forEach(card => {
-    const title = card.querySelector(".event-title").textContent.toLowerCase();
-    const location = card.querySelector(".detail-item span").textContent.toLowerCase();
-    const administrator = card.querySelectorAll(".detail-item span")[2].textContent.toLowerCase();
-    const tagTexts = Array.from(card.querySelectorAll('.tag')).map(t => t.textContent.trim());
+    const titleEl = card.querySelector(".hot-topic-title");
+    const detailEls = card.querySelectorAll(".hot-topic-detail span");
+    const tagEls = card.querySelectorAll('.hot-topic-tag span');
     
-    const matchesText = !searchTerm || title.includes(searchTerm) || location.includes(searchTerm) || administrator.includes(searchTerm);
+    if (!titleEl) return;
+    
+    const title = titleEl.textContent.toLowerCase();
+    const location = detailEls[0]?.textContent.toLowerCase() || "";
+    const administrator = detailEls[2]?.textContent.toLowerCase() || "";
+    const tagTexts = Array.from(tagEls).map(t => t.textContent.trim());
+    
+    const matchesText = !searchTerm || 
+      title.includes(searchTerm.toLowerCase()) ||
+      location.includes(searchTerm.toLowerCase()) ||
+      administrator.includes(searchTerm.toLowerCase());
     const matchesTags = !tags?.length || tags.every(t => tagTexts.includes(t));
-    const matchesCategory = !category || card.closest('.hot-topic-card'); // hot-topic section
-    const matches = matchesText && matchesTags && (!category || category === 'hot-topic');
+    const matchesCategory = !category || category === "" || category === "upcoming";
+    const matches = matchesText && matchesTags && matchesCategory;
     card.style.display = matches ? "block" : "none";
   });
 
@@ -736,8 +784,13 @@ function filterEventsLocally(searchTerm, tags = [], category = "") {
 
 function setupCarousel() {
   const carousel = document.getElementById("hotTopicCarousel");
+  if (!carousel) return;
+  
   const dots = document.querySelectorAll(".dot");
   let currentIndex = 0;
+  let isDragging = false;
+  let startX = 0;
+  let scrollLeft = 0;
 
   // Setup dot navigation
   dots.forEach((dot, index) => {
@@ -748,26 +801,101 @@ function setupCarousel() {
   });
 
   function updateCarousel() {
-    const cardWidth = carousel.querySelector(".hot-topic-card").offsetWidth;
-    carousel.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+    if (!carousel || dots.length === 0) return;
+    const cardWidth = carousel.querySelector(".hot-topic-card")?.offsetWidth || carousel.offsetWidth;
+    carousel.scrollTo({
+      left: currentIndex * cardWidth,
+      behavior: 'smooth'
+    });
     
     dots.forEach((dot, index) => {
       dot.classList.toggle("active", index === currentIndex);
     });
   }
 
-  // Auto-advance carousel
+  // Touch/Mouse drag support
+  // Mouse events
+  carousel.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.pageX - carousel.offsetLeft;
+    scrollLeft = carousel.scrollLeft;
+    carousel.style.cursor = 'grabbing';
+    carousel.style.scrollBehavior = 'auto';
+  });
+
+  carousel.addEventListener('mouseleave', () => {
+    isDragging = false;
+    carousel.style.cursor = 'grab';
+    carousel.style.scrollBehavior = 'smooth';
+  });
+
+  carousel.addEventListener('mouseup', () => {
+    isDragging = false;
+    carousel.style.cursor = 'grab';
+    carousel.style.scrollBehavior = 'smooth';
+    updateCurrentIndex();
+  });
+
+  carousel.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - carousel.offsetLeft;
+    const walk = (x - startX) * 2;
+    carousel.scrollLeft = scrollLeft - walk;
+  });
+
+  // Touch events
+  let touchStartX = 0;
+  let touchScrollLeft = 0;
+
+  carousel.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].pageX - carousel.offsetLeft;
+    touchScrollLeft = carousel.scrollLeft;
+  });
+
+  carousel.addEventListener('touchmove', (e) => {
+    const x = e.touches[0].pageX - carousel.offsetLeft;
+    const walk = (x - touchStartX) * 2;
+    carousel.scrollLeft = touchScrollLeft - walk;
+  });
+
+  carousel.addEventListener('touchend', () => {
+    updateCurrentIndex();
+  });
+
+  // Scroll event to update index
+  carousel.addEventListener('scroll', () => {
+    updateCurrentIndex();
+  });
+
+  function updateCurrentIndex() {
+    if (!carousel) return;
+    const cardWidth = carousel.querySelector(".hot-topic-card")?.offsetWidth || carousel.offsetWidth;
+    const newIndex = Math.round(carousel.scrollLeft / cardWidth);
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < dots.length) {
+      currentIndex = newIndex;
+      dots.forEach((dot, index) => {
+        dot.classList.toggle("active", index === currentIndex);
+      });
+    }
+  }
+
+  carousel.style.cursor = 'grab';
+
+  // Auto-advance carousel (only if not dragging)
   setInterval(() => {
-    currentIndex = (currentIndex + 1) % dots.length;
-    updateCarousel();
+    if (!isDragging && carousel) {
+      currentIndex = (currentIndex + 1) % dots.length;
+      updateCarousel();
+    }
   }, 5000);
 }
 
 function setupLikeButtons() {
   // Use event delegation for dynamically added like buttons
   document.addEventListener('click', async (e) => {
-    if (e.target.closest('.like-btn')) {
-      const likeBtn = e.target.closest('.like-btn');
+    const likeBtn = e.target.closest('.like-btn') || e.target.closest('.hot-topic-like-btn');
+    if (likeBtn) {
       const eventId = likeBtn.dataset.eventId;
       const isLiked = likeBtn.classList.contains('liked');
       
@@ -776,11 +904,20 @@ function setupLikeButtons() {
         
         if (response.success) {
           likeBtn.classList.toggle('liked', !isLiked);
+          // Update the heart icon fill color
+          const heartSvg = likeBtn.querySelector('svg');
+          if (heartSvg) {
+            heartSvg.setAttribute('fill', !isLiked ? '#22c55e' : 'none');
+          }
         }
       } catch (error) {
         console.error('Error toggling like:', error);
         // Still toggle the visual state for better UX
         likeBtn.classList.toggle('liked', !isLiked);
+        const heartSvg = likeBtn.querySelector('svg');
+        if (heartSvg) {
+          heartSvg.setAttribute('fill', !isLiked ? '#22c55e' : 'none');
+        }
       }
     }
   });
@@ -789,8 +926,8 @@ function setupLikeButtons() {
 function setupEventDetailsNavigation() {
   // Use event delegation for dynamically added see more buttons
   document.addEventListener('click', async (e) => {
-    if (e.target.closest('.see-more-btn')) {
-      const seeMoreBtn = e.target.closest('.see-more-btn');
+    const seeMoreBtn = e.target.closest('.see-more-btn') || e.target.closest('.hot-topic-see-more-btn');
+    if (seeMoreBtn) {
       const eventId = seeMoreBtn.dataset.eventId;
       
       if (eventId) {

@@ -119,6 +119,9 @@ export default function renderMemberDashboard() {
         <div class="favorites-grid" id="favoritesGrid">
           <!-- Favorite parties will be loaded here -->
         </div>
+        <div class="favorites-carousel-footer" id="favoritesCarouselFooter" style="display: none;">
+          <span class="carousel-counter" id="favoritesCarouselCounter">1 / 1</span>
+        </div>
         <div class="no-favorites" id="noFavorites" style="display: none;">
           <p>No tienes eventos favoritos aún</p>
         </div>
@@ -443,11 +446,6 @@ function renderUpcomingCarousel(events) {
               </svg>
               <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
             </div>
-          </div>
-          <div class="event-actions">
-            <button class="action-btn going" data-event-id="${event.id}">I'm going</button>
-            <button class="action-btn maybe" data-event-id="${event.id}">Maybe</button>
-            <button class="action-btn not-going" data-event-id="${event.id}">Not going</button>
           </div>
         </div>
       </div>
@@ -863,36 +861,29 @@ function renderFavorites(events) {
           </div>
         </div>
         <div class="event-info">
-          <div>
-            <h3 class="event-title">
-              ${event.title.length > 20 ? event.title.substring(0, 20) + '...' : event.title}
-              <span>${attendeesDisplay}</span>
-            </h3>
-            <div class="event-details">
-              <div class="event-detail">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                </svg>
-                <span>${event.location}</span>
-              </div>
-              <div class="event-detail">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                </svg>
-                <span>${formattedDate} • ${formattedTime}</span>
-              </div>
-              <div class="event-detail">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
-                <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
-              </div>
+          <h3 class="event-title">
+            ${event.title}
+            <span>${attendeesDisplay}</span>
+          </h3>
+          <div class="event-details">
+            <div class="event-detail">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <span>${event.location}</span>
             </div>
-          </div>
-          <div class="event-actions">
-            <button class="action-btn going" data-event-id="${event.id}">I'm going</button>
-            <button class="action-btn maybe" data-event-id="${event.id}">Maybe</button>
-            <button class="action-btn not-going" data-event-id="${event.id}">Not going</button>
+            <div class="event-detail">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+              </svg>
+              <span>${formattedDate} • ${formattedTime}</span>
+            </div>
+            <div class="event-detail">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -900,5 +891,53 @@ function renderFavorites(events) {
   }).join('');
 
   favoritesGrid.innerHTML = eventsHTML;
+  
+  // Setup carousel footer and scroll tracking
+  setupFavoritesCarousel();
+}
+
+function setupFavoritesCarousel() {
+  const favoritesGrid = document.getElementById("favoritesGrid");
+  const carouselFooter = document.getElementById("favoritesCarouselFooter");
+  const carouselCounter = document.getElementById("favoritesCarouselCounter");
+  
+  if (!favoritesGrid || !carouselFooter || !carouselCounter) return;
+  
+  const cards = favoritesGrid.querySelectorAll('.favorite-card');
+  const totalCards = cards.length;
+  
+  if (totalCards === 0) {
+    carouselFooter.style.display = 'none';
+    return;
+  }
+  
+  carouselFooter.style.display = 'flex';
+  updateCarouselCounter(1, totalCards);
+  
+  // Track scroll position
+  let scrollTimeout;
+  favoritesGrid.addEventListener('scroll', () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      const cardWidth = cards[0]?.offsetWidth || 320;
+      const scrollLeft = favoritesGrid.scrollLeft;
+      const currentIndex = Math.round(scrollLeft / cardWidth) + 1;
+      const clampedIndex = Math.min(Math.max(1, currentIndex), totalCards);
+      updateCarouselCounter(clampedIndex, totalCards);
+    }, 100);
+  });
+  
+  // Initial calculation
+  const cardWidth = cards[0]?.offsetWidth || 320;
+  const scrollLeft = favoritesGrid.scrollLeft;
+  const currentIndex = Math.round(scrollLeft / cardWidth) + 1;
+  updateCarouselCounter(Math.min(Math.max(1, currentIndex), totalCards), totalCards);
+}
+
+function updateCarouselCounter(current, total) {
+  const carouselCounter = document.getElementById("favoritesCarouselCounter");
+  if (carouselCounter) {
+    carouselCounter.textContent = `${current} / ${total}`;
+  }
 }
 

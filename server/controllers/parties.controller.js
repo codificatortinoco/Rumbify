@@ -94,41 +94,59 @@ async function attachPricesToParties(parties) {
 
 const getHotTopicParties = async (req, res) => {
   try {
-    // Try to get from database first
+    // Get all parties from database
     const { data, error } = await supabaseCli
       .from("parties")
-      .select("*")
-      .eq("category", "hot-topic")
-      .order("created_at", { ascending: false });
+      .select("*");
 
     if (error) {
       console.error("Database error:", error);
-      // Fallback to mock data
-      const hotTopicParties = mockParties.filter(party => party.category === "hot-topic");
+      // Fallback to mock data - sort by attendees
+      const hotTopicParties = mockParties
+        .map(party => {
+          const { current } = parseAttendees(party.attendees || "0/0");
+          return { ...party, attendees_count: current };
+        })
+        .sort((a, b) => b.attendees_count - a.attendees_count)
+        .slice(0, 5); // Only return top 5 most attended parties
       return res.json(hotTopicParties);
     }
 
     if (data && data.length > 0) {
       const enriched = await attachPricesToParties(data);
-      // add numeric attendee fields for client rendering
-      const withCounts = enriched.map(party => {
-        const { current, max } = parseAttendees(party.attendees || "0/0");
-        return {
-          ...party,
-          attendees_count: current,
-          max_attendees: max || 100
-        };
-      });
+      // Add numeric attendee fields and sort by attendees count (descending)
+      const withCounts = enriched
+        .map(party => {
+          const { current, max } = parseAttendees(party.attendees || "0/0");
+          return {
+            ...party,
+            attendees_count: current,
+            max_attendees: max || 100
+          };
+        })
+        .sort((a, b) => b.attendees_count - a.attendees_count)
+        .slice(0, 5); // Only return top 5 most attended parties
       return res.json(withCounts);
     }
 
-    // If no data in database, return mock data
-    const hotTopicParties = mockParties.filter(party => party.category === "hot-topic");
+    // If no data in database, return mock data sorted by attendees
+    const hotTopicParties = mockParties
+      .map(party => {
+        const { current } = parseAttendees(party.attendees || "0/0");
+        return { ...party, attendees_count: current };
+      })
+      .sort((a, b) => b.attendees_count - a.attendees_count)
+      .slice(0, 5); // Only return top 5 most attended parties
     res.json(hotTopicParties);
   } catch (error) {
     console.error("Error fetching hot topic parties:", error);
-    // Fallback to mock data
-    const hotTopicParties = mockParties.filter(party => party.category === "hot-topic");
+    // Fallback to mock data sorted by attendees
+    const hotTopicParties = mockParties
+      .map(party => {
+        const { current } = parseAttendees(party.attendees || "0/0");
+        return { ...party, attendees_count: current };
+      })
+      .sort((a, b) => b.attendees_count - a.attendees_count);
     res.json(hotTopicParties);
   }
 };

@@ -60,8 +60,7 @@ export default function renderLogin(data = {}) {
         <!-- Back Button -->
         <div class="back-section">
           <button class="back-btn">
-            <img src="assets/arrow.svg" alt="Back" class="back-icon" />
-            Back to Welcome
+            ← Back to Welcome
           </button>
         </div>
       </div>

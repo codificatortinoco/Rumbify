@@ -217,7 +217,7 @@ body {
   padding: 1rem 1.25rem;
   border: 2px solid #8b5cf6;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: white;
   color: #333;
   font-size: 1rem;
   font-weight: 500;
@@ -226,8 +226,10 @@ body {
   box-sizing: border-box;
 }
 
-.form-input::placeholder {
-  color: #8b5cf6;
+/* Admin login screen specific placeholder styles */
+#admin-login-screen .form-input::placeholder,
+.admin-login-form .form-input::placeholder {
+  color: #8b5cf6 !important;
   font-weight: 500;
 }
 
@@ -243,7 +245,7 @@ body {
 }
 
 .forgot-link {
-  color: #8b5cf6;
+  color: white;
   text-decoration: underline;
   font-size: 0.9rem;
   font-weight: 500;
@@ -251,7 +253,7 @@ body {
 }
 
 .forgot-link:hover {
-  color: #22c55e;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .admin-login-btn {
@@ -318,27 +320,37 @@ body {
   text-align: center;
 }
 
-.back-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
+/* Admin login and register screen back button styles */
+#admin-login-screen .back-btn,
+#admin-register-screen .back-btn,
+.back-section .back-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 8px !important;
   color: white;
-  padding: 0.8rem 1.5rem;
+  padding: 0.8rem 1.5rem !important;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.back-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
+#admin-login-screen .back-btn:hover,
+#admin-register-screen .back-btn:hover,
+.back-section .back-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
   transform: translateY(-1px);
 }
 
-.back-btn:active {
+#admin-login-screen .back-btn:active,
+#admin-register-screen .back-btn:active,
+.back-section .back-btn:active {
   transform: translateY(0);
 }
 
@@ -622,7 +634,7 @@ body {
   padding: 1rem 1.25rem;
   border: 2px solid #8b5cf6;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: white;
   color: #333;
   font-size: 1rem;
   font-weight: 500;
@@ -631,8 +643,10 @@ body {
   box-sizing: border-box;
 }
 
+/* Admin register screen specific placeholder styles */
+#admin-register-screen .form-input::placeholder,
 .admin-register-form .form-input::placeholder {
-  color: #8b5cf6;
+  color: #8b5cf6 !important;
   font-weight: 500;
 }
 
@@ -644,7 +658,7 @@ body {
 
 .admin-phone-hint {
   display: block;
-  color: #8b5cf6;
+  color: white;
   font-size: 0.8rem;
   margin-top: 0.3rem;
   text-align: left;

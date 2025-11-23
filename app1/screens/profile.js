@@ -56,11 +56,6 @@ export default function renderProfile() {
       <!-- Settings Menu -->
       <div class="settings-section">
         <div class="settings-list">
-          <div class="settings-item" id="notificationsBtn">
-            <img src="assets/notifications.svg" alt="Notifications" class="settings-icon" />
-            <span class="settings-text">Notifications</span>
-            <img src="assets/arrow.svg" alt="Arrow" class="arrow-icon" />
-          </div>
           <div class="settings-item" id="editProfileBtn">
             <img src="assets/edit.svg" alt="Edit Profile" class="settings-icon" />
             <span class="settings-text">Edit profile</span>
@@ -114,12 +109,14 @@ async function loadUserProfile() {
     // Get current logged-in user data
     const currentUser = getCurrentUser();
     
+    // Load favorites count
+    await loadFavoritesCount();
+    
     if (currentUser) {
       // Use logged-in user data
       document.getElementById("profileName").textContent = currentUser.name || "User";
       document.getElementById("profileEmail").textContent = currentUser.email || "user@example.com";
       document.getElementById("attendedCount").textContent = currentUser.attended_count || 0;
-      document.getElementById("favoritesCount").textContent = currentUser.favorites_count || 0;
       
       // Update user type badge
       const userTypeBadge = document.getElementById("userTypeBadge");
@@ -155,7 +152,6 @@ async function loadUserProfile() {
       document.getElementById("profileName").textContent = response.name || "User";
       document.getElementById("profileEmail").textContent = response.email || "user@example.com";
       document.getElementById("attendedCount").textContent = response.attended_count || 0;
-      document.getElementById("favoritesCount").textContent = response.favorites_count || 0;
       
       // Update user type badge
       const userTypeBadge = document.getElementById("userTypeBadge");
@@ -200,7 +196,7 @@ async function loadUserProfile() {
       document.getElementById("profileName").textContent = mockUser.name;
       document.getElementById("profileEmail").textContent = mockUser.email;
       document.getElementById("attendedCount").textContent = mockUser.attended_count;
-      document.getElementById("favoritesCount").textContent = mockUser.favorites_count;
+      // Favorites count will be loaded by loadFavoritesCount()
       
       // Update profile picture
       const profilePicture = document.querySelector(".profile-picture");
@@ -247,16 +243,39 @@ async function loadUserHistory() {
       } else {
         historyList.innerHTML = response.party_history.map(item => {
           console.log("Creating history item for:", item.title, "party_id:", item.party_id);
+          // Determine status text based on attendance
+          // If status is "attended" or the party date has passed, show "Attended", otherwise "Not Attended"
+          let statusText = "Not Attended";
+          if (item.status === "attended" || item.status === "Attended") {
+            statusText = "Attended";
+          } else if (item.date_iso) {
+            const partyDate = new Date(item.date_iso);
+            const now = new Date();
+            if (partyDate < now) {
+              statusText = "Attended";
+            }
+          }
+          
+          // Format date (assuming it's in format like "22/11/21" or ISO format)
+          let formattedDate = item.date || item.date_display || "";
+          if (item.date_iso) {
+            const dateObj = new Date(item.date_iso);
+            formattedDate = dateObj.toLocaleDateString('es-ES', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: '2-digit' 
+            });
+          } else if (item.date && item.date.includes('/')) {
+            // Already in the format we want
+            formattedDate = item.date.split(' ')[0]; // Take only the date part if there's time
+          }
+          
           return `
-            <div class="history-item" data-party-id="${item.party_id}" style="cursor: pointer;">
-              <img src="${item.image}" alt="${item.title}" class="history-image" />
+            <div class="history-item" data-party-id="${item.party_id || item.id}" style="cursor: pointer;">
+              <img src="${item.image || item.image_url || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=100&h=100&fit=crop'}" alt="${item.title}" class="history-image" />
               <div class="history-content">
                 <h3 class="history-title">${item.title}</h3>
-                <p class="history-date">${item.date} • ${item.location}</p>
-                <p class="history-price">${item.price_name}: ${item.price}</p>
-              </div>
-              <div class="history-status">
-                <span class="status-icon">✓</span>
+                <p class="history-date">${formattedDate} • ${statusText}</p>
               </div>
             </div>
           `;
@@ -323,7 +342,6 @@ function loadUserInterests(interests) {
     interestsContainer.innerHTML = `
       <div class="no-interests">
         <p>No interests selected yet</p>
-        <button class="add-interests-btn" onclick="navigateTo('/edit-profile')">Add Interests</button>
       </div>
     `;
     return;
@@ -378,10 +396,6 @@ function setupProfileEventListeners() {
   });
 
   // Settings menu items
-  document.getElementById("notificationsBtn").addEventListener("click", () => {
-    console.log("Notifications clicked");
-    // TODO: Navigate to notifications settings
-  });
 
   document.getElementById("editProfileBtn").addEventListener("click", () => {
     console.log("Edit profile clicked");
@@ -452,4 +466,24 @@ function setupBottomNavigation() {
       }
     });
   });
+}
+
+async function loadFavoritesCount() {
+  try {
+    const userId = getCurrentUser()?.id;
+    if (!userId) {
+      document.getElementById("favoritesCount").textContent = "0";
+      return;
+    }
+
+    // Fetch all parties and count liked ones
+    const response = await makeRequest("/parties", "GET");
+    const allParties = Array.isArray(response) ? response : [];
+    const likedCount = allParties.filter(party => party.liked === true).length;
+    
+    document.getElementById("favoritesCount").textContent = likedCount;
+  } catch (error) {
+    console.error("Error loading favorites count:", error);
+    document.getElementById("favoritesCount").textContent = "0";
+  }
 }

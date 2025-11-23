@@ -1736,13 +1736,15 @@ h1, h2, h3, h4, h5, h6,
 
 .stat-number {
   display: block;
-  color: #8b5cf6;
+  color: white;
+  font-family: 'Poppins', sans-serif;
   font-size: 24px;
   font-weight: 700;
 }
 
 .stat-label {
-  color: #8b5cf6;
+  color: white;
+  font-family: 'Poppins', sans-serif;
   font-size: 14px;
   font-weight: 500;
 }
@@ -1758,15 +1760,18 @@ h1, h2, h3, h4, h5, h6,
   backdrop-filter: blur(10px);
 }
 
-.section-header {
+.history-section .section-header,
+.interests-section .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
 }
 
-.section-title {
+.history-section .section-title,
+.interests-section .section-title {
   color: white;
+  font-family: 'Poppins', sans-serif;
   font-size: 18px;
   font-weight: 600;
   margin: 0;
@@ -1776,7 +1781,7 @@ h1, h2, h3, h4, h5, h6,
 .see-more-btn {
   background: none;
   border: none;
-  color: #8b5cf6;
+  color: white;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1788,6 +1793,12 @@ h1, h2, h3, h4, h5, h6,
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.no-interests p {
+  color: white;
+  margin: 0;
+  font-size: 14px;
 }
 
 .interest-tag {
@@ -1823,36 +1834,30 @@ h1, h2, h3, h4, h5, h6,
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 16px;
 }
 
 .history-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
+  gap: 16px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
   transition: all 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
 }
 
 .history-item:hover {
-  background: rgba(0, 0, 0, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  border-color: rgba(139, 92, 246, 0.3);
-}
-
-.history-item:active {
-  transform: translateY(0);
+  opacity: 0.9;
 }
 
 .history-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 10px;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .history-content {
@@ -1861,25 +1866,22 @@ h1, h2, h3, h4, h5, h6,
 
 .history-title {
   color: white;
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
+  font-family: 'Poppins', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  line-height: 1.2;
 }
 
 .history-date {
-  color: #8b5cf6;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
   margin: 0;
+  font-weight: 400;
 }
 
 .history-status {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #8b5cf6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: none;
 }
 
 .status-icon {

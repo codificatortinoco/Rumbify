@@ -13,7 +13,7 @@ npm run start
 By default the server runs on port 5050.
 
 ### Localhost Links
-- **Root (redirects to app1)**: `http://localhost:5050/`
+- **Root (redirects to app1)**: `http://localhost:5052/`
 
 ### Notes
 - The start script uses `nodemon` and reads environment variables from a `.env` file if present.

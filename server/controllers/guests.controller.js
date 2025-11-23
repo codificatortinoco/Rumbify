@@ -127,10 +127,17 @@ async function getGuestsSummary(req, res) {
       console.warn('Codes-based pending derivation failed:', cpErr?.message);
     }
 
-    // Merge pending with codesPending, avoiding duplicates by name
+    const lower = s => String(s || '').toLowerCase();
+    const namesPending = new Set((pending || []).map(p => lower(p.name)));
+    const namesValidated = new Set((validated || []).map(v => lower(v.name)));
+    const namesDenied = new Set((denied || []).map(d => lower(d.name)));
+    const filteredCodesPending = (codesPending || []).filter(cp => {
+      const n = lower(cp.name);
+      return !namesPending.has(n) && !namesValidated.has(n) && !namesDenied.has(n);
+    });
     const pendingList = [
       ...pending.map(g => ({ id: g.id, name: g.name })),
-      ...codesPending.filter(cp => !pending.some(p => String(p.name).toLowerCase() === String(cp.name).toLowerCase()))
+      ...filteredCodesPending
     ];
 
     return res.json({

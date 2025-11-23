@@ -131,7 +131,6 @@ export default async function renderGuestsSummary(routeData = {}) {
       document.getElementById('validatedList').innerHTML = renderItems(summaryData?.lists?.validated || [], 'Valid');
       document.getElementById('pendingList').innerHTML = renderItems(summaryData?.lists?.pending || [], 'Pending');
       document.getElementById('deniedList').innerHTML = renderItems(summaryData?.lists?.denied || [], 'Invalid');
-      bindGuestItemClicks();
     };
 
     document.getElementById('validatedList').innerHTML = renderItems(summary?.lists?.validated || [], 'Valid');
@@ -157,20 +156,7 @@ export default async function renderGuestsSummary(routeData = {}) {
     };
     modalCloseBtn?.addEventListener('click', closeModal);
 
-    const bindGuestItemClicks = () => {
-      document.querySelectorAll('.guest-item').forEach(el => {
-        el.addEventListener('click', () => {
-          const guest = {
-            id: el.getAttribute('data-id'),
-            name: el.getAttribute('data-name'),
-            status: el.getAttribute('data-status')
-          };
-          openModal(guest);
-        });
-      });
-    };
-
-    bindGuestItemClicks();
+    
 
     const moveGuestInSummary = (guestId, newStatus) => {
       // Remove from all lists

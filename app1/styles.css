@@ -2405,9 +2405,23 @@ input:checked + .toggle-slider:before {
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .profile-info h3 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+#member-dashboard .profile-info .member-badge {
+  font-size: 14px;
+  font-weight: 400;
   color: white;
   margin: 0;
 }
@@ -3241,7 +3255,7 @@ input:checked + .toggle-slider:before {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: #00ff88;
+  color: white;
 }
 
 .qr-section {

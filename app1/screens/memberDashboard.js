@@ -83,7 +83,8 @@ export default function renderMemberDashboard() {
             <img src="${currentUser?.profile_image || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face'}" alt="Profile" />
           </div>
           <div class="profile-info">
-            <h3>Welcome, ${userName} Member</h3>
+            <h3>Welcome, ${userName}</h3>
+            <span class="member-badge">Member</span>
           </div>
         </div>
       </header>

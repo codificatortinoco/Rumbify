@@ -210,10 +210,6 @@ h1, h2, h3, h4, h5, h6,
   overflow: hidden;
 }
 
-#upcomingDots {
-  margin-top: 10px;
-}
-
 .upcoming-events {
   display: flex;
   gap: 16px;

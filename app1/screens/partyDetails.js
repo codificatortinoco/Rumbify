@@ -207,6 +207,11 @@ async function loadPartyDetails(partyId) {
     // Update address
     document.getElementById("partyAddress").textContent = party.location;
     
+    // Load Google Maps
+    console.log('[loadPartyDetails] Loading Google Maps...');
+    loadGoogleMap(party.location);
+    console.log('[loadPartyDetails] ✅ Google Maps loaded');
+    
     // Load dress code (mock for now)
     console.log('[loadPartyDetails] Loading dress code...');
     loadDressCode(party.tags || []);
@@ -375,6 +380,54 @@ function showQRCodePlaceholder(message) {
   if (statusBadge) {
     statusBadge.textContent = "Not Available";
     statusBadge.className = "status-badge invalid";
+  }
+}
+
+function loadGoogleMap(address) {
+  const mapContainer = document.getElementById("mapPlaceholder");
+  if (!mapContainer || !address) {
+    console.log('[loadGoogleMap] Map container or address not found');
+    return;
+  }
+  
+  try {
+    // Encode the address for URL
+    const encodedAddress = encodeURIComponent(address);
+    
+    // Use Google Maps embed URL (works without API key for basic embedding)
+    // Using the search parameter with output=embed
+    const mapUrl = `https://www.google.com/maps?q=${encodedAddress}&output=embed`;
+    
+    // Replace placeholder with iframe
+    mapContainer.innerHTML = `
+      <iframe
+        width="100%"
+        height="100%"
+        style="border:0; border-radius: 12px;"
+        loading="lazy"
+        allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        src="${mapUrl}">
+      </iframe>
+    `;
+    
+    // Remove placeholder styling classes if any
+    mapContainer.classList.remove('map-placeholder');
+    mapContainer.style.background = 'transparent';
+    mapContainer.style.display = 'block';
+    
+    console.log('[loadGoogleMap] Google Maps iframe created successfully for address:', address);
+  } catch (error) {
+    console.error('[loadGoogleMap] Error loading Google Maps:', error);
+    // Keep placeholder on error
+    mapContainer.innerHTML = `
+      <div class="map-placeholder">
+        <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        <p>Map View</p>
+      </div>
+    `;
   }
 }
 

@@ -51,7 +51,7 @@ export default function renderEventDetails(eventData) {
         </div>
 
         <div class="event-tags">
-          ${eventData.tags.map((tag, index) => `
+          ${(eventData.tags && Array.isArray(eventData.tags) ? eventData.tags : []).map((tag, index) => `
             <div class="event-tag">
               ${index === 0 ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'}
               ${tag}
@@ -80,6 +80,27 @@ export default function renderEventDetails(eventData) {
           <span>${eventData.location || 'Location TBA'}</span>
         </div>
         <p class="event-description" id="eventDescription">${eventData.description || 'Loading description...'}</p>
+      </div>
+
+      <!-- Address Section -->
+      <div class="address-section">
+        <h3 class="section-title">Address</h3>
+        <div class="address-info">
+          <div class="address-text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span id="eventAddress">${eventData.location || 'Location TBA'}</span>
+          </div>
+          <div class="map-container">
+            <div class="map-placeholder" id="eventMapPlaceholder">
+              <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <p>Map View</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Opening Hours -->
@@ -185,6 +206,11 @@ async function initializeEventDetails(eventData) {
   // Setup opening hour display
   updateOpeningHour(eventData);
   
+  // Load Google Maps
+  if (eventData && eventData.location) {
+    loadGoogleMap(eventData.location);
+  }
+  
   // Setup bottom navigation
   setupBottomNavigation();
 }
@@ -239,6 +265,54 @@ function setupBackButton() {
   backBtn.addEventListener("click", () => {
     navigateTo("/parties");
   });
+}
+
+function loadGoogleMap(address) {
+  const mapContainer = document.getElementById("eventMapPlaceholder");
+  if (!mapContainer || !address) {
+    console.log('[loadGoogleMap] Map container or address not found');
+    return;
+  }
+  
+  try {
+    // Encode the address for URL
+    const encodedAddress = encodeURIComponent(address);
+    
+    // Use Google Maps embed URL (works without API key for basic embedding)
+    // Using the search parameter with output=embed
+    const mapUrl = `https://www.google.com/maps?q=${encodedAddress}&output=embed`;
+    
+    // Replace placeholder with iframe
+    mapContainer.innerHTML = `
+      <iframe
+        width="100%"
+        height="100%"
+        style="border:0; border-radius: 12px;"
+        loading="lazy"
+        allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        src="${mapUrl}">
+      </iframe>
+    `;
+    
+    // Remove placeholder styling classes if any
+    mapContainer.classList.remove('map-placeholder');
+    mapContainer.style.background = 'transparent';
+    mapContainer.style.display = 'block';
+    
+    console.log('[loadGoogleMap] Google Maps iframe created successfully for address:', address);
+  } catch (error) {
+    console.error('[loadGoogleMap] Error loading Google Maps:', error);
+    // Keep placeholder on error
+    mapContainer.innerHTML = `
+      <div class="map-placeholder">
+        <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        <p>Map View</p>
+      </div>
+    `;
+  }
 }
 
 function setupCalendar(partyDate) {

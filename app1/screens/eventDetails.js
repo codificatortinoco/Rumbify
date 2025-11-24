@@ -147,24 +147,16 @@ export default function renderEventDetails(eventData) {
 
       <!-- Bottom Navigation -->
       <nav class="bottom-nav">
-        <div class="nav-item active">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-          </svg>
+        <div class="nav-item active" data-nav="Parties">
+          <span class="nav-icon icon-party"></span>
           <span>Parties</span>
         </div>
-        <div class="nav-item">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9,22 9,12 15,12 15,22"></polyline>
-          </svg>
-          <span>New Party</span>
+        <div class="nav-item" data-nav="Home">
+          <span class="nav-icon icon-home"></span>
+          <span>Home</span>
         </div>
-        <div class="nav-item">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
+        <div class="nav-item" data-nav="Profile">
+          <span class="nav-icon icon-user"></span>
           <span>Profile</span>
         </div>
       </nav>
@@ -397,14 +389,14 @@ function setupBottomNavigation() {
       item.classList.add("active");
       
       // Handle navigation
-      const text = item.querySelector("span").textContent;
-      switch (text) {
+      const target = item.dataset.nav;
+      switch (target) {
         case "Parties":
 -         navigateTo("/parties");
 +         navigateTo("/parties");
           break;
-        case "New Party":
-          window.location.assign("/app2/create-party");
+        case "Home":
+          navigateTo("/member-dashboard");
           break;
         case "Profile":
           navigateTo("/profile");

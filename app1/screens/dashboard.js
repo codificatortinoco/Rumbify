@@ -71,6 +71,7 @@ export default function renderDashboard() {
       <section class="upcoming-section">
         <div class="section-header">
           <h2 class="section-title">Upcoming</h2>
+          <a href="#" class="see-more-link">See more</a>
         </div>
         <div class="upcoming-events" id="upcomingEvents">
           <!-- Upcoming event cards will be dynamically loaded here -->

@@ -1,14 +1,31 @@
 import { makeRequest, navigateTo, getCurrentUser } from "../app.js";
 
+// Track if the screen is still mounted
+let isScreenMounted = false;
+let imageLoadTimeout = null;
+let preloadImage = null;
+let objectUrls = []; // Track object URLs for cleanup
+
 export default function renderPartyDetails(partyId) {
+  // Mark screen as mounted FIRST, before any cleanup
+  isScreenMounted = true;
+  
+  // Cleanup previous instance (but don't reset the flag we just set)
+  const wasMounted = isScreenMounted;
+  cleanupPartyDetails();
+  isScreenMounted = wasMounted;
+  
   const app = document.getElementById("app");
+  if (app) {
+    app.classList.add("full-bleed");
+  }
   app.innerHTML = `
     <div id="party-details-screen">
       <!-- Header -->
       <div class="party-details-header">
         <button class="back-btn" id="backBtn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
         <h1 class="party-details-title">Party QR</h1>
@@ -107,6 +124,13 @@ async function initializePartyDetails(partyId) {
     // Load party data
     console.log("Step 1: Loading party details...");
     await loadPartyDetails(partyId);
+    
+    // Only check mount status before setting up listeners
+    if (!isMounted()) {
+      console.log("=== INITIALIZATION ABORTED: Screen unmounted during load ===");
+      return;
+    }
+    
     console.log("Step 1: ✅ Party details loaded");
     
     // Setup event listeners
@@ -117,9 +141,156 @@ async function initializePartyDetails(partyId) {
     console.log("=== INITIALIZATION COMPLETE ===");
     
   } catch (error) {
-    console.error("=== ERROR IN INITIALIZATION ===");
-    console.error("Error initializing party details:", error);
-    showError("Error loading party details");
+    // Only show error if screen is still mounted
+    if (isMounted()) {
+      console.error("=== ERROR IN INITIALIZATION ===");
+      console.error("Error initializing party details:", error);
+      showError("Error loading party details");
+    } else {
+      console.log("=== ERROR IN INITIALIZATION (screen unmounted, ignoring) ===");
+    }
+  }
+}
+
+// Helper function to check if screen is still mounted
+function isMounted() {
+  // Only check DOM element, not the flag (flag might be reset during cleanup)
+  const screen = document.getElementById("party-details-screen");
+  return screen !== null;
+}
+
+// Helper function to validate image URL
+function isValidImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const urlObj = new URL(url);
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+  } catch {
+    // If URL parsing fails, it might be a relative path or invalid
+    return url.startsWith('/') || url.startsWith('./') || url.startsWith('../');
+  }
+}
+
+// Helper function to load administrator image with retry logic
+// Uses fetch with blob to prevent console errors
+async function loadAdministratorImage(imageUrl, imageElement, retryCount = 0) {
+  if (!isMounted() || !imageElement || !document.getElementById("administratorImage")) {
+    return;
+  }
+  
+  const maxRetries = 2;
+  const retryDelay = 1500;
+  
+  try {
+    // Use fetch to load image as blob - this prevents browser console errors
+    const response = await Promise.race([
+      fetch(imageUrl),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+    ]);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    objectUrls.push(objectUrl); // Track for cleanup
+    
+    // Load the blob URL instead of the original URL
+    if (isMounted() && imageElement && document.getElementById("administratorImage")) {
+      imageElement.src = objectUrl;
+      console.log('[loadAdministratorImage] Administrator image loaded successfully');
+    } else {
+      URL.revokeObjectURL(objectUrl);
+      objectUrls = objectUrls.filter(url => url !== objectUrl);
+    }
+    
+  } catch (error) {
+    // Silently retry or keep fallback
+    if (retryCount < maxRetries) {
+      setTimeout(() => {
+        if (isMounted() && imageElement && document.getElementById("administratorImage")) {
+          loadAdministratorImage(imageUrl, imageElement, retryCount + 1);
+        }
+      }, retryDelay * (retryCount + 1));
+    }
+    // Silently fail - keep fallback image (already set)
+  }
+}
+
+// Helper function to load QR code image with retry logic
+// Uses fetch with blob to prevent console errors
+async function loadQRCodeImage(imageUrl, containerElement, retryCount = 0) {
+  if (!isMounted() || !containerElement || !document.getElementById("qrCode")) {
+    return;
+  }
+  
+  const maxRetries = 2;
+  const retryDelay = 1500;
+  
+  try {
+    // Use fetch to load image as blob - this prevents browser console errors
+    const response = await Promise.race([
+      fetch(imageUrl),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+    ]);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    objectUrls.push(objectUrl); // Track for cleanup
+    
+    // Create image element with blob URL
+    if (isMounted() && containerElement && document.getElementById("qrCode")) {
+      const img = new Image();
+      
+      img.onload = function() {
+        if (isMounted() && containerElement && document.getElementById("qrCode")) {
+          containerElement.innerHTML = `
+            <img src="${objectUrl}" alt="QR Code" class="qr-code-image" />
+          `;
+          console.log('[loadQRCodeImage] QR code image loaded successfully');
+        }
+      };
+      
+      img.onerror = function() {
+        URL.revokeObjectURL(objectUrl);
+        objectUrls = objectUrls.filter(url => url !== objectUrl);
+        if (retryCount < maxRetries) {
+          setTimeout(() => {
+            if (isMounted() && containerElement && document.getElementById("qrCode")) {
+              loadQRCodeImage(imageUrl, containerElement, retryCount + 1);
+            }
+          }, retryDelay * (retryCount + 1));
+        } else {
+          if (isMounted() && containerElement) {
+            showQRCodePlaceholder('QR code image could not be loaded');
+          }
+        }
+      };
+      
+      img.src = objectUrl;
+    } else {
+      URL.revokeObjectURL(objectUrl);
+      objectUrls = objectUrls.filter(url => url !== objectUrl);
+    }
+    
+  } catch (error) {
+    // Silently retry or show placeholder
+    if (retryCount < maxRetries) {
+      setTimeout(() => {
+        if (isMounted() && containerElement && document.getElementById("qrCode")) {
+          loadQRCodeImage(imageUrl, containerElement, retryCount + 1);
+        }
+      }, retryDelay * (retryCount + 1));
+    } else {
+      if (isMounted() && containerElement) {
+        showQRCodePlaceholder('QR code image could not be loaded');
+      }
+    }
   }
 }
 
@@ -131,6 +302,12 @@ async function loadPartyDetails(partyId) {
     // Get party information
     console.log('[loadPartyDetails] Making request to /parties/' + partyId);
     const partyResponse = await makeRequest(`/parties/${partyId}`, "GET");
+    
+    // Only check mount status before updating DOM, not before async operations
+    if (!isMounted()) {
+      console.log('[loadPartyDetails] Screen unmounted during request, aborting DOM updates');
+      return;
+    }
     
     console.log('[loadPartyDetails] === PARTY RESPONSE RECEIVED ===');
     console.log('[loadPartyDetails] Party response:', partyResponse);
@@ -157,11 +334,17 @@ async function loadPartyDetails(partyId) {
     
     // Update party title
     console.log('[loadPartyDetails] Updating party title:', party.title);
-    document.getElementById("partyTitle").textContent = party.title;
+    const partyTitleEl = document.getElementById("partyTitle");
+    if (partyTitleEl && isMounted()) {
+      partyTitleEl.textContent = party.title;
+    }
     
     // Update administrator info
     console.log('[loadPartyDetails] Updating administrator name:', party.administrator);
-    document.getElementById("administratorName").textContent = party.administrator;
+    const administratorNameEl = document.getElementById("administratorName");
+    if (administratorNameEl && isMounted()) {
+      administratorNameEl.textContent = party.administrator;
+    }
     
     // Debug administrator image
     console.log('[loadPartyDetails] Administrator image field:', party.administrator_image);
@@ -170,44 +353,55 @@ async function loadPartyDetails(partyId) {
     
     // Preload administrator image and set only if it loads; otherwise keep fallback
     const adminImageElement = document.getElementById("administratorImage");
-    const fallbackAdmin = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face';
-    const candidateAdmin = party.administrator_image;
-
-    // Default to fallback to avoid onerror logs in UI
-    adminImageElement.src = fallbackAdmin;
-    
-    if (candidateAdmin && typeof candidateAdmin === 'string') {
-      console.log('[loadPartyDetails] Preloading administrator image candidate:', candidateAdmin);
-      const pre = new Image();
-      pre.onload = function() {
-        console.log('[loadPartyDetails] Administrator image loaded successfully');
-        adminImageElement.src = candidateAdmin;
-      };
-      pre.onerror = function() {
-        console.log('[loadPartyDetails] Administrator image candidate failed to load; keeping fallback');
-      };
-      pre.src = candidateAdmin;
+    if (!adminImageElement || !isMounted()) {
+      if (!adminImageElement) {
+        console.warn('[loadPartyDetails] Administrator image element not found');
+      }
     } else {
-      console.log('[loadPartyDetails] No administrator image provided; using fallback');
+      const fallbackAdmin = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face';
+      const candidateAdmin = party.administrator_image;
+
+      // Default to fallback to avoid onerror logs in UI
+      adminImageElement.src = fallbackAdmin;
+    
+      if (candidateAdmin && typeof candidateAdmin === 'string' && isValidImageUrl(candidateAdmin)) {
+        console.log('[loadPartyDetails] Preloading administrator image candidate:', candidateAdmin);
+        // Small delay to avoid race conditions with DOM updates
+        setTimeout(() => {
+          if (isMounted() && adminImageElement && document.getElementById("administratorImage")) {
+            loadAdministratorImage(candidateAdmin, adminImageElement);
+          }
+        }, 200);
+      } else {
+        console.log('[loadPartyDetails] No valid administrator image provided; using fallback');
+      }
     }
     
     // Update party tags
     const tagsContainer = document.getElementById("partyTags");
-    if (party.tags && party.tags.length > 0) {
-      tagsContainer.innerHTML = party.tags.map(tag => `
-        <span class="tag">${tag}</span>
-      `).join("");
-    } else {
-      tagsContainer.innerHTML = '<span class="tag">General</span>';
+    if (tagsContainer && isMounted()) {
+      if (party.tags && party.tags.length > 0) {
+        tagsContainer.innerHTML = party.tags.map(tag => `
+          <span class="tag">${tag}</span>
+        `).join("");
+      } else {
+        tagsContainer.innerHTML = '<span class="tag">General</span>';
+      }
     }
     
     // Update QR time
-    document.getElementById("qrTime").textContent = party.date;
+    const qrTimeEl = document.getElementById("qrTime");
+    if (qrTimeEl && isMounted()) {
+      qrTimeEl.textContent = party.date;
+    }
     
     // Update address
-    document.getElementById("partyAddress").textContent = party.location;
+    const partyAddressEl = document.getElementById("partyAddress");
+    if (partyAddressEl && isMounted()) {
+      partyAddressEl.textContent = party.location;
+    }
     
-    // Load Google Maps
+    // Load Google Maps (non-blocking)
     console.log('[loadPartyDetails] Loading Google Maps...');
     loadGoogleMap(party.location);
     console.log('[loadPartyDetails] ✅ Google Maps loaded');
@@ -230,9 +424,14 @@ async function loadPartyDetails(partyId) {
     console.log('[loadPartyDetails] === PARTY DATA LOAD COMPLETE ===');
     
   } catch (error) {
-    console.error('[loadPartyDetails] === ERROR IN PARTY DATA LOAD ===');
-    console.error("Error loading party details:", error);
-    showError("Error loading party details");
+    // Only show error if screen is still mounted
+    if (isMounted()) {
+      console.error('[loadPartyDetails] === ERROR IN PARTY DATA LOAD ===');
+      console.error("Error loading party details:", error);
+      showError("Error loading party details");
+    } else {
+      console.log('[loadPartyDetails] Error occurred but screen is unmounted, ignoring');
+    }
   }
 }
 
@@ -243,25 +442,42 @@ async function loadPartyDescription(partyId) {
     // Get party description
     const descriptionResponse = await makeRequest(`/parties/${partyId}/description`, "GET");
     
+    // Only check mount status before updating DOM
+    if (!isMounted()) {
+      console.log('[loadPartyDescription] Screen unmounted during request, aborting DOM update');
+      return;
+    }
+    
     console.log('[loadPartyDescription] Description response:', descriptionResponse);
+    
+    const descriptionElement = document.getElementById("partyDescription");
+    if (!descriptionElement || !isMounted()) {
+      console.log('[loadPartyDescription] Description element not found or screen unmounted');
+      return;
+    }
     
     if (descriptionResponse && descriptionResponse.success && descriptionResponse.description) {
       console.log('[loadPartyDescription] Description found:', descriptionResponse.description);
-      document.getElementById("partyDescription").innerHTML = `
+      descriptionElement.innerHTML = `
         <p>${descriptionResponse.description}</p>
       `;
     } else {
       console.log('[loadPartyDescription] No description available');
-      document.getElementById("partyDescription").innerHTML = `
+      descriptionElement.innerHTML = `
         <p>No description available for this party.</p>
       `;
     }
     
   } catch (error) {
     console.error('[loadPartyDescription] Error loading party description:', error);
-    document.getElementById("partyDescription").innerHTML = `
-      <p>No description available for this party.</p>
-    `;
+    if (isMounted()) {
+      const descriptionElement = document.getElementById("partyDescription");
+      if (descriptionElement) {
+        descriptionElement.innerHTML = `
+          <p>No description available for this party.</p>
+        `;
+      }
+    }
   }
 }
 
@@ -272,12 +488,20 @@ async function loadQRCode(partyId) {
     const currentUser = getCurrentUser();
     if (!currentUser || !currentUser.id) {
       console.log('[loadQRCode] No user logged in, cannot load QR code');
-      showQRCodePlaceholder('Please log in to view your QR code');
+      if (isMounted()) {
+        showQRCodePlaceholder('Please log in to view your QR code');
+      }
       return;
     }
     
     // Get QR code for this user and party
     const qrResponse = await makeRequest(`/codes/qr-code/${currentUser.id}/${partyId}`, "GET");
+    
+    // Only check mount status before updating DOM
+    if (!isMounted()) {
+      console.log('[loadQRCode] Screen unmounted during request, aborting DOM update');
+      return;
+    }
     
     console.log('[loadQRCode] QR code response:', qrResponse);
     
@@ -287,85 +511,113 @@ async function loadQRCode(partyId) {
       
       // Display QR code image using qr_image URL
       const qrCodeElement = document.getElementById("qrCode");
-      if (qrCode.qr_image) {
-        qrCodeElement.innerHTML = `
-          <img src="${qrCode.qr_image}" alt="QR Code" class="qr-code-image" />
-        `;
-      } else {
-        showQRCodePlaceholder('QR code image not available');
+      if (!qrCodeElement || !isMounted()) {
+        console.log('[loadQRCode] QR code element not found or screen unmounted');
+        return;
       }
       
-      // Update QR status
-      const statusBadge = document.querySelector(".status-badge");
-      if (statusBadge) {
-        if (qrCode.status === 'used') {
-          statusBadge.textContent = "Used";
-          statusBadge.className = "status-badge scanned";
-        } else {
-          statusBadge.textContent = "Valid";
-          statusBadge.className = "status-badge valid";
+      if (qrCode.qr_image) {
+        // Small delay to avoid race conditions, then load QR code image with error handling
+        setTimeout(() => {
+          if (isMounted() && qrCodeElement && document.getElementById("qrCode")) {
+            loadQRCodeImage(qrCode.qr_image, qrCodeElement);
+          }
+        }, 100);
+      } else {
+        if (isMounted()) {
+          showQRCodePlaceholder('QR code image not available');
         }
       }
       
-      // Update QR time and validity
-      const qrTimeElement = document.getElementById("qrTime");
-      if (qrTimeElement && qrCode.created_at) {
-        const createdDate = new Date(qrCode.created_at);
-        const formattedDate = createdDate.toLocaleDateString('en-GB', { 
-          day: '2-digit', 
-          month: '2-digit', 
-          year: '2-digit' 
-        });
-        const formattedTime = createdDate.toLocaleTimeString('en-GB', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false
-        });
-        qrTimeElement.textContent = `${formattedDate} • ${formattedTime}`;
-      }
-      
-      // Update validity text
-      const validityElement = document.querySelector(".qr-validity");
-      if (validityElement) {
-        if (qrCode.status === 'used' && qrCode.used_at) {
-          const scannedDate = new Date(qrCode.used_at);
-          const formattedScanned = scannedDate.toLocaleDateString('en-GB', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: '2-digit' 
-          });
-          validityElement.textContent = `Used on • ${formattedScanned}`;
-        } else if (qrCode.valid_until) {
-          const validDate = new Date(qrCode.valid_until);
-          const formattedValid = validDate.toLocaleDateString('en-GB', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: '2-digit' 
-          });
-          validityElement.textContent = `Valid until • ${formattedValid}`;
-        } else {
-          // Get party date for validity
-          const partyResponse = await makeRequest(`/parties/${partyId}`, "GET");
-          if (partyResponse && partyResponse.success && partyResponse.party) {
-            validityElement.textContent = `Valid until • ${partyResponse.party.date}`;
+      // Update QR status
+      if (isMounted()) {
+        const statusBadge = document.querySelector(".status-badge");
+        if (statusBadge) {
+          if (qrCode.status === 'used') {
+            statusBadge.textContent = "Used";
+            statusBadge.className = "status-badge scanned";
           } else {
-            validityElement.textContent = "Valid until • Date";
+            statusBadge.textContent = "Valid";
+            statusBadge.className = "status-badge valid";
+          }
+        }
+        
+        // Update QR time and validity
+        const qrTimeElement = document.getElementById("qrTime");
+        if (qrTimeElement && qrCode.created_at) {
+          const createdDate = new Date(qrCode.created_at);
+          const formattedDate = createdDate.toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: '2-digit' 
+          });
+          const formattedTime = createdDate.toLocaleTimeString('en-GB', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false
+          });
+          qrTimeElement.textContent = `${formattedDate} • ${formattedTime}`;
+        }
+        
+        // Update validity text
+        const validityElement = document.querySelector(".qr-validity");
+        if (validityElement) {
+          if (qrCode.status === 'used' && qrCode.used_at) {
+            const scannedDate = new Date(qrCode.used_at);
+            const formattedScanned = scannedDate.toLocaleDateString('en-GB', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: '2-digit' 
+            });
+            validityElement.textContent = `Used on • ${formattedScanned}`;
+          } else if (qrCode.valid_until) {
+            const validDate = new Date(qrCode.valid_until);
+            const formattedValid = validDate.toLocaleDateString('en-GB', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: '2-digit' 
+            });
+            validityElement.textContent = `Valid until • ${formattedValid}`;
+          } else {
+            // Get party date for validity
+            const partyResponse = await makeRequest(`/parties/${partyId}`, "GET");
+            if (!isMounted()) {
+              console.log('[loadQRCode] Screen unmounted during party request, aborting');
+              return;
+            }
+            if (partyResponse && partyResponse.success && partyResponse.party) {
+              validityElement.textContent = `Valid until • ${partyResponse.party.date}`;
+            } else {
+              validityElement.textContent = "Valid until • Date";
+            }
           }
         }
       }
     } else {
       console.log('[loadQRCode] No QR code found');
-      showQRCodePlaceholder('No QR code available. Please register for this party first.');
+      if (isMounted()) {
+        showQRCodePlaceholder('No QR code available. Please register for this party first.');
+      }
     }
     
   } catch (error) {
     console.error('[loadQRCode] Error loading QR code:', error);
-    showQRCodePlaceholder('Error loading QR code');
+    if (isMounted()) {
+      showQRCodePlaceholder('Error loading QR code');
+    }
   }
 }
 
 function showQRCodePlaceholder(message) {
+  if (!isMounted()) {
+    return;
+  }
+  
   const qrCodeElement = document.getElementById("qrCode");
+  if (!qrCodeElement) {
+    return;
+  }
+  
   qrCodeElement.innerHTML = `
     <div class="qr-placeholder">
       <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
@@ -377,7 +629,7 @@ function showQRCodePlaceholder(message) {
   
   // Update status to show no QR code
   const statusBadge = document.querySelector(".status-badge");
-  if (statusBadge) {
+  if (statusBadge && isMounted()) {
     statusBadge.textContent = "Not Available";
     statusBadge.className = "status-badge invalid";
   }
@@ -397,6 +649,12 @@ function loadGoogleMap(address) {
     // Use Google Maps embed URL (works without API key for basic embedding)
     // Using the search parameter with output=embed
     const mapUrl = `https://www.google.com/maps?q=${encodedAddress}&output=embed`;
+    
+    // Only check mount status right before DOM update
+    if (!isMounted()) {
+      console.log('[loadGoogleMap] Screen unmounted, aborting DOM update');
+      return;
+    }
     
     // Replace placeholder with iframe
     mapContainer.innerHTML = `
@@ -433,6 +691,16 @@ function loadGoogleMap(address) {
 
 function loadDressCode(tags) {
   const dressCodeList = document.getElementById("dressCodeList");
+  if (!dressCodeList) {
+    console.log('[loadDressCode] Dress code list element not found');
+    return;
+  }
+  
+  // Only check mount status before updating DOM
+  if (!isMounted()) {
+    console.log('[loadDressCode] Screen unmounted, aborting DOM update');
+    return;
+  }
   
   // Mock dress code based on tags
   let dressCodeItems = [];
@@ -472,15 +740,57 @@ function setupPartyDetailsEventListeners() {
 
 function showError(message) {
   const app = document.getElementById("app");
+  if (!app) return;
+  
   app.innerHTML = `
     <div class="error-screen">
       <h2>Error</h2>
       <p>${message}</p>
-      <button onclick="navigateTo('/member-dashboard')" class="retry-btn">Go Back</button>
+      <button id="errorBackBtn" class="retry-btn">Go Back</button>
     </div>
   `;
+  
+  // Add event listener for back button
+  const backBtn = document.getElementById("errorBackBtn");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      navigateTo("/member-dashboard");
+    });
+  }
 }
 
 export function cleanupPartyDetails() {
-  // Cleanup if needed
+  // Mark screen as unmounted
+  isScreenMounted = false;
+  
+  const app = document.getElementById("app");
+  if (app) {
+    app.classList.remove("full-bleed");
+  }
+  
+  // Clear image loading timeout
+  if (imageLoadTimeout) {
+    clearTimeout(imageLoadTimeout);
+    imageLoadTimeout = null;
+  }
+  
+  // Abort image preloading
+  if (preloadImage) {
+    preloadImage.onload = null;
+    preloadImage.onerror = null;
+    preloadImage.src = '';
+    preloadImage = null;
+  }
+  
+  // Clean up all object URLs to prevent memory leaks
+  objectUrls.forEach(url => {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      // Ignore errors when revoking
+    }
+  });
+  objectUrls = [];
+  
+  console.log('[cleanupPartyDetails] Cleanup completed');
 }

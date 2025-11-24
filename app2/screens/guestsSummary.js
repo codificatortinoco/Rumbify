@@ -13,7 +13,11 @@ export default async function renderGuestsSummary(routeData = {}) {
       <div class="top-section">
         <div class="top-label">Admin's management</div>
         <div class="page-header">
-          <button class="back-btn" id="gs-back"><img src="/app2/assets/backIcon.svg" alt="Back"/></button>
+          <button class="back-btn" id="gs-back">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
           <h2 class="page-title">Guests List</h2>
         </div>
       </div>

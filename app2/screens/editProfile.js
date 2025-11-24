@@ -9,7 +9,9 @@ export default function renderEditProfile() {
     <div id="edit-profile-screen">
       <div class="edit-profile-header">
         <button class="back-btn" id="backBtn">
-          <img src="assets/arrow.svg" alt="Back" class="back-icon" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
         </button>
         <h1 class="edit-profile-title">Edit Profile</h1>
         <button class="save-btn" id="saveBtn">Save</button>

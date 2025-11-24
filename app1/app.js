@@ -15,8 +15,12 @@ function clearScripts() {
   cleanupDashboard();
   cleanupMemberDashboard();
   cleanupPartyDetails();
-  
-  document.getElementById("app").innerHTML = "";
+
+  const appContainer = document.getElementById("app");
+  if (appContainer) {
+    appContainer.classList.remove("full-bleed");
+    appContainer.innerHTML = "";
+  }
 }
 
 // Initialize route based on current URL path

@@ -11,6 +11,9 @@ const CONFIG = {
 
 export default function renderEventDetails(eventData) {
   const app = document.getElementById("app");
+  if (app) {
+    app.classList.add("full-bleed");
+  }
 
   function renderPriceListHTML(evt) {
     const pricesList = Array.isArray(evt?.prices) && evt.prices.length
@@ -30,7 +33,9 @@ export default function renderEventDetails(eventData) {
       <!-- Event Header -->
       <header class="event-header">
         <button class="back-btn" id="backBtn">
-          <img src="assets/arrow.svg" alt="Back" class="back-icon" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
         </button>
         <h1 class="event-title-header">Party Details</h1>
         <span class="attendees-count">${eventData.attendees}</span>

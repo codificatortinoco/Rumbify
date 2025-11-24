@@ -237,7 +237,7 @@ function updateOpeningHour(eventData) {
 function setupBackButton() {
   const backBtn = document.getElementById("backBtn");
   backBtn.addEventListener("click", () => {
-    navigateTo("/dashboard");
+    navigateTo("/parties");
   });
 }
 
@@ -327,7 +327,7 @@ function setupBottomNavigation() {
       switch (text) {
         case "Parties":
 -         navigateTo("/parties");
-+         navigateTo("/dashboard");
++         navigateTo("/parties");
           break;
         case "New Party":
           window.location.assign("/app2/create-party");

@@ -124,7 +124,7 @@ export default function renderRegister(data = {}) {
         if (response.success) {
           // Set logged in user and redirect to dashboard
           setLoggedInUser(response.user);
-          navigateTo("/dashboard", { userType, email });
+          navigateTo("/parties", { userType, email });
         } else {
           alert(response.message || 'Registration failed. Please try again.');
         }

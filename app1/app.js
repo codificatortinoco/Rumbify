@@ -34,7 +34,7 @@ function getInitialRoute() {
   
   // Check if user is logged in for protected routes
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const protectedRoutes = ['/dashboard', '/member-dashboard', '/parties', '/profile', '/edit-profile', '/event-details'];
+  const protectedRoutes = ['/parties', '/member-dashboard', '/profile', '/edit-profile', '/event-details'];
   
   // Check for party-details route with ID
   if (cleanPath.startsWith('/party-details/') && !isLoggedIn) {
@@ -87,7 +87,7 @@ function renderRoute(currentRoute) {
       clearScripts();
       renderRegister(currentRoute?.data);
       break;
-    case "/dashboard":
+    case "/parties":
       clearScripts();
       renderDashboard(currentRoute?.data);
       break;

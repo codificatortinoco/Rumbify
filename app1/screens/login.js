@@ -101,7 +101,7 @@ export default function renderLogin(data = {}) {
         if (response.success) {
           // Set logged in user and redirect to dashboard
           setLoggedInUser(response.user);
-          navigateTo("/dashboard", { userType: "member", email });
+          navigateTo("/parties", { userType: "member", email });
         } else {
           alert(response.message || 'Login failed. Please check your credentials.');
         }

@@ -106,8 +106,8 @@ export default function renderMemberDashboard() {
         <div class="upcoming-carousel" id="upcomingCarousel">
           <!-- Upcoming events will be loaded here -->
         </div>
-        <div class="carousel-dots" id="upcomingDots">
-          <!-- Dots will be dynamically generated -->
+        <div class="upcoming-carousel-footer" id="upcomingCarouselFooter" style="display: none;">
+          <div class="carousel-dots" id="upcomingCarouselDots"></div>
         </div>
       </section>
 
@@ -120,7 +120,7 @@ export default function renderMemberDashboard() {
           <!-- Favorite parties will be loaded here -->
         </div>
         <div class="favorites-carousel-footer" id="favoritesCarouselFooter" style="display: none;">
-          <span class="carousel-counter" id="favoritesCarouselCounter">1 / 1</span>
+          <div class="carousel-dots" id="favoritesCarouselDots"></div>
         </div>
         <div class="no-favorites" id="noFavorites" style="display: none;">
           <p>No tienes eventos favoritos aún</p>
@@ -357,14 +357,18 @@ async function loadUpcomingForYou() {
       return;
     }
 
-    const upcomingEvents = await MemberDataService.getUpcomingForYou(userId);
+    const allEvents = await MemberDataService.getUpcomingForYou(userId);
     
     if (!memberDashboardController.isActive) {
       console.log("Member dashboard no longer active, skipping render");
       return;
     }
     
-    renderUpcomingCarousel(upcomingEvents);
+    // Get 5 random parties
+    const shuffled = [...allEvents].sort(() => 0.5 - Math.random());
+    const randomEvents = shuffled.slice(0, 5);
+    
+    renderUpcomingCarousel(randomEvents);
   } catch (error) {
     console.error("Error loading upcoming for you:", error);
   } finally {
@@ -387,22 +391,29 @@ function showUpcomingLoadingState() {
 
 function renderUpcomingCarousel(events) {
   const carousel = document.getElementById("upcomingCarousel");
-  const dots = document.getElementById("upcomingDots");
+  const carouselFooter = document.getElementById("upcomingCarouselFooter");
+  const carouselDots = document.getElementById("upcomingCarouselDots");
   
-  if (!carousel || !dots) {
+  if (!carousel || !carouselFooter || !carouselDots) {
     console.warn("Upcoming carousel elements not found, skipping render");
     return;
   }
   
   if (!events || events.length === 0) {
     carousel.innerHTML = '<p>No hay eventos próximos</p>';
+    carouselFooter.style.display = 'none';
     return;
   }
-
-  // Limit to 3 events max
-  const limitedEvents = events.slice(0, 3);
   
-  const eventsHTML = limitedEvents.map(event => {
+  // Map tags to icons
+  const tagIcons = {
+    "Elegant": "assets/edit.svg",
+    "Cocktailing": "assets/partyIcon.svg",
+    "Disco Music": "assets/partyIcon.svg",
+    "Outdoor": "assets/partyIcon.svg"
+  };
+  
+  const eventsHTML = events.map(event => {
     // Format date for display
     const eventDate = new Date(event.date);
     const formattedDate = eventDate.toLocaleDateString('es-ES', {
@@ -416,8 +427,9 @@ function renderUpcomingCarousel(events) {
     });
     
     // Format attendees count
-    const attendeesCount = event.attendees_count || 0;
-    const maxAttendees = event.max_attendees || 100;
+    const attendeesInfo = parseAttendeesFromString(event.attendees || "0/0");
+    const attendeesCount = attendeesInfo.current;
+    const maxAttendees = attendeesInfo.max;
     const attendeesDisplay = `${attendeesCount}/${maxAttendees}`;
     
     return `
@@ -429,24 +441,28 @@ function renderUpcomingCarousel(events) {
           <h3 class="event-title">${event.title} ${attendeesDisplay}</h3>
           <div class="event-details">
             <div class="event-detail">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
               </svg>
               <span>${event.location}</span>
             </div>
             <div class="event-detail">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                 <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
               </svg>
               <span>${formattedDate} • ${formattedTime}</span>
             </div>
             <div class="event-detail">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white" style="margin-left: 2px;">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
               </svg>
               <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
             </div>
           </div>
+          <button class="see-more-btn" data-event-id="${event.id}">See More</button>
         </div>
       </div>
     `;
@@ -454,67 +470,162 @@ function renderUpcomingCarousel(events) {
 
   carousel.innerHTML = eventsHTML;
   
-  // Generate dots
-  const dotsHTML = limitedEvents.map((_, index) => 
-    `<span class="dot ${index === 0 ? 'active' : ''}" data-slide="${index}"></span>`
-  ).join('');
-  
-  dots.innerHTML = dotsHTML;
+  // Setup carousel footer and scroll tracking
+  setupUpcomingCarousel();
 }
 
 
 function setupUpcomingCarousel() {
   const carousel = document.getElementById("upcomingCarousel");
-  const dots = document.getElementById("upcomingDots");
+  const carouselFooter = document.getElementById("upcomingCarouselFooter");
+  const carouselDots = document.getElementById("upcomingCarouselDots");
   
-  if (!carousel || !dots) return;
-
-  let currentSlide = 0;
-  const slides = carousel.querySelectorAll('.upcoming-card');
-  const dotElements = dots.querySelectorAll('.dot');
-
-  function showSlide(index) {
-    slides.forEach((slide, i) => {
-      slide.style.display = i === index ? 'block' : 'none';
-    });
-    
-    dotElements.forEach((dot, i) => {
-      dot.classList.toggle('active', i === index);
-    });
+  if (!carousel || !carouselFooter || !carouselDots) return;
+  
+  const cards = carousel.querySelectorAll('.upcoming-card');
+  const totalCards = cards.length;
+  
+  if (totalCards === 0) {
+    carouselFooter.style.display = 'none';
+    return;
   }
-
-  // Initialize first slide
-  if (slides.length > 0) {
-    showSlide(0);
+  
+  carouselFooter.style.display = 'flex';
+  
+  // Create dots
+  carouselDots.innerHTML = '';
+  for (let i = 0; i < totalCards; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'carousel-dot';
+    if (i === 0) {
+      dot.classList.add('active');
+    }
+    carouselDots.appendChild(dot);
   }
-
-  // Auto-advance carousel
-  if (slides.length > 1) {
-    setInterval(() => {
-      currentSlide = (currentSlide + 1) % slides.length;
-      showSlide(currentSlide);
-    }, 5000);
-  }
-
-  // Dot navigation
-  dotElements.forEach((dot, index) => {
-    dot.addEventListener('click', () => {
-      currentSlide = index;
-      showSlide(currentSlide);
-    });
+  
+  // Track scroll position
+  let scrollTimeout;
+  carousel.addEventListener('scroll', () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      const cardWidth = cards[0]?.offsetWidth || 320;
+      const scrollLeft = carousel.scrollLeft;
+      const currentIndex = Math.round(scrollLeft / cardWidth);
+      const clampedIndex = Math.min(Math.max(0, currentIndex), totalCards - 1);
+      updateUpcomingCarouselDots(clampedIndex);
+    }, 100);
   });
+  
+  // Initial calculation
+  const cardWidth = cards[0]?.offsetWidth || 320;
+  const scrollLeft = carousel.scrollLeft;
+  const currentIndex = Math.round(scrollLeft / cardWidth);
+  updateUpcomingCarouselDots(Math.min(Math.max(0, currentIndex), totalCards - 1));
+}
+
+function updateUpcomingCarouselDots(activeIndex) {
+  const carouselDots = document.getElementById("upcomingCarouselDots");
+  if (!carouselDots) return;
+  
+  const dots = carouselDots.querySelectorAll('.carousel-dot');
+  dots.forEach((dot, index) => {
+    if (index === activeIndex) {
+      dot.classList.add('active');
+    } else {
+      dot.classList.remove('active');
+    }
+  });
+}
+
+
+// Helper function to check if user has QR code for a party
+async function checkUserHasQRCode(partyId) {
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.id) {
+      return false;
+    }
+    
+    const qrResponse = await makeRequest(`/codes/qr-code/${currentUser.id}/${partyId}`, "GET");
+    
+    if (qrResponse && qrResponse.success && qrResponse.qr_code) {
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.log('No QR code found for party:', partyId);
+    return false;
+  }
+}
+
+// Helper function to get event details and navigate
+async function navigateToPartyOrEvent(partyId) {
+  try {
+    // Check if user has QR code
+    const hasQRCode = await checkUserHasQRCode(partyId);
+    
+    if (hasQRCode) {
+      // User has QR code, navigate to party-details
+      console.log('User has QR code, navigating to party details:', partyId);
+      navigateTo(`/party-details/${partyId}`);
+    } else {
+      // User doesn't have QR code, navigate to event-details
+      console.log('User has no QR code, navigating to event details:', partyId);
+      try {
+        const eventResponse = await makeRequest(`/parties/${partyId}`, "GET");
+        const eventData = eventResponse?.party || eventResponse;
+        navigateTo("/event-details", eventData);
+      } catch (error) {
+        console.error('Error fetching event details:', error);
+        // Fallback: still navigate to event-details with just the ID
+        navigateTo("/event-details", { id: partyId });
+      }
+    }
+  } catch (error) {
+    console.error('Error checking QR code:', error);
+    // On error, default to event-details
+    try {
+      const eventResponse = await makeRequest(`/parties/${partyId}`, "GET");
+      const eventData = eventResponse?.party || eventResponse;
+      navigateTo("/event-details", eventData);
+    } catch (err) {
+      navigateTo("/event-details", { id: partyId });
+    }
+  }
 }
 
 function setupActionButtons() {
   document.addEventListener('click', async (e) => {
+    // Handle "See More" button clicks
+    if (e.target.closest('.see-more-btn')) {
+      const button = e.target.closest('.see-more-btn');
+      const eventId = button.dataset.eventId;
+      
+      if (eventId) {
+        e.stopPropagation();
+        await navigateToPartyOrEvent(eventId);
+        return;
+      }
+    }
+    
     // Handle party card clicks
-    if (e.target.closest('.upcoming-card') && !e.target.closest('.action-btn')) {
+    if (e.target.closest('.upcoming-card') && !e.target.closest('.action-btn') && !e.target.closest('.see-more-btn') && !e.target.closest('.see-more-link') && !e.target.closest('.upcoming-like-btn')) {
       const card = e.target.closest('.upcoming-card');
       const partyId = card.dataset.partyId;
       
       if (partyId) {
-        console.log('Navigating to party details:', partyId);
-        navigateTo(`/party-details/${partyId}`);
+        await navigateToPartyOrEvent(partyId);
+      }
+    }
+    
+    // Handle favorite card clicks
+    if (e.target.closest('.favorite-card') && !e.target.closest('.see-more-btn') && !e.target.closest('.see-more-link') && !e.target.closest('.favorite-heart')) {
+      const card = e.target.closest('.favorite-card');
+      const partyId = card.dataset.partyId;
+      
+      if (partyId) {
+        await navigateToPartyOrEvent(partyId);
       }
     }
     
@@ -570,7 +681,7 @@ function setupBottomNavigation() {
       switch (target) {
         case "Parties":
 -         navigateTo("/parties");
-+         navigateTo("/dashboard");
++         navigateTo("/parties");
           break;
         case "Home":
           break;
@@ -885,6 +996,7 @@ function renderFavorites(events) {
               <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
             </div>
           </div>
+          <button class="see-more-btn" data-event-id="${event.id}">See More</button>
         </div>
       </div>
     `;
@@ -899,9 +1011,9 @@ function renderFavorites(events) {
 function setupFavoritesCarousel() {
   const favoritesGrid = document.getElementById("favoritesGrid");
   const carouselFooter = document.getElementById("favoritesCarouselFooter");
-  const carouselCounter = document.getElementById("favoritesCarouselCounter");
+  const carouselDots = document.getElementById("favoritesCarouselDots");
   
-  if (!favoritesGrid || !carouselFooter || !carouselCounter) return;
+  if (!favoritesGrid || !carouselFooter || !carouselDots) return;
   
   const cards = favoritesGrid.querySelectorAll('.favorite-card');
   const totalCards = cards.length;
@@ -912,7 +1024,17 @@ function setupFavoritesCarousel() {
   }
   
   carouselFooter.style.display = 'flex';
-  updateCarouselCounter(1, totalCards);
+  
+  // Create dots
+  carouselDots.innerHTML = '';
+  for (let i = 0; i < totalCards; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'carousel-dot';
+    if (i === 0) {
+      dot.classList.add('active');
+    }
+    carouselDots.appendChild(dot);
+  }
   
   // Track scroll position
   let scrollTimeout;
@@ -921,23 +1043,30 @@ function setupFavoritesCarousel() {
     scrollTimeout = setTimeout(() => {
       const cardWidth = cards[0]?.offsetWidth || 320;
       const scrollLeft = favoritesGrid.scrollLeft;
-      const currentIndex = Math.round(scrollLeft / cardWidth) + 1;
-      const clampedIndex = Math.min(Math.max(1, currentIndex), totalCards);
-      updateCarouselCounter(clampedIndex, totalCards);
+      const currentIndex = Math.round(scrollLeft / cardWidth);
+      const clampedIndex = Math.min(Math.max(0, currentIndex), totalCards - 1);
+      updateCarouselDots(clampedIndex);
     }, 100);
   });
   
   // Initial calculation
   const cardWidth = cards[0]?.offsetWidth || 320;
   const scrollLeft = favoritesGrid.scrollLeft;
-  const currentIndex = Math.round(scrollLeft / cardWidth) + 1;
-  updateCarouselCounter(Math.min(Math.max(1, currentIndex), totalCards), totalCards);
+  const currentIndex = Math.round(scrollLeft / cardWidth);
+  updateCarouselDots(Math.min(Math.max(0, currentIndex), totalCards - 1));
 }
 
-function updateCarouselCounter(current, total) {
-  const carouselCounter = document.getElementById("favoritesCarouselCounter");
-  if (carouselCounter) {
-    carouselCounter.textContent = `${current} / ${total}`;
-  }
+function updateCarouselDots(activeIndex) {
+  const carouselDots = document.getElementById("favoritesCarouselDots");
+  if (!carouselDots) return;
+  
+  const dots = carouselDots.querySelectorAll('.carousel-dot');
+  dots.forEach((dot, index) => {
+    if (index === activeIndex) {
+      dot.classList.add('active');
+    } else {
+      dot.classList.remove('active');
+    }
+  });
 }
 

@@ -50,12 +50,6 @@ export default function renderDashboard() {
           <input type="text" placeholder="Search Party..." id="searchInput" />
         </div>
 
-        <!-- Categories Row -->
-        <div class="filter-bar" id="categoryBar">
-          <button class="filter-pill active" data-category="">All</button>
-          <button class="filter-pill" data-category="upcoming">Upcoming</button>
-        </div>
-
         <!-- Tags Row -->
         <div class="filter-bar tags" id="tagsBar">
           <!-- Tag pills will be injected dynamically on load -->
@@ -77,10 +71,12 @@ export default function renderDashboard() {
       <section class="upcoming-section">
         <div class="section-header">
           <h2 class="section-title">Upcoming</h2>
-          <a href="#" class="see-more-link">See more</a>
         </div>
         <div class="upcoming-events" id="upcomingEvents">
           <!-- Upcoming event cards will be dynamically loaded here -->
+        </div>
+        <div class="carousel-dots" id="upcomingDots">
+          <!-- Dots will be dynamically generated -->
         </div>
       </section>
 
@@ -535,6 +531,7 @@ function renderHotTopicEvents(events) {
 
 function renderUpcomingEvents(events) {
   const container = document.getElementById("upcomingEvents");
+  const dots = document.getElementById("upcomingDots");
   
   if (!container) {
     console.warn("Element 'upcomingEvents' not found, skipping render");
@@ -543,10 +540,21 @@ function renderUpcomingEvents(events) {
   
   if (!events || !Array.isArray(events)) {
     container.innerHTML = "";
+    if (dots) dots.innerHTML = "";
     return;
   }
   
   container.innerHTML = events.map(event => createUpcomingCard(event)).join("");
+  
+  // Generate dots for carousel
+  if (dots) {
+    dots.innerHTML = events.map((_, index) => 
+      `<div class="carousel-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></div>`
+    ).join("");
+  }
+  
+  // Setup carousel functionality
+  setupUpcomingCarousel();
 }
 
 function createHotTopicCard(event) {
@@ -576,36 +584,43 @@ function createHotTopicCard(event) {
           <h3 class="hot-topic-title">${event.title}</h3>
           <span class="hot-topic-count">${attendeesDisplay}</span>
         </div>
-        <div class="hot-topic-info">
-          <div class="hot-topic-detail">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            <span>${event.location}</span>
+        <div class="hot-topic-info-row">
+          <div class="hot-topic-info">
+            <div class="hot-topic-detail">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <span>${event.location}</span>
+            </div>
+            <div class="hot-topic-detail">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+              </svg>
+              <span>${event.date}</span>
+            </div>
+            <div class="hot-topic-detail">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <span>${event.administrator}</span>
+            </div>
           </div>
-          <div class="hot-topic-detail">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-            </svg>
-            <span>${event.date}</span>
-          </div>
-          <div class="hot-topic-detail">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
-            <span>${event.administrator}</span>
-          </div>
+          <div class="hot-topic-price">${displayPrice}</div>
         </div>
         <div class="hot-topic-footer">
           <div class="hot-topic-tags">
-            ${(event.tags || []).slice(0, 2).map(tag => `
-              <div class="hot-topic-tag">
+            ${(event.tags || []).slice(0, 2).map(tag => {
+              const tagClass = tag.toLowerCase().includes('elegant') ? 'tag-elegant' : 
+                              tag.toLowerCase().includes('cocktailing') ? 'tag-cocktailing' : 
+                              'tag-default';
+              return `
+              <div class="hot-topic-tag ${tagClass}">
                 <img src="${tagIcons[tag] || 'assets/partyIcon.svg'}" alt="${tag}" class="tag-icon" />
                 <span>${tag}</span>
               </div>
-            `).join("")}
+            `;
+            }).join("")}
           </div>
-          <div class="hot-topic-price">${displayPrice}</div>
           <button class="hot-topic-see-more-btn" data-event-id="${event.id}">See More</button>
         </div>
       </div>
@@ -615,28 +630,80 @@ function createHotTopicCard(event) {
 
 function createUpcomingCard(event) {
   const displayPrice = event.price || (Array.isArray(event.prices) && event.prices.length ? event.prices[0].price : "");
+  const isLiked = event.liked || false;
+  const attendeesDisplay = event.attendees || `${event.attendees_count || 0}/${event.max_attendees || 0}`;
+  
+  // Map tags to icons
+  const tagIcons = {
+    "Elegant": "assets/edit.svg",
+    "Cocktailing": "assets/partyIcon.svg",
+    "Disco Music": "assets/partyIcon.svg",
+    "Outdoor": "assets/partyIcon.svg"
+  };
+  
+  // Get tags (limit to 2 for display)
+  const eventTags = (event.tags || []).slice(0, 2);
+  
+  // Format date if needed
+  let formattedDate = event.date;
+  let formattedTime = "";
+  if (event.date && event.date.includes('•')) {
+    const parts = event.date.split('•');
+    formattedDate = parts[0].trim();
+    formattedTime = parts[1] ? parts[1].trim() : "";
+  }
+  
   return `
-    <div class="upcoming-card">
-      <div class="card-image">
+    <div class="upcoming-card" data-party-id="${event.id}">
+      <div class="event-image">
         <img src="${event.image}" alt="${event.title}" />
+        <button class="upcoming-like-btn ${isLiked ? 'liked' : ''}" data-event-id="${event.id}" aria-label="Like">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="${isLiked ? '#22c55e' : 'none'}" stroke="white" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
       </div>
-      <div class="card-content">
-        <h3 class="event-title">${event.title}</h3>
+      <div class="event-info">
+        <div class="event-title-row">
+          <h3 class="event-title">${event.title}</h3>
+          <span class="event-attendees">${attendeesDisplay}</span>
+        </div>
         <div class="event-details">
-          <div class="detail-item">
+          <div class="event-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
             <span>${event.location}</span>
           </div>
-          <div class="detail-item">
-            <span>${event.date}</span>
+          <div class="event-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+            </svg>
+            <span>${formattedDate}${formattedTime ? ' • ' + formattedTime : ''}</span>
           </div>
-          <div class="detail-item">
+          <div class="event-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
             <span>${event.administrator}</span>
           </div>
         </div>
-         <div class="card-tags">
-           ${event.tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
-           <button class="see-more-btn" data-event-id="${event.id}">See More</button>
-         </div>
+        <div class="event-footer-row">
+          <div class="event-price">${displayPrice}</div>
+          <div class="event-tags">
+            ${eventTags.map(tag => {
+              const tagClass = tag.toLowerCase().includes('elegant') ? 'tag-elegant' : 
+                              tag.toLowerCase().includes('cocktailing') || tag.toLowerCase().includes('disco') ? 'tag-cocktailing' : 
+                              'tag-default';
+              return `
+              <div class="upcoming-tag ${tagClass}">
+                <img src="${tagIcons[tag] || 'assets/partyIcon.svg'}" alt="${tag}" class="tag-icon" />
+                <span>${tag}</span>
+              </div>
+            `;
+            }).join("")}
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -644,13 +711,43 @@ function createUpcomingCard(event) {
 
 function setupSearch() {
   const searchInput = document.getElementById("searchInput");
-  const categoryBar = document.getElementById("categoryBar");
   let selectedCategory = "";
   let selectedTags = [];
   let searchTimeout;
   
+  const tagsBar = document.getElementById("tagsBar");
+  
+  // Show tags bar when search bar is clicked or focused
+  const showTagsBar = () => {
+    if (tagsBar) {
+      tagsBar.classList.add("show");
+    }
+  };
+  
+  const hideTagsBar = () => {
+    if (tagsBar) {
+      tagsBar.classList.remove("show");
+    }
+  };
+  
+  searchInput.addEventListener("focus", showTagsBar);
+  searchInput.addEventListener("click", showTagsBar);
+  
+  // Hide tags bar when search is cleared and user clicks outside
+  document.addEventListener("click", (e) => {
+    if (!searchInput.contains(e.target) && !tagsBar?.contains(e.target)) {
+      const searchTerm = searchInput.value.trim();
+      if (searchTerm.length === 0 && !selectedCategory && selectedTags.length === 0) {
+        hideTagsBar();
+      }
+    }
+  });
+  
   searchInput.addEventListener("input", async (e) => {
     const searchTerm = e.target.value.trim();
+    
+    // Show/hide category bar based on search term
+    showCategoryBarIfNeeded();
     
     // Clear previous timeout
     clearTimeout(searchTimeout);
@@ -685,22 +782,20 @@ function setupSearch() {
     }, 300);
   });
 
-  // Category click handling
-  categoryBar.addEventListener("click", (e) => {
-    const pill = e.target.closest(".filter-pill");
-    if (!pill) return;
-    // Toggle active state: single-select
-    categoryBar.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
-    pill.classList.add('active');
-    selectedCategory = pill.dataset.category || "";
-
-    triggerSearch();
-  });
+  // Show tags bar when search has text or filters are active
+  const showTagsBarIfNeeded = () => {
+    if (selectedCategory || selectedTags.length > 0 || searchInput.value.trim().length > 0) {
+      showTagsBar();
+    }
+  };
 
   setupSearch._setSelectedTags = (tags) => {
     selectedTags = tags;
+    showTagsBarIfNeeded();
     triggerSearch();
   };
+  
+  setupSearch._showFilterBarsIfNeeded = showTagsBarIfNeeded;
 
   function triggerSearch() {
     const q = searchInput.value.trim();
@@ -891,10 +986,58 @@ function setupCarousel() {
   }, 5000);
 }
 
+function setupUpcomingCarousel() {
+  const carousel = document.getElementById("upcomingEvents");
+  if (!carousel) return;
+  
+  const dots = document.querySelectorAll("#upcomingDots .carousel-dot");
+  if (dots.length === 0) return;
+  
+  let currentIndex = 0;
+  
+  // Setup dot navigation
+  dots.forEach((dot, index) => {
+    dot.addEventListener("click", () => {
+      currentIndex = index;
+      updateCarousel();
+    });
+  });
+
+  function updateCarousel() {
+    if (!carousel || dots.length === 0) return;
+    const cardWidth = carousel.querySelector(".upcoming-card")?.offsetWidth || 280;
+    carousel.scrollTo({
+      left: currentIndex * cardWidth,
+      behavior: 'smooth'
+    });
+    
+    dots.forEach((dot, index) => {
+      dot.classList.toggle("active", index === currentIndex);
+    });
+  }
+
+  // Scroll event to update index
+  carousel.addEventListener('scroll', () => {
+    updateCurrentIndex();
+  });
+
+  function updateCurrentIndex() {
+    if (!carousel) return;
+    const cardWidth = carousel.querySelector(".upcoming-card")?.offsetWidth || 280;
+    const newIndex = Math.round(carousel.scrollLeft / cardWidth);
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < dots.length) {
+      currentIndex = newIndex;
+      dots.forEach((dot, index) => {
+        dot.classList.toggle("active", index === currentIndex);
+      });
+    }
+  }
+}
+
 function setupLikeButtons() {
   // Use event delegation for dynamically added like buttons
   document.addEventListener('click', async (e) => {
-    const likeBtn = e.target.closest('.like-btn') || e.target.closest('.hot-topic-like-btn');
+    const likeBtn = e.target.closest('.like-btn') || e.target.closest('.hot-topic-like-btn') || e.target.closest('.upcoming-like-btn');
     if (likeBtn) {
       const eventId = likeBtn.dataset.eventId;
       const isLiked = likeBtn.classList.contains('liked');
@@ -961,7 +1104,7 @@ function setupBottomNavigation() {
       switch (target) {
         case "Parties":
 -         navigateTo("/parties");
-+         navigateTo("/dashboard");
++         navigateTo("/parties");
           break;
         case "Home":
           navigateTo("/member-dashboard");
@@ -1006,6 +1149,11 @@ function setupFilters() {
     }
     if (typeof setupSearch._setSelectedTags === 'function') {
       setupSearch._setSelectedTags(Array.from(activeTags));
+    }
+    
+    // Show filter bars when tags are selected
+    if (typeof setupSearch._showFilterBarsIfNeeded === 'function') {
+      setupSearch._showFilterBarsIfNeeded();
     }
   });
 }

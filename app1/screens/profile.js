@@ -415,14 +415,55 @@ function setupProfileEventListeners() {
   });
 
   // History item clicks
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     if (e.target.closest('.history-item')) {
       const historyItem = e.target.closest('.history-item');
       const partyId = historyItem.dataset.partyId;
       
       if (partyId) {
-        console.log('Navigating to party details from history:', partyId);
-        navigateTo(`/party-details/${partyId}`);
+        // Check if user has QR code for this party
+        try {
+          const currentUser = getCurrentUser();
+          if (currentUser && currentUser.id) {
+            const qrResponse = await makeRequest(`/codes/qr-code/${currentUser.id}/${partyId}`, "GET");
+            
+            if (qrResponse && qrResponse.success && qrResponse.qr_code) {
+              // User has QR code, navigate to party-details
+              console.log('User has QR code, navigating to party details from history:', partyId);
+              navigateTo(`/party-details/${partyId}`);
+            } else {
+              // User doesn't have QR code, navigate to event-details
+              console.log('User has no QR code, navigating to event details from history:', partyId);
+              try {
+                const eventResponse = await makeRequest(`/parties/${partyId}`, "GET");
+                const eventData = eventResponse?.party || eventResponse;
+                navigateTo("/event-details", eventData);
+              } catch (error) {
+                console.error('Error fetching event details:', error);
+                navigateTo("/event-details", { id: partyId });
+              }
+            }
+          } else {
+            // No user, navigate to event-details
+            try {
+              const eventResponse = await makeRequest(`/parties/${partyId}`, "GET");
+              const eventData = eventResponse?.party || eventResponse;
+              navigateTo("/event-details", eventData);
+            } catch (error) {
+              navigateTo("/event-details", { id: partyId });
+            }
+          }
+        } catch (error) {
+          console.error('Error checking QR code:', error);
+          // On error, default to event-details
+          try {
+            const eventResponse = await makeRequest(`/parties/${partyId}`, "GET");
+            const eventData = eventResponse?.party || eventResponse;
+            navigateTo("/event-details", eventData);
+          } catch (err) {
+            navigateTo("/event-details", { id: partyId });
+          }
+        }
       }
     }
   });
@@ -453,7 +494,7 @@ function setupBottomNavigation() {
         case "parties":
         case "My Parties":
 -         navigateTo("/parties");
-+         navigateTo("/dashboard");
++         navigateTo("/parties");
           break;
         case "home":
         case "Home":

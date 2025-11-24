@@ -66,7 +66,7 @@ const authManager = new AuthManager();
 // Función para verificar acceso a rutas protegidas
 function checkRouteAccess(route) {
   const memberRoutes = [
-    '/dashboard',
+    '/parties',
     '/member-dashboard',
     '/profile',
     '/edit-profile',

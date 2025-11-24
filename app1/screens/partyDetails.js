@@ -5,6 +5,7 @@ let isScreenMounted = false;
 let imageLoadTimeout = null;
 let preloadImage = null;
 let objectUrls = []; // Track object URLs for cleanup
+const FALLBACK_ADMIN_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='24' r='16' fill='%23C4B5FD'/><path d='M8 60c0-13.255 10.745-24 24-24s24 10.745 24 24' fill='%23A78BFA'/></svg>";
 
 export default function renderPartyDetails(partyId) {
   // Mark screen as mounted FIRST, before any cleanup
@@ -159,65 +160,6 @@ function isMounted() {
   return screen !== null;
 }
 
-// Helper function to validate image URL
-function isValidImageUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  try {
-    const urlObj = new URL(url);
-    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-  } catch {
-    // If URL parsing fails, it might be a relative path or invalid
-    return url.startsWith('/') || url.startsWith('./') || url.startsWith('../');
-  }
-}
-
-// Helper function to load administrator image with retry logic
-// Uses fetch with blob to prevent console errors
-async function loadAdministratorImage(imageUrl, imageElement, retryCount = 0) {
-  if (!isMounted() || !imageElement || !document.getElementById("administratorImage")) {
-    return;
-  }
-  
-  const maxRetries = 2;
-  const retryDelay = 1500;
-  
-  try {
-    // Use fetch to load image as blob - this prevents browser console errors
-    const response = await Promise.race([
-      fetch(imageUrl),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
-    ]);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    objectUrls.push(objectUrl); // Track for cleanup
-    
-    // Load the blob URL instead of the original URL
-    if (isMounted() && imageElement && document.getElementById("administratorImage")) {
-      imageElement.src = objectUrl;
-      console.log('[loadAdministratorImage] Administrator image loaded successfully');
-    } else {
-      URL.revokeObjectURL(objectUrl);
-      objectUrls = objectUrls.filter(url => url !== objectUrl);
-    }
-    
-  } catch (error) {
-    // Silently retry or keep fallback
-    if (retryCount < maxRetries) {
-      setTimeout(() => {
-        if (isMounted() && imageElement && document.getElementById("administratorImage")) {
-          loadAdministratorImage(imageUrl, imageElement, retryCount + 1);
-        }
-      }, retryDelay * (retryCount + 1));
-    }
-    // Silently fail - keep fallback image (already set)
-  }
-}
-
 // Helper function to load QR code image with retry logic
 // Uses fetch with blob to prevent console errors
 async function loadQRCodeImage(imageUrl, containerElement, retryCount = 0) {
@@ -358,23 +300,8 @@ async function loadPartyDetails(partyId) {
         console.warn('[loadPartyDetails] Administrator image element not found');
       }
     } else {
-      const fallbackAdmin = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face';
-      const candidateAdmin = party.administrator_image;
-
-      // Default to fallback to avoid onerror logs in UI
-      adminImageElement.src = fallbackAdmin;
-    
-      if (candidateAdmin && typeof candidateAdmin === 'string' && isValidImageUrl(candidateAdmin)) {
-        console.log('[loadPartyDetails] Preloading administrator image candidate:', candidateAdmin);
-        // Small delay to avoid race conditions with DOM updates
-        setTimeout(() => {
-          if (isMounted() && adminImageElement && document.getElementById("administratorImage")) {
-            loadAdministratorImage(candidateAdmin, adminImageElement);
-          }
-        }, 200);
-      } else {
-        console.log('[loadPartyDetails] No valid administrator image provided; using fallback');
-      }
+      // Always use inline fallback to avoid loading remote URLs
+      adminImageElement.src = FALLBACK_ADMIN_IMAGE;
     }
     
     // Update party tags

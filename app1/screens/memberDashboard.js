@@ -462,7 +462,6 @@ function renderUpcomingCarousel(events) {
               <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
             </div>
           </div>
-          <button class="see-more-btn" data-event-id="${event.id}">See More</button>
         </div>
       </div>
     `;
@@ -597,35 +596,25 @@ async function navigateToPartyOrEvent(partyId) {
 
 function setupActionButtons() {
   document.addEventListener('click', async (e) => {
-    // Handle "See More" button clicks
-    if (e.target.closest('.see-more-btn')) {
-      const button = e.target.closest('.see-more-btn');
-      const eventId = button.dataset.eventId;
-      
-      if (eventId) {
-        e.stopPropagation();
-        await navigateToPartyOrEvent(eventId);
-        return;
-      }
-    }
-    
     // Handle party card clicks
-    if (e.target.closest('.upcoming-card') && !e.target.closest('.action-btn') && !e.target.closest('.see-more-btn') && !e.target.closest('.see-more-link') && !e.target.closest('.upcoming-like-btn')) {
+    if (e.target.closest('.upcoming-card') && !e.target.closest('.action-btn') && !e.target.closest('.upcoming-like-btn')) {
       const card = e.target.closest('.upcoming-card');
       const partyId = card.dataset.partyId;
       
       if (partyId) {
         await navigateToPartyOrEvent(partyId);
+        return;
       }
     }
     
     // Handle favorite card clicks
-    if (e.target.closest('.favorite-card') && !e.target.closest('.see-more-btn') && !e.target.closest('.see-more-link') && !e.target.closest('.favorite-heart')) {
+    if (e.target.closest('.favorite-card') && !e.target.closest('.favorite-heart')) {
       const card = e.target.closest('.favorite-card');
       const partyId = card.dataset.partyId;
       
       if (partyId) {
         await navigateToPartyOrEvent(partyId);
+        return;
       }
     }
     
@@ -996,7 +985,6 @@ function renderFavorites(events) {
               <span>${event.organizer_name || event.administrator || 'Organizador'}</span>
             </div>
           </div>
-          <button class="see-more-btn" data-event-id="${event.id}">See More</button>
         </div>
       </div>
     `;

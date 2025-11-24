@@ -9,6 +9,8 @@ const CONFIG = {
   }
 };
 
+const FALLBACK_ORGANIZER_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='24' r='16' fill='%23C4B5FD'/><path d='M8 60c0-13.255 10.745-24 24-24s24 10.745 24 24' fill='%23A78BFA'/></svg>";
+
 export default function renderEventDetails(eventData) {
   const app = document.getElementById("app");
   if (app) {
@@ -47,7 +49,7 @@ export default function renderEventDetails(eventData) {
         
         <div class="organizer-info">
           <div class="organizer-avatar">
-            <img src="${eventData.administrator_image || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'}" alt="Organizer" id="organizerImage" />
+            <img src="${FALLBACK_ORGANIZER_IMAGE}" alt="Organizer" id="organizerImage" />
           </div>
           <div class="organizer-details">
             <div class="organizer-name">${eventData.administrator || 'Organizer'}</div>
@@ -175,14 +177,6 @@ export default function renderEventDetails(eventData) {
 async function initializeEventDetails(eventData) {
   // Setup back button
   setupBackButton();
-  
-  // Update organizer image if available (already set in render, but ensure it loads)
-  if (eventData && eventData.administrator_image) {
-    const organizerImg = document.getElementById('organizerImage');
-    if (organizerImg) {
-      organizerImg.src = eventData.administrator_image;
-    }
-  }
   
   // Update organizer phone if available (already set in render, but ensure it's correct)
   if (eventData && eventData.number) {

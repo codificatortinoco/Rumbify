@@ -71,7 +71,6 @@ export default function renderDashboard() {
       <section class="upcoming-section">
         <div class="section-header">
           <h2 class="section-title">Upcoming</h2>
-          <a href="#" class="see-more-link">See more</a>
         </div>
         <div class="upcoming-events" id="upcomingEvents">
           <!-- Upcoming event cards will be dynamically loaded here -->
@@ -571,7 +570,7 @@ function createHotTopicCard(event) {
   };
   
   return `
-    <div class="hot-topic-card">
+    <div class="hot-topic-card" data-party-id="${event.id}">
       <div class="hot-topic-image-container">
         <img src="${event.image}" alt="${event.title}" class="hot-topic-image" />
         <button class="hot-topic-like-btn ${isLiked ? 'liked' : ''}" data-event-id="${event.id}" aria-label="Like">
@@ -622,7 +621,6 @@ function createHotTopicCard(event) {
             `;
             }).join("")}
           </div>
-          <button class="hot-topic-see-more-btn" data-event-id="${event.id}">See More</button>
         </div>
       </div>
     </div>
@@ -1070,14 +1068,18 @@ function setupLikeButtons() {
 function setupEventDetailsNavigation() {
   // Use event delegation for dynamically added elements
   document.addEventListener('click', async (e) => {
-    const seeMoreBtn = e.target.closest('.see-more-btn') || e.target.closest('.hot-topic-see-more-btn');
-    if (seeMoreBtn) {
-      const eventId = seeMoreBtn.dataset.eventId;
-      if (eventId) {
-        e.preventDefault();
-        await navigateToPartyOrEvent(eventId);
-      }
+    if (!dashboardController.isActive) {
       return;
+    }
+
+    const hotTopicCard = e.target.closest('.hot-topic-card');
+    if (hotTopicCard && !e.target.closest('.hot-topic-like-btn')) {
+      const partyId = hotTopicCard.dataset.partyId;
+      if (partyId) {
+        e.preventDefault();
+        await navigateToPartyOrEvent(partyId);
+        return;
+      }
     }
     
     const upcomingCard = e.target.closest('.upcoming-card');

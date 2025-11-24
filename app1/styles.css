@@ -541,6 +541,7 @@ h1, h2, h3, h4, h5, h6,
   scroll-snap-align: start;
   flex-shrink: 0;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .card-image {
@@ -3251,6 +3252,7 @@ input:checked + .toggle-slider:before {
   flex-direction: column;
   padding: 0;
   gap: 0;
+  cursor: pointer;
 }
 
 .favorite-card .event-image {

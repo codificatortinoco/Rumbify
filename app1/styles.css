@@ -3922,6 +3922,8 @@ input:checked + .toggle-slider:before {
   color: white;
   display: flex;
   flex-direction: column;
+  /* Extra bottom spacing so content isn’t covered by fixed bottom nav */
+  padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
 }
 
 .party-details-header {
@@ -4142,25 +4144,7 @@ input:checked + .toggle-slider:before {
   margin: 0;
 }
 
-.dress-code-section {
-  margin-bottom: 32px;
-}
-
-.dress-code-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.dress-code-list li {
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.dress-code-list li:last-child {
-  border-bottom: none;
-}
+/* Dress code section removed */
 
 .address-section {
   margin-bottom: 32px;

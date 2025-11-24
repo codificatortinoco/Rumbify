@@ -358,8 +358,13 @@ const getEventDetails = async (req, res) => {
           const rawImg = adminUser?.profile_image;
           const SUPA_URL = process.env.SUPABASE_URL || "";
           const isHttp = typeof rawImg === 'string' && /^https?:\/\//i.test(rawImg);
+          const isDataUrl = typeof rawImg === 'string' && /^data:/i.test(rawImg);
+          const isBlobUrl = typeof rawImg === 'string' && /^blob:/i.test(rawImg);
           const hasStoragePrefix = typeof rawImg === 'string' && rawImg.includes('/storage/v1/object/public/');
           if (isHttp) {
+            administratorImage = rawImg;
+          } else if (isDataUrl || isBlobUrl) {
+            // Already a valid data/blob URL, use as-is
             administratorImage = rawImg;
           } else if (hasStoragePrefix && SUPA_URL) {
             // Raw path already includes storage public prefix; make absolute with SUPABASE_URL

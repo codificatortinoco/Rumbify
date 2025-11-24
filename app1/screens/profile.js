@@ -46,7 +46,6 @@ export default function renderProfile() {
       <div class="history-section">
         <div class="section-header">
           <h2 class="section-title">History</h2>
-          <button class="see-more-btn" id="seeMoreHistoryBtn">See more</button>
         </div>
         <div class="history-list" id="historyList">
           <!-- History items will be loaded dynamically -->
@@ -390,10 +389,7 @@ function setupProfileEventListeners() {
   });
 
   // See more history button
-  document.getElementById("seeMoreHistoryBtn").addEventListener("click", () => {
-    console.log("See more history clicked");
-    // TODO: Navigate to full history page
-  });
+  // Removed "See more" button for History per request
 
   // Settings menu items
 

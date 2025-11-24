@@ -81,13 +81,7 @@ export default function renderPartyDetails(partyId) {
           </div>
         </div>
 
-        <!-- Dress Code Section -->
-        <div class="dress-code-section">
-          <h3 class="section-title">Dress code</h3>
-          <ul class="dress-code-list" id="dressCodeList">
-            <!-- Dress code will be loaded dynamically -->
-          </ul>
-        </div>
+        
 
         <!-- Address Section -->
         <div class="address-section">
@@ -331,6 +325,13 @@ async function loadPartyDetails(partyId) {
     } else {
       // Always use inline fallback to avoid loading remote URLs
       adminImageElement.src = FALLBACK_ADMIN_IMAGE;
+      // Try to use creator image from server when available, fallback on error
+      try {
+        if (party && party.administrator_image) {
+          adminImageElement.src = party.administrator_image;
+          adminImageElement.onerror = () => { adminImageElement.src = FALLBACK_ADMIN_IMAGE; };
+        }
+      } catch (_) {}
     }
     
     // Update party tags
@@ -362,10 +363,7 @@ async function loadPartyDetails(partyId) {
     loadGoogleMap(party.location);
     console.log('[loadPartyDetails] ✅ Google Maps loaded');
     
-    // Load dress code (mock for now)
-    console.log('[loadPartyDetails] Loading dress code...');
-    loadDressCode(party.tags || []);
-    console.log('[loadPartyDetails] ✅ Dress code loaded');
+    // Dress code section removed per request
     
     // Load party description
     console.log('[loadPartyDetails] Loading party description...');
@@ -645,44 +643,7 @@ function loadGoogleMap(address) {
   }
 }
 
-function loadDressCode(tags) {
-  const dressCodeList = document.getElementById("dressCodeList");
-  if (!dressCodeList) {
-    console.log('[loadDressCode] Dress code list element not found');
-    return;
-  }
-  
-  // Only check mount status before updating DOM
-  if (!isMounted()) {
-    console.log('[loadDressCode] Screen unmounted, aborting DOM update');
-    return;
-  }
-  
-  // Mock dress code based on tags
-  let dressCodeItems = [];
-  
-  if (tags.includes("Elegant")) {
-    dressCodeItems.push("Formal attire");
-    dressCodeItems.push("No casual wear");
-  }
-  
-  if (tags.includes("Neon")) {
-    dressCodeItems.push("Neon colors");
-  }
-  
-  if (tags.includes("Summer")) {
-    dressCodeItems.push("Light clothing");
-  }
-  
-  // Default dress code if no specific tags
-  if (dressCodeItems.length === 0) {
-    dressCodeItems = ["Smart casual", "No shorts", "No sandals"];
-  }
-  
-  dressCodeList.innerHTML = dressCodeItems.map(item => `
-    <li>${item}</li>
-  `).join("");
-}
+// Dress code logic removed per request
 
 function setupPartyDetailsEventListeners() {
   // Back button

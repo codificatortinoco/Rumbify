@@ -218,6 +218,21 @@ async function loadAdditionalPartyData(partyId) {
         descriptionElement.textContent = descriptionResponse.description;
       }
     }
+
+    // Fetch full party details to resolve organizer image
+    const partyResponse = await makeRequest(`/parties/${partyId}`, "GET");
+    if (partyResponse && partyResponse.success && partyResponse.party) {
+      const organizerImgEl = document.getElementById('organizerImage');
+      if (organizerImgEl) {
+        const resolvedUrl = partyResponse.party.administrator_image;
+        if (resolvedUrl) {
+          organizerImgEl.src = resolvedUrl;
+          organizerImgEl.onerror = () => { organizerImgEl.src = FALLBACK_ORGANIZER_IMAGE; };
+        } else {
+          organizerImgEl.src = FALLBACK_ORGANIZER_IMAGE;
+        }
+      }
+    }
   } catch (error) {
     console.error("Error loading additional party data:", error);
     // Keep default/mocked content if API call fails

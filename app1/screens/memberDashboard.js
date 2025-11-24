@@ -404,7 +404,7 @@ function renderUpcomingCarousel(events) {
     carouselFooter.style.display = 'none';
     return;
   }
-  
+
   // Map tags to icons
   const tagIcons = {
     "Elegant": "assets/edit.svg",

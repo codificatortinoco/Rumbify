@@ -1068,7 +1068,7 @@ function setupLikeButtons() {
 }
 
 function setupEventDetailsNavigation() {
-  // Use event delegation for dynamically added see more buttons
+  // Use event delegation for dynamically added elements
   document.addEventListener('click', async (e) => {
     const seeMoreBtn = e.target.closest('.see-more-btn') || e.target.closest('.hot-topic-see-more-btn');
     if (seeMoreBtn) {
@@ -1085,6 +1085,16 @@ function setupEventDetailsNavigation() {
           const mockEvent = PartyDataService.getMockEventDetails(eventId);
           navigateTo("/event-details", mockEvent);
         }
+      }
+      return;
+    }
+    
+    const upcomingCard = e.target.closest('.upcoming-card');
+    if (upcomingCard && !e.target.closest('.upcoming-like-btn')) {
+      const partyId = upcomingCard.dataset.partyId;
+      if (partyId) {
+        e.preventDefault();
+        await navigateToPartyOrEvent(partyId);
       }
     }
   });
@@ -1164,5 +1174,44 @@ export function cleanupDashboard() {
   dashboardController.isLoading = false;
   if (dashboardController.abortController) {
     dashboardController.abortController.abort();
+  }
+}
+
+async function checkUserHasQRCode(partyId) {
+  const currentUser = getCurrentUser();
+  if (!currentUser?.id) {
+    return false;
+  }
+  
+  try {
+    const qrResponse = await makeRequest(`/codes/qr-code/${currentUser.id}/${partyId}`, "GET");
+    return Boolean(qrResponse?.success && qrResponse.qr_code);
+  } catch (error) {
+    console.error('[checkUserHasQRCode] Failed to verify QR code:', error);
+    return false;
+  }
+}
+
+async function navigateToPartyOrEvent(partyId) {
+  try {
+    const hasQRCode = await checkUserHasQRCode(partyId);
+    if (hasQRCode) {
+      navigateTo(`/party-details/${partyId}`);
+      return;
+    }
+    
+    try {
+      const eventResponse = await makeRequest(`/parties/${partyId}`, "GET");
+      const eventData = eventResponse?.party || eventResponse;
+      navigateTo("/event-details", eventData);
+    } catch (error) {
+      console.error('[navigateToPartyOrEvent] Error fetching event details, falling back to mock:', error);
+      const mockEvent = PartyDataService.getMockEventDetails(Number(partyId));
+      navigateTo("/event-details", mockEvent || { id: partyId });
+    }
+  } catch (error) {
+    console.error('[navigateToPartyOrEvent] Unexpected error:', error);
+    const fallbackEvent = PartyDataService.getMockEventDetails(Number(partyId)) || { id: partyId };
+    navigateTo("/event-details", fallbackEvent);
   }
 }

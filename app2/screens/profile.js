@@ -62,27 +62,17 @@ export default function renderProfile() {
       <!-- Settings Menu -->
       <div class="settings-section">
         <div class="settings-list">
-          <div class="settings-item" id="notificationsBtn">
-            <img src="assets/notifications.svg" alt="Notifications" class="settings-icon" />
-            <span class="settings-text">Notifications</span>
-            <img src="assets/backIcon.svg" alt="Arrow" class="arrow-icon" />
-          </div>
-          <div class="settings-item" id="yourCodesBtn">
-            <img src="assets/copyIcon.svg" alt="Your codes" class="settings-icon" />
-            <span class="settings-text">Your codes</span>
-            <img src="assets/backIcon.svg" alt="Arrow" class="arrow-icon" />
-          </div>
           <div class="settings-item" id="editProfileBtn">
             <img src="assets/edit.svg" alt="Edit Profile" class="settings-icon" />
             <span class="settings-text">Edit profile</span>
             <img src="assets/backIcon.svg" alt="Arrow" class="arrow-icon" />
           </div>
-          <div class="settings-item" id="changeUserBtn">
-            <img src="assets/person.svg" alt="Change User" class="settings-icon" />
-            <span class="settings-text">Change User</span>
-          </div>
           <div class="settings-item" id="logoutBtn">
-            <img src="assets/logOut.svg" alt="Logout" class="settings-icon" />
+            <svg class="settings-icon logout-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/>
+              <path d="M15 8l4 4-4 4"/>
+              <path d="M9 12h10"/>
+            </svg>
             <span class="settings-text">Logout</span>
           </div>
         </div>
@@ -409,10 +399,7 @@ function loadUserInterests(interests) {
   
   if (interestsArray.length === 0) {
     interestsContainer.innerHTML = `
-      <div class="no-interests">
-        <p>No interests selected yet</p>
-        <button class="add-interests-btn" onclick="navigateTo('/edit-profile')">Add Interests</button>
-      </div>
+      <p class="no-interests-message">No interests selected yet</p>
     `;
     return;
   }
@@ -466,24 +453,9 @@ function setupProfileEventListeners() {
   });
 
   // Settings menu items
-  document.getElementById("notificationsBtn").addEventListener("click", () => {
-    console.log("Notifications clicked");
-    // TODO: Navigate to notifications
-  });
-
-  document.getElementById("yourCodesBtn").addEventListener("click", () => {
-    console.log("Your codes clicked");
-    // TODO: Navigate to codes
-  });
-
   document.getElementById("editProfileBtn").addEventListener("click", () => {
     console.log("Edit profile clicked");
     navigateTo("/edit-profile");
-  });
-
-  document.getElementById("changeUserBtn").addEventListener("click", () => {
-    console.log("Change User clicked");
-    handleLogout();
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {

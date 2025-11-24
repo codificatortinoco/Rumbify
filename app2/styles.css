@@ -1151,8 +1151,16 @@ html, body, input, textarea, button, select {
 .settings-icon {
   width: 20px;
   height: 20px;
-  filter: brightness(0) invert(1);
   flex-shrink: 0;
+}
+
+img.settings-icon {
+  filter: brightness(0) invert(1);
+}
+
+svg.settings-icon {
+  display: block;
+  color: #ffffff;
 }
 
 .settings-text {
@@ -1624,32 +1632,10 @@ input:checked + .toggle-slider:before {
 }
 
 /* Additional Profile Styles */
-.no-interests {
-  text-align: center;
-  padding: 20px;
-}
-
-.no-interests p {
-  color: rgba(255, 255, 255, 0.6);
+.no-interests-message {
+  color: rgba(255, 255, 255, 0.75);
   font-size: 14px;
-  margin-bottom: 15px;
-}
-
-.add-interests-btn {
-  background: #8b5cf6;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.add-interests-btn:hover {
-  background: #7c3aed;
-  transform: translateY(-1px);
+  margin: 0;
 }
 
 
@@ -1805,10 +1791,6 @@ input:checked + .toggle-slider:before {
   }
   
   .delete-account-btn:hover {
-    transform: none;
-  }
-  
-  .add-interests-btn:hover {
     transform: none;
   }
   

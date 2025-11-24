@@ -38,12 +38,6 @@ export default function renderMyParties(data = {}) {
               <p class="admin-role">Administrator</p>
             </div>
           </div>
-          <div class="admin-notification">
-            <button class="notification-btn" id="notificationBtn">
-              <img src="assets/notifications.svg" alt="Notifications" class="notification-icon" />
-              <span class="notification-dot"></span>
-            </button>
-          </div>
         </div>
 
         <!-- Quick Metrics -->
@@ -255,14 +249,6 @@ export default function renderMyParties(data = {}) {
     });
   });
 
-  // Notification button
-  const notificationBtn = document.getElementById('notificationBtn');
-  if (notificationBtn) {
-    notificationBtn.addEventListener('click', () => {
-      // Handle notifications
-      console.log('Notifications clicked');
-    });
-  }
 }
 
 async function loadAdminParties() {

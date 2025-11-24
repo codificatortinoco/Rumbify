@@ -542,6 +542,7 @@ h1, h2, h3, h4, h5, h6,
   flex-shrink: 0;
   box-sizing: border-box;
   cursor: pointer;
+  margin-bottom: 12px;
 }
 
 .card-image {
@@ -596,7 +597,8 @@ h1, h2, h3, h4, h5, h6,
 .upcoming-card .card-content,
 .upcoming-card .event-info {
   flex: 1;
-  padding: 0;
+  padding-left: 16px;
+  padding-bottom: 12px;
   background: transparent;
   display: flex;
   flex-direction: column;
@@ -983,27 +985,26 @@ h1, h2, h3, h4, h5, h6,
   transform: translateY(0);
 }
 
-/* Bottom Navigation - estilo ovalado y compacto */
+/* Bottom Navigation - align with App2 styling and full viewport width */
 .bottom-nav {
   position: fixed;
-  bottom: 28px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 40px);
-  max-width: 520px;
-  background: linear-gradient(145deg, #4b27b8, #6c2ddb);
+  width: calc(100% - 32px);
+  max-width: 500px;
+  background: rgba(75, 39, 184, 0.95);
   display: flex;
-  justify-content: space-between;
-  padding: 18px 30px;
-  box-shadow: 0 25px 55px rgba(41, 0, 75, 0.55);
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(14px) saturate(140%);
-  z-index: 20;
+  justify-content: space-around;
+  padding: 16px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-radius: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: saturate(140%) blur(10px);
+  z-index: 100;
 }
 
 .nav-item {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1011,16 +1012,16 @@ h1, h2, h3, h4, h5, h6,
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   transition: color 0.18s ease, transform 0.12s ease;
-  padding: 6px 10px;
-  border-radius: 18px;
+  padding: 8px 12px;
+  border-radius: 16px;
   user-select: none;
 }
 
 .nav-item:active { transform: scale(0.97); }
 
 .nav-icon {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: inline-block;
   background-color: currentColor;
 }
@@ -1030,16 +1031,16 @@ h1, h2, h3, h4, h5, h6,
 .icon-user  { -webkit-mask: url('/app2/assets/userIcon.svg')  center/contain no-repeat; mask: url('/app2/assets/userIcon.svg')  center/contain no-repeat; }
 
 .nav-item span {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .nav-item.active {
-  color: #5df4a9;
+  color: #4ade80;
 }
 
 .nav-item:hover {
-  color: #b3ffdf;
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Animations */
@@ -2655,10 +2656,10 @@ h1, h2, h3, h4, h5, h6,
 .form-textarea {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid #8b5cf6;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
   font-size: 16px;
   font-weight: 500;
   outline: none;
@@ -2669,14 +2670,14 @@ h1, h2, h3, h4, h5, h6,
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.6);
+  color: #8b5cf6;
 }
 
 .form-input:focus,
 .form-textarea:focus {
-  border-color: #8b5cf6;
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+  border-color: #22c55e;
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
 }
 
 .form-input.error {
@@ -2699,6 +2700,19 @@ h1, h2, h3, h4, h5, h6,
 
 .char-count.over-limit {
   color: #ef4444;
+}
+
+/* Password Change Container - increase spacing between inputs */
+.password-change-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.password-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Interests Edit Container */
@@ -3229,6 +3243,7 @@ input:checked + .toggle-slider:before {
   gap: 12px;
   scroll-snap-align: start;
   flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 /* Member Dashboard - Vertical layout (image on top) */
@@ -3416,7 +3431,8 @@ input:checked + .toggle-slider:before {
 
 .upcoming-card .event-info {
   flex: 1;
-  padding: 0;
+  padding-left: 16px;
+  padding-bottom: 12px;
   background: transparent;
   display: flex;
   flex-direction: column;
@@ -3551,53 +3567,56 @@ input:checked + .toggle-slider:before {
   margin: 0;
 }
 
-/* Bottom Navigation */
+/* Bottom Navigation (App1) — aligned to App2 look and full width */
 .bottom-nav {
   position: fixed;
-  bottom: 0;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
-  max-width: 414px;
-  background: rgba(26, 26, 46, 0.95);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: calc(100% - 32px);
+  max-width: 500px;
+  background: rgba(75, 39, 184, 0.95);
+  backdrop-filter: saturate(140%) blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   justify-content: space-around;
-  padding: 12px 0;
-  z-index: 10;
+  padding: 16px 20px;
+  border-radius: 36px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  box-sizing: border-box;
 }
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  border-radius: 12px;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  color: #94a3b8;
+  transition: color 0.18s ease, transform 0.12s ease;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  transform: scale(1.05);
+  color: #4ade80;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  color: rgba(255, 255, 255, 1);
 }
 
 .nav-icon {
-  font-size: 20px;
+  width: 26px;
+  height: 26px;
+  display: inline-block;
+  background-color: currentColor;
 }
 
 .nav-item span:last-child {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* Responsive Design */
@@ -3957,6 +3976,17 @@ input:checked + .toggle-slider:before {
   padding: 20px;
   margin: 0;
   background: transparent;
+}
+
+.last-screen-indicator {
+  padding: 10px 20px 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+}
+
+.last-screen-indicator strong {
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .party-main-title {

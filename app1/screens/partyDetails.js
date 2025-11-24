@@ -1,4 +1,4 @@
-import { makeRequest, navigateTo, getCurrentUser } from "../app.js";
+import { makeRequest, navigateTo, getCurrentUser, getLastMainScreen } from "../app.js";
 
 // Track if the screen is still mounted
 let isScreenMounted = false;
@@ -6,10 +6,18 @@ let imageLoadTimeout = null;
 let preloadImage = null;
 let objectUrls = []; // Track object URLs for cleanup
 const FALLBACK_ADMIN_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='24' r='16' fill='%23C4B5FD'/><path d='M8 60c0-13.255 10.745-24 24-24s24 10.745 24 24' fill='%23A78BFA'/></svg>";
+const NAV_LABELS = {
+  "/parties": "Parties",
+  "/member-dashboard": "Dashboard",
+  "/profile": "Profile"
+};
+let lastMainScreenPath = "/member-dashboard";
 
 export default function renderPartyDetails(partyId) {
   // Mark screen as mounted FIRST, before any cleanup
   isScreenMounted = true;
+  lastMainScreenPath = getLastMainScreen() || "/member-dashboard";
+  const lastScreenLabel = NAV_LABELS[lastMainScreenPath] || "Dashboard";
   
   // Cleanup previous instance (but don't reset the flag we just set)
   const wasMounted = isScreenMounted;
@@ -110,11 +118,32 @@ export default function renderPartyDetails(partyId) {
           </div>
         </div>
       </div>
+      
+      <div class="last-screen-indicator">
+        Last visited: <strong>${lastScreenLabel}</strong>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <nav class="bottom-nav" id="partyDetailsNav">
+        <div class="nav-item ${lastMainScreenPath === "/parties" ? "active" : ""}" data-path="/parties">
+          <span class="nav-icon icon-party"></span>
+          <span>Parties</span>
+        </div>
+        <div class="nav-item ${lastMainScreenPath === "/member-dashboard" ? "active" : ""}" data-path="/member-dashboard">
+          <span class="nav-icon icon-home"></span>
+          <span>Home</span>
+        </div>
+        <div class="nav-item ${lastMainScreenPath === "/profile" ? "active" : ""}" data-path="/profile">
+          <span class="nav-icon icon-user"></span>
+          <span>Profile</span>
+        </div>
+      </nav>
     </div>
   `;
 
   // Initialize party details
   initializePartyDetails(partyId);
+  setupPartyDetailsNavigation();
 }
 
 async function initializePartyDetails(partyId) {
@@ -660,9 +689,31 @@ function setupPartyDetailsEventListeners() {
   const backBtn = document.getElementById("backBtn");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
-      navigateTo("/member-dashboard");
+      navigateTo(lastMainScreenPath);
     });
   }
+}
+
+function setupPartyDetailsNavigation() {
+  const nav = document.getElementById("partyDetailsNav");
+  if (!nav) {
+    return;
+  }
+  
+  const navItems = nav.querySelectorAll(".nav-item");
+  navItems.forEach(item => {
+    item.style.touchAction = "manipulation";
+    item.addEventListener("click", () => {
+      const targetPath = item.dataset.path;
+      if (!targetPath) {
+        return;
+      }
+      if (targetPath === lastMainScreenPath) {
+        navItems.forEach(navItem => navItem.classList.toggle("active", navItem === item));
+      }
+      navigateTo(targetPath);
+    });
+  });
 }
 
 function showError(message) {
@@ -681,7 +732,7 @@ function showError(message) {
   const backBtn = document.getElementById("errorBackBtn");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
-      navigateTo("/member-dashboard");
+      navigateTo(lastMainScreenPath);
     });
   }
 }

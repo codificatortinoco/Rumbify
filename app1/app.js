@@ -10,6 +10,8 @@ import renderEditProfile from "./screens/editProfile.js";
 import { authManager, checkRouteAccess, handleUnauthorizedAccess } from "./auth.js";
 
 const socket = io("/", { path: "/real-time" });
+const MAIN_SCREEN_KEY = "app1:lastMainScreen";
+const MAIN_ROUTES = ["/parties", "/member-dashboard", "/profile"];
 
 function clearScripts() {
   cleanupDashboard();
@@ -66,12 +68,14 @@ window.addEventListener('popstate', (event) => {
 });
 
 function navigateTo(path, data = {}) {
+  rememberMainScreen(path);
   const newRoute = { path, data };
   window.history.pushState(newRoute, "", `/app1${path}`);
   renderRoute(newRoute);
 }
 
 function renderRoute(currentRoute) {
+  rememberMainScreen(currentRoute.path);
   if (!checkRouteAccess(currentRoute.path)) {
     handleUnauthorizedAccess(currentRoute.path);
     return;
@@ -176,4 +180,24 @@ function isUserLoggedIn() {
   return localStorage.getItem('isLoggedIn') === 'true';
 }
 
-export { navigateTo, socket, makeRequest, setLoggedInUser, logout, getCurrentUser, isUserLoggedIn };
+function rememberMainScreen(path) {
+  if (!MAIN_ROUTES.includes(path)) {
+    return;
+  }
+  try {
+    localStorage.setItem(MAIN_SCREEN_KEY, path);
+  } catch (error) {
+    console.warn("[rememberMainScreen] Unable to persist main screen:", error);
+  }
+}
+
+function getLastMainScreen() {
+  try {
+    return localStorage.getItem(MAIN_SCREEN_KEY) || "/member-dashboard";
+  } catch (error) {
+    console.warn("[getLastMainScreen] Unable to read last main screen:", error);
+    return "/member-dashboard";
+  }
+}
+
+export { navigateTo, socket, makeRequest, setLoggedInUser, logout, getCurrentUser, isUserLoggedIn, getLastMainScreen };

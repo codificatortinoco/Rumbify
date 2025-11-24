@@ -297,10 +297,34 @@ const updateUserProfile = async (req, res) => {
       updateData.password = newPassword;
     }
 
-    // Update user in Supabase
+    // Fetch existing row to determine available columns and avoid schema mismatches
+    const { data: existingRow, error: existingRowError } = await supabaseCli
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (existingRowError || !existingRow) {
+      console.error("Error fetching existing user row before update:", existingRowError);
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const allowedColumns = Object.keys(existingRow);
+    const filteredUpdateData = Object.fromEntries(
+      Object.entries(updateData).filter(([key]) => allowedColumns.includes(key))
+    );
+
+    if (Object.keys(filteredUpdateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields to update for current schema"
+      });
+    }
+
+    // Update using only columns present in the current schema
     const { data: updatedUser, error: updateError } = await supabaseCli
       .from("users")
-      .update(updateData)
+      .update(filteredUpdateData)
       .eq("id", userId)
       .select()
       .single();

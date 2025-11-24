@@ -479,27 +479,20 @@ async function handleSaveProfile() {
       const response = await makeRequest(`/users/${currentUser.id}`, "PUT", updateData);
       
       if (response.success) {
-        // Update local storage with new user data
-        const updatedUser = { ...currentUser, ...updateData };
-        setLoggedInUser(updatedUser);
+        // Trust server response; do not apply local-only updates
+        const serverUser = response.user || { ...currentUser };
+        setLoggedInUser(serverUser);
         
-        // Show success message
         alert("Profile updated successfully!");
-        
-        // Navigate back to profile (this will reload the profile with updated data)
         navigateTo("/profile");
       } else {
         throw new Error(response.message || "Failed to update profile");
       }
     } catch (apiError) {
       console.error("API error:", apiError);
-      
-      // Fallback: Update local storage only
-      const updatedUser = { ...currentUser, ...updateData };
-      setLoggedInUser(updatedUser);
-      
-      alert("Profile updated locally. Some changes may not be saved to the server.");
-      navigateTo("/profile");
+      const msg = apiError?.message || "Failed to update user profile";
+      alert(`Server update failed: ${msg}`);
+      // Do not save locally and keep user on Edit Profile for correction
     }
     
   } catch (error) {

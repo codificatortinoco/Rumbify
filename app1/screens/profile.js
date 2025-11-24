@@ -410,8 +410,8 @@ function setupProfileEventListeners() {
 
   // Camera button for profile picture
   document.querySelector(".camera-btn").addEventListener("click", () => {
-    console.log("Change profile picture clicked");
-    // TODO: Implement profile picture change
+    console.log("Camera button clicked – navigating to Edit Profile");
+    navigateTo("/edit-profile");
   });
 
   // History item clicks

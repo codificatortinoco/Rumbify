@@ -1073,18 +1073,9 @@ function setupEventDetailsNavigation() {
     const seeMoreBtn = e.target.closest('.see-more-btn') || e.target.closest('.hot-topic-see-more-btn');
     if (seeMoreBtn) {
       const eventId = seeMoreBtn.dataset.eventId;
-      
       if (eventId) {
-        try {
-          // Get event details and navigate
-          const eventDetails = await PartyDataService.getEventDetails(eventId);
-          navigateTo("/event-details", eventDetails);
-        } catch (error) {
-          console.error('Error getting event details:', error);
-          // Fallback to mock data
-          const mockEvent = PartyDataService.getMockEventDetails(eventId);
-          navigateTo("/event-details", mockEvent);
-        }
+        e.preventDefault();
+        await navigateToPartyOrEvent(eventId);
       }
       return;
     }

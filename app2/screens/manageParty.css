@@ -1,6 +1,6 @@
 /* Manage Party Screen Styles */
 #manage-party-screen {
-  background: url('../assets/BackgroundImage.png') center/cover no-repeat;
+  background: url("../assets/BackgroundImage.png") center/cover no-repeat;
   min-height: 100vh;
   padding-bottom: 80px;
   background-attachment: fixed;
@@ -123,7 +123,7 @@
 }
 
 .live-dot::before {
-  content: '●';
+  content: "●";
   font-size: 12px;
   color: #22c55e;
 }
@@ -312,6 +312,75 @@
   line-height: 1.5;
 }
 
+/* Guest approval overlay styles */
+.hidden {
+  display: none !important;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-card {
+  width: 320px;
+  max-width: 90vw;
+  background: #1b1734;
+  color: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  opacity: 0.8;
+}
+.modal-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.modal-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin: 8px auto;
+  display: block;
+}
+.modal-name {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.modal-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.btn {
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-approve {
+  background: #2ecc71;
+  color: #fff;
+}
+.btn-reject {
+  background: #c0392b;
+  color: #fff;
+}
+
 /* Modal Styles */
 .modal {
   display: none;
@@ -498,7 +567,7 @@
 }
 
 .code-item {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 14px;
   font-weight: 600;
   color: #8b5cf6;
@@ -565,7 +634,8 @@
 }
 
 #manage-party-screen .bottom-nav .nav-item.active .nav-icon {
-  filter: brightness(0) saturate(100%) invert(67%) sepia(89%) saturate(427%) hue-rotate(87deg) brightness(95%) contrast(87%);
+  filter: brightness(0) saturate(100%) invert(67%) sepia(89%) saturate(427%)
+    hue-rotate(87deg) brightness(95%) contrast(87%);
 }
 
 #manage-party-screen .bottom-nav .nav-item.active .nav-label {
